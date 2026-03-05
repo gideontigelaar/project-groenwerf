@@ -37,3 +37,30 @@ Bijvoorbeeld: https://www.okaphone.com/artikel.xhtml?id=498851
 - Werkt niet goed in lichte omgevingen
 - Niet waterdicht
 - Max. bereik van ± 80cm. Dit is erg laag
+
+<br><br>
+
+# Sensoren/technieken voor afvangen/verwerken van trillingen
+
+## Accelerometer & gyroscoop
+Het opmerken en mogelijk wegfilteren van niet-accurate metingen door trillingen die worden opgepakt door de sensor.
+
+### Voor Ultrasone sensor:
+- Trillingen maken hier veel uit voor de echo terugkomsttijd
+- Grote winst als je met de accelerometer inconsistenties door trillingen wegfiltert
+
+### Voor Time of Flight sensor:
+- Hier maken trillingen minder uit doordat het werkt met een laser
+- Winst aan accuracy door trillingen weg te filteren met accelerometer is met ToF sensor kleiner
+
+## Extra: afgeronde metingen nemen over een bepaald stuk
+Het software-matig verwerken van de data voordat het gebruikt wordt om uitschieters door obstakels en trillingen weg te filteren.
+
+- Outliers verwijderen: metingen die sterk afwijken van de rest worden weggegooid
+- Mediaan: van de resterende metingen wordt de middelste waarde genomen, dit is beter dan een gemiddelde omdat het minder gevoelig is voor uitschieters
+- 80e of 90e percentiel: dit betekent dat de waarde wordt genomen waarbij 80% of 90% van de metingen daaronder valt. Dit kan handig zijn omdat gras ongelijk groeit: de hogere pieken zijn bepalend voor of het maaimoment nodig is, niet het gemiddelde
+
+<br><br>
+
+# Conclusie
+De IR-afstandssensor valt meteen af vanwege de gevoeligheid voor zonlicht, het beperkte bereik en het ontbreken van waterbestendigheid.
