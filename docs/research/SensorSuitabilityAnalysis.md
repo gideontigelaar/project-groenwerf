@@ -62,5 +62,16 @@ Het software-matig verwerken van de data voordat het gebruikt wordt om uitschiet
 
 <br><br>
 
-# Conclusie
-De IR-afstandssensor valt meteen af vanwege de gevoeligheid voor zonlicht, het beperkte bereik en het ontbreken van waterbestendigheid.
+# Conclusie: na testen van sensoren
+
+### Infrarood afstandssensor
+- De IR-afstandssensor valt meteen af vanwege de gevoeligheid voor zonlicht, het beperkte bereik en het ontbreken van waterbestendigheid. Deze sensor hebben we dan verder ook niet getest omdat deze zeer ongeschikt bleek.
+
+### Time of Flight sensor
+- Deze sensor is erg accuraat, ook bij trillingen. Het zal, als we deze sensor gaan gebruiken, veel werk schelen bij het maken van systemen voor het opvangen en tegenwerken van schokken.
+- De meeste ToF sensoren die we konden vinden zijn niet waterdicht, wat betekent dat er een extra behuizing gemaakt moet worden.
+- De metingen zijn eenvoudig uit te lezen met redelijk eenvoudige code.
+
+### Ultrasoon sensor
+- Na side-to-side comparison tussen de Ultrasoon sensor en de ToF sensor, kwamen we erachter dat de ToF sensor veel meer accurate metingen gaf.
+- De ultrasoon sensor is vaak waterdicht verkrijgbaar en dus wel makkelijker in te bouwen.
