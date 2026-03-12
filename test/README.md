@@ -32,8 +32,8 @@ make -j4
 ## Flashing
 Hold BOOTSEL, plug in, drop the `.uf2` onto the drive.
 
-**Mac:** `cp -X vl53l1x_pico.uf2 /Volumes/RP2350/`<br>
-**Windows:** drag `build/vl53l1x_pico.uf2` onto the RP2350 drive
+**Mac:** `cp -X grass_monitor_pico.uf2 /Volumes/RP2350/`<br>
+**Windows:** drag `build/grass_monitor_pico.uf2` onto the RP2350 drive
 
 ## Viewing output
 **Mac:** `screen $(ls /dev/tty.usbmodem*) 115200`<br>

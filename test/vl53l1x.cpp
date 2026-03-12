@@ -1,5 +1,5 @@
 #include <cstdio>
-#include "vl53l1x.hpp"
+#include "vl53l1x.h"
 #include "pico/stdlib.h"
 #include <cstring>
 
@@ -74,8 +74,8 @@ uint32_t VL53L1X::readReg32(uint16_t reg) {
 bool VL53L1X::init() {
     // Wait for boot (FIRMWARE_SYSTEM_STATUS = 0x00E5, need bit0=1)
     uint32_t timeout = 100;
-    while ((readReg(0x00E5) & 0x01) == 0) {
-        if (--timeout == 0) {
+    while((readReg(0x00E5) & 0x01) == 0) {
+        if(--timeout == 0) {
             printf("  [init] boot timeout\n");
             return false;
         }
@@ -85,7 +85,7 @@ bool VL53L1X::init() {
     // Verify model ID (0x010F = 0xEACC)
     uint16_t model = readReg16(0x010F);
     printf("  [init] model ID: 0x%04X\n", model);
-    if (model != 0xEACC) return false;
+    if(model != 0xEACC) return false;
 
     // Write default config blob to registers 0x002D..0x0087
     uint8_t buf[2 + sizeof(DEFAULT_CONFIG)];
@@ -105,8 +105,8 @@ bool VL53L1X::init() {
 
     // Wait for data ready
     timeout = 200;
-    while ((readReg(0x0031) & 0x01) != 0) {
-        if (--timeout == 0) {
+    while((readReg(0x0031) & 0x01) != 0) {
+        if(--timeout == 0) {
             printf("  [init] VHV cal timeout\n");
             return false;
         }
@@ -127,8 +127,8 @@ bool VL53L1X::init() {
 
 bool VL53L1X::startContinuous(uint32_t period_ms) {
     writeReg32(0x006C, period_ms * 1000); // intermeasurement in microseconds
-    writeReg(0x0086, 0x01);               // clear interrupt
-    writeReg(0x0087, 0x40);               // start ranging
+    writeReg(0x0086, 0x01); // clear interrupt
+    writeReg(0x0087, 0x40); // start ranging
     return true;
 }
 
