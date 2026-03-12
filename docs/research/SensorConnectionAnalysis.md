@@ -12,7 +12,13 @@ We gebruiken voor dit project een Raspberry pi pico w.
 
 ### Limieten
 
-De raspberry pi pico kan per GPIO pin maximaal tot 12 mA en het wordt aangeraden om het onder 9 mA te houden per pin. de maximum aantal mA die de raspberry pi pico kan leveren over alle GPIO pins is 50 mA. Hierdoor kan als er veel sensoren aangesloten moeten worden dat het handiger is om het direct aan een stroom bron te brengen en niet aan de raspberry pi pico zelf. Daardoor hebben we een converter nodig die de stroom van de accu in de grasmaaier zou kunnen omzetten naar stroom die kan werken voor de sensoren.  
+De raspberry pi pico kan per GPIO pin maximaal tot 12 mA en het wordt aangeraden om het onder 9 mA te houden per pin. de maximum aantal mA die de raspberry pi pico kan leveren over alle GPIO pins is 50 mA. Hierdoor kan als er veel sensoren aangesloten moeten worden dat het handiger is om het direct aan een stroom bron te brengen en niet aan de raspberry pi pico zelf. Daardoor hebben we een converter nodig die de stroom van de accu in de grasmaaier zou kunnen omzetten naar stroom die kan werken voor de sensoren. 
+
+De aansluitingen kunnen verwarrend worden als er allemaal kabels door elkaar heen lopen. Dit kan ervoor zorgen dat het product niet goed onderhouden kan worden en erg onoverzichtelijk is.
+
+De aansluitingen kunnen kapot gaan door middel van viezigheid, hitte en vocht. Dit zou ervoor zorgen dat het product niet meer zou gaan werken en er onderdelen vervangen moeten worden.
+
+### Oplossingen
 
 Om de aansluitingen goed te laten werken in een bewegend voorwerp moeten de kabels genoeg speling hebben om wat te bewegen, zodat de aansluiting niet breken. Maar niet genoeg speling dat ze te lang zijn en bijvoorbeeld in de maaier terecht kunnen komen.
 
@@ -27,6 +33,10 @@ Om verwarring te verkomen op welke kabels welke aansluitingen zijn, moeten we we
 | Groen  | SDA             |
 | Blauw  | SCL             |
 | Wit    | Reset           |
+
+<br>
+
+Om de aansluitingen te beschermen kan je gebruik maken van kabelgoten en kouzen. De kabelgoten zouden ervoor zorgen dat de kabels beschermd worden tegen groter vuil en klappen. De kouzen zouden ervoor zorgen dat er geen vocht en kleiner vuil binnen/op de kabels komt.
 
 <br>
 
