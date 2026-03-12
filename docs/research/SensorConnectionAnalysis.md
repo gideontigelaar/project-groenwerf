@@ -34,4 +34,6 @@ Om verwarring te verkomen op welke kabels welke aansluitingen zijn, moeten we we
 
 ### Bronnen
 https://www.alldatasheet.com/html-pdf/1652177/EDATEC/RP2040/2306/9/RP2040.html
+https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf
+https://www.st.com/resource/en/datasheet/vl53l0x.pdf
 
