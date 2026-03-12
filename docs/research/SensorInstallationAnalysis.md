@@ -2,8 +2,7 @@
 
 ### Lijst van mogelijke sensoren
 
-- Ultrasoon sensor 5V 15mA
-- Infrarood afstandssensor 3.3V/5V 20mA
+- Ultrasoon sensor 5V 15m
 - Time of flight sensoren 3.0V/5V 40 mA
 
 ### Grasmaaiers modellen
@@ -138,10 +137,6 @@ De beste optie om het gras te meten na het maaien is de plek waar de kenteken zo
 <br>
 
 #### Bronnen
-https://www.circuits-diy.com/hw201-infrared-ir-sensor-module/
-https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf
-https://www.st.com/resource/en/datasheet/vl53l0x.pdf
-https://pip-assets.raspberrypi.com/categories/1088-raspberry-pi-pico-2-w/documents/RP-008304-DS-1-pico-2-w-datasheet.pdf?disposition=inline
 https://aravidis.gr/pub/media/wysiwyg/R420TsXAWD.pdf?srsltid=AfmBOopwXDhtXF6lC7dkM8-0QcIPRnI6WJ3c1Gs3q6fNqlKsyQwMmV8x
 https://www.deere.com/en/mowers/commercial-mowers/front-mowers/1585-terraincut-mower/
 https://techinfo-omview.apps-prod-vpn.us.e06.c01.johndeerecloud.com/omview/omuc30515/09001faa81e66534
