@@ -20,7 +20,7 @@ De aansluitingen kunnen kapot gaan door middel van viezigheid, hitte en vocht. D
 
 ### Oplossingen
 
-Om de aansluitingen goed te laten werken in een bewegend voorwerp moeten de kabels genoeg speling hebben om wat te bewegen, zodat de aansluiting niet breken. Maar niet genoeg speling dat ze te lang zijn en bijvoorbeeld in de maaier terecht kunnen komen.
+Om de aansluitingen goed te laten werken in een bewegend voorwerp moeten de kabels genoeg speling hebben om wat te bewegen, zodat de aansluiting niet breken. Maar niet genoeg speling dat ze te lang zijn en bijvoorbeeld in de maaier terecht kunnen komen. Nog een oplossing om er bij toe te voegen zou zijn om de kabels te solderen aan de raspberry pi zodat er nog minder kans is op ontkoppeling.
 
 Om verwarring te verkomen op welke kabels welke aansluitingen zijn, moeten we werken met een kleur gecodeerd systeem. Bijvoorbeeld:
 
@@ -41,6 +41,16 @@ Om de aansluitingen te beschermen kan je gebruik maken van kabelgoten en kouzen.
 <br>
 
 ![Raspberry pi pico](https://devboards.info/images/boards/raspberry-pi-pico/raspberry-pi-pico-pinout.webp)
+
+### Benodigde onderdelen
+- Sensor die gekozen is.
+- Kabels om deze aan te sluiten
+- Raspberry pi pico
+- Kabel kouzen
+- Kabelgoten
+
+### Conclusie
+We hebben dus een paar methodes van aansluiten, maar het meest optimale voor dit project is de meest veilige optie. Dit is met kabel goten en kouzen de kabels beschermen. Speling in de kabels zodat deze niet gaan knappen door trekkracht. Kabels kleurgecodeerd organiseren om verwarring te voorkomen. En de kabels solderen op de raspberry pi pico.
 
 ### Bronnen
 https://www.alldatasheet.com/html-pdf/1652177/EDATEC/RP2040/2306/9/RP2040.html
