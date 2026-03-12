@@ -75,3 +75,18 @@ Het software-matig verwerken van de data voordat het gebruikt wordt om uitschiet
 ### Ultrasoon sensor
 - Na side-to-side comparison tussen de Ultrasoon sensor en de ToF sensor, kwamen we erachter dat de ToF sensor veel meer accurate metingen gaf.
 - De ultrasoon sensor is vaak waterdicht verkrijgbaar en dus wel makkelijker in te bouwen.
+
+### Accelerometer
+- Met het aansluiten van een accelerometer kun je makkelijk trillingen afmeten, en eventuele compensaties maken in de meetdata als de trillingen heftig zijn.
+
+# Datasheets
+Onderstaand de datasheets van de sensoren die we getest hebben. Deze sensoren lijken geschikt te zijn voor ons project.
+
+### VL53L1X ToF sensor - datasheet
+- https://www.st.com/resource/en/datasheet/vl53l1x.pdf
+
+### RCWL-1601 ultrasonic sensor - datasheet
+- https://media.digikey.com/pdf/Data%20Sheets/Adafruit%20PDFs/4007_Web.pdf
+
+### ADXL345 accelerometer - datasheet
+- https://www.analog.com/media/en/technical-documentation/data-sheets/adxl345.pdf
