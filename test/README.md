@@ -1,40 +1,45 @@
-# Building the project
-You'll need CMake, the ARM toolchain (`arm-none-eabi-gcc`), and the Pico SDK installed.
+# Building the project (Mac)
 
-Create a `.env` file in the project root and set `PICO_SDK_PATH` to your SDK folder:
-```dotenv
-PICO_SDK_PATH=/path/to/your/.pico-sdk/sdk/2.2.0
+## Prerequisites
+You need the Pico SDK and ARM toolchain installed. The easiest way is to install the Raspberry Pi Pico VS Code extension, which will download and install everything into `~/.pico-sdk/`. You don't need to use the extension to build, it just handles the installation for you.
+
+You also need Xcode Command Line Tools, CMake, and the ARM toolchain:
+```bash
+xcode-select --install
+brew install cmake
+brew install --cask gcc-arm-embedded
 ```
 
-Before building, load the variable into your environment:
+If you already have the full Xcode app installed, skip the `xcode-select` step.
 
-**Mac/Linux:** `export $(cat .env | xargs)`<br>
-**Windows (PowerShell):** `$env:PICO_SDK_PATH = "C:\path\to\pico-sdk"`
+Once done, set `PICO_SDK_PATH` in your environment before building:
+```bash
+export PICO_SDK_PATH=~/.pico-sdk/sdk/2.2.0
+```
 
-`CMakeLists.txt` picks this up via `$ENV{PICO_SDK_PATH}` to locate the SDK.
+`CMakeLists.txt` reads this variable via `$ENV{PICO_SDK_PATH}` to find the SDK.
 
 ## Clean build
-Do this the first time, or when you've changed `CMakeLists.txt`:
+Do this the first time, or after changing `CMakeLists.txt`:
 ```bash
 rm -rf build && mkdir build && cd build
 cmake .. -DPICO_BOARD=pico2
 make -j4
 ```
 
-Windows: use `rmdir /s /q build` and `mingw32-make -j4`
-
-## Just recompiling
+## Recompiling
 ```bash
-cd build
-make -j4
+cd build && make -j4
 ```
 
 ## Flashing
-Hold BOOTSEL, plug in, drop the `.uf2` onto the drive.
-
-**Mac:** `cp -X grass_monitor_pico.uf2 /Volumes/RP2350/`<br>
-**Windows:** drag `build/grass_monitor_pico.uf2` onto the RP2350 drive
+Hold BOOTSEL, plug in USB and the Pico shows up as a drive called `RP2350`.
+```bash
+cp -X build/grass_monitor_pico.uf2 /Volumes/RP2350/
+```
 
 ## Viewing output
-**Mac:** `screen $(ls /dev/tty.usbmodem*) 115200`<br>
-**Windows:** PuTTY → Serial → your COM port (check Device Manager) → 115200 baud
+```bash
+screen $(ls /dev/tty.usbmodem*) 115200
+```
+Exit with `Ctrl+A` then `K`.
