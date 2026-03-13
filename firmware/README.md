@@ -22,6 +22,7 @@ export PICO_SDK_PATH=~/.pico-sdk/sdk/2.2.0
 ## Clean build
 Do this the first time, or after changing `CMakeLists.txt`:
 ```bash
+cd firmware
 rm -rf build && mkdir build && cd build
 cmake .. -DPICO_BOARD=pico2
 make -j4
@@ -29,13 +30,13 @@ make -j4
 
 ## Recompiling
 ```bash
-cd build && make -j4
+cd firmware/build && make -j4
 ```
 
 ## Flashing
 Hold BOOTSEL, plug in USB and the Pico shows up as a drive called `RP2350`.
 ```bash
-cp -X build/grass_monitor_pico.uf2 /Volumes/RP2350/
+cp -X firmware/build/grass_monitor_pico.uf2 /Volumes/RP2350/
 ```
 
 ## Viewing output

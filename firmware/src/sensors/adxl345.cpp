@@ -1,4 +1,4 @@
-#include "adxl345.h"
+#include "sensors/adxl345.h"
 #include "pico/stdlib.h"
 #include <cstdio>
 

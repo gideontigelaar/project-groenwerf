@@ -1,8 +1,8 @@
 #include "pico/stdlib.h"
 #include "pico/stdio_usb.h"
 #include "hardware/i2c.h"
-#include "vl53l1x.h"
-#include "adxl345.h"
+#include "sensors/vl53l1x.h"
+#include "sensors/adxl345.h"
 #include <cstdio>
 
 // pin config

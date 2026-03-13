@@ -8,12 +8,15 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_executable(grass_monitor_pico
-    main.cpp
-    vl53l1x.cpp
-    adxl345.cpp
+    src/main.cpp
+    src/sensors/vl53l1x.cpp
+    src/sensors/adxl345.cpp
 )
 
-target_include_directories(grass_monitor_pico PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(grass_monitor_pico PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 target_link_libraries(grass_monitor_pico
     pico_stdlib
