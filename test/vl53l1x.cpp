@@ -1,6 +1,6 @@
-#include <cstdio>
 #include "vl53l1x.h"
 #include "pico/stdlib.h"
+#include <cstdio>
 #include <cstring>
 
 // Official ST ULD default config blob, written starting at reg 0x002D

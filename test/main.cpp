@@ -5,7 +5,7 @@
 #include "adxl345.h"
 #include <cstdio>
 
-// --- Pin config ---
+// pin config
 constexpr uint I2C_SDA = 4;
 constexpr uint I2C_SCL = 5;
 constexpr uint I2C_FREQ = 400000;
@@ -23,7 +23,7 @@ static void i2c_scan() {
 int main() {
     stdio_init_all();
 
-    // Wait for USB serial connection
+    // wait for USB serial connection
     while(!stdio_usb_connected()) {
         sleep_ms(100);
     }
@@ -39,12 +39,19 @@ int main() {
     i2c_scan();
 
     VL53L1X tof(i2c0, VL53L1X::DEFAULT_ADDR);
+    ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
 
     if(!tof.init()) {
         printf("ERROR: VL53L1X init failed!\n");
         while(true) {}
     }
     printf("VL53L1X initialised OK\n\n");
+
+    if(!accel.init()) {
+        printf("ERROR: ADXL345 init failed!\n");
+        while(true) {}
+    }
+    printf("ADXL345 initialised OK\n\n");
 
     tof.startContinuous(20);
 
@@ -53,12 +60,18 @@ int main() {
             uint8_t status = tof.rangeStatus();
             uint16_t dist = tof.readDistance();
 
+            AccelData a = accel.read();
+
+            printf("Measurement:\n");
             if(status == 0 || status == 1) {
                 printf("Distance: %u mm\n", dist);
             } else {
                 printf("Distance: -- (status %u)\n", status);
             }
+            printf("Accel: (X%6.2f) (Y%6.2f) (Z%6.2f (g))\n", a.x, a.y, a.z);
+            printf("\n");
         }
-        sleep_ms(1);
+
+        sleep_ms(20);
     }
 }
