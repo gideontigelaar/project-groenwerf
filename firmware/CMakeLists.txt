@@ -11,11 +11,12 @@ add_executable(grass_monitor_pico
     src/main.cpp
     src/sensors/vl53l1x.cpp
     src/sensors/adxl345.cpp
+    src/sensors/rcwl1604.cpp
 )
 
 target_include_directories(grass_monitor_pico PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(grass_monitor_pico

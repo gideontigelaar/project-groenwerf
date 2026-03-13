@@ -11,7 +11,7 @@ public:
     bool init();
     bool startContinuous(uint32_t period_ms = 50);
     void stopContinuous();
-    uint16_t readDistance(); // returns distance in mm, 0 on error
+    uint16_t readDistance(); // returns distance in mm
     bool dataReady();
     uint8_t rangeStatus();
 
