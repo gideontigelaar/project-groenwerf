@@ -71,6 +71,7 @@ Het software-matig verwerken van de data voordat het gebruikt wordt om uitschiet
 - Deze sensor is erg accuraat, ook bij trillingen. Het zal, als we deze sensor gaan gebruiken, veel werk schelen bij het maken van systemen voor het opvangen en tegenwerken van schokken.
 - De meeste ToF sensoren die we konden vinden zijn niet waterdicht, wat betekent dat er een extra behuizing gemaakt moet worden.
 - De metingen zijn eenvoudig uit te lezen met redelijk eenvoudige code.
+- Door de smalle meethoek meet de sensor soms tussen de grassprietjes door naar de grond, wat zonder verwerking onbetrouwbare meetdata geeft.
 
 ### Ultrasoon sensor
 - Na side-to-side comparison tussen de Ultrasoon sensor en de ToF sensor, kwamen we erachter dat de ToF sensor veel meer accurate metingen gaf.
@@ -78,6 +79,11 @@ Het software-matig verwerken van de data voordat het gebruikt wordt om uitschiet
 
 ### Accelerometer
 - Met het aansluiten van een accelerometer kun je makkelijk trillingen afmeten, en eventuele compensaties maken in de meetdata als de trillingen heftig zijn.
+
+### Combinatie van Ultrasoon en Time of Flight sensor
+- De ultrasone sensor is de primaire meting, de ToF verfijnt dit via een gewogen gemiddelde wanneer hij een betrouwbare meting geeft.
+- Als de ToF uitvalt door zonlicht of door meten tussen grassprietjes, valt het systeem automatisch terug op alleen de ultrasone meting.
+- Deze combinatie is nog niet in de praktijk getest en moet verder onderzocht worden.
 
 # Datasheets
 Onderstaand de datasheets van de sensoren die we getest hebben. Deze sensoren lijken geschikt te zijn voor ons project.
