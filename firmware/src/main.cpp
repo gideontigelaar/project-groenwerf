@@ -1,9 +1,8 @@
-#include "pico/stdlib.h"
-#include "pico/stdio_usb.h"
-#include "hardware/i2c.h"
 #include "sensors/vl53l1x.h"
 #include "sensors/adxl345.h"
 #include "sensors/rcwl1604.h"
+#include "pico/stdlib.h"
+#include "hardware/i2c.h"
 #include <cstdio>
 
 // for VL53L1X & ADXL345

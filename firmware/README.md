@@ -24,7 +24,7 @@ Do this the first time, or after changing `CMakeLists.txt`:
 ```bash
 cd firmware
 rm -rf build && mkdir build && cd build
-cmake .. -DPICO_BOARD=pico2
+cmake ..
 make -j4
 ```
 
