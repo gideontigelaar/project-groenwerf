@@ -3,6 +3,8 @@
 #include "hardware/gpio.h"
 #include <cstdio>
 
+static constexpr uint32_t ECHO_TIMEOUT_US = 30000;
+
 RCWL1604::RCWL1604(uint trig_pin, uint echo_pin)
     : _trig(trig_pin), _echo(echo_pin) {}
 
@@ -24,17 +26,16 @@ uint16_t RCWL1604::readDistance() {
     sleep_us(10);
     gpio_put(_trig, 0);
 
-    // wait for echo to start
-    uint32_t timeout = 10000;
+    // wait for echo to go high, timeout after ECHO_TIMEOUT_US
+    uint32_t t0 = time_us_32();
     while(!gpio_get(_echo)) {
-        if(--timeout == 0) return 0;
+        if((time_us_32() - t0) > ECHO_TIMEOUT_US) return 0;
     }
 
-    // measure echo duration
+    // measure how long echo stays high
     uint32_t start = time_us_32();
-    timeout = 30000;
     while(gpio_get(_echo)) {
-        if(--timeout == 0) return 0;
+        if((time_us_32() - start) > ECHO_TIMEOUT_US) return 0;
     }
     uint32_t duration_us = time_us_32() - start;
 

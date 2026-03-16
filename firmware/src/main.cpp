@@ -15,6 +15,8 @@ constexpr uint I2C_FREQ = 400000;
 constexpr uint RCWL_TRIG = 2;
 constexpr uint RCWL_ECHO = 3;
 
+constexpr uint32_t SONIC_INTERVAL_MS = 50;
+
 static void i2c_scan(i2c_inst_t* i2c, const char* label) {
     printf("Scanning %s...\n", label);
     for(uint8_t addr = 0x08; addr < 0x78; addr++) {
@@ -67,28 +69,39 @@ int main() {
         printf("RCWL1604 initialised OK\n\n");
     }
 
+    uint16_t last_udist = 0;
+    uint32_t last_sonic_ms = 0;
+
     while(true) {
+        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+
+        // fire ultrasonic independent of ToF fire speed
+        if((now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
+            last_udist = ultrasonic.readDistance();
+            last_sonic_ms = now_ms;
+        }
+
+        // print whenever the ToF has a new sample
         if(tof.dataReady()) {
             uint8_t status = tof.rangeStatus();
             uint16_t dist = tof.readDistance();
-            uint16_t udist = ultrasonic.readDistance();
             AccelData a = accel.read();
 
             printf("Measurement:\n");
             if(status == 0 || status == 1) {
-                printf("  ToF: %u mm\n", dist);
+                printf("  ToF:   %u mm\n", dist);
             } else {
-                printf("  ToF: -- (status %u)\n", status);
+                printf("  ToF:   -- (status %u)\n", status);
             }
-            if(udist > 0) {
-                printf("  Sonic: %u mm\n", udist);
+            if(last_udist > 0) {
+                printf("  Sonic: %u mm\n", last_udist);
             } else {
                 printf("  Sonic: --\n");
             }
-            printf("  Accel: (X%6.2f) (Y%6.2f) (Z%6.2f (g))\n", a.x, a.y, a.z);
+            printf("  Accel: (X%6.2f) (Y%6.2f) (Z%6.2f) (g)\n", a.x, a.y, a.z);
             printf("\n");
         }
 
-        sleep_ms(20);
+        sleep_ms(5);
     }
 }
