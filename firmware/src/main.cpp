@@ -121,11 +121,7 @@ int main() {
             }
 
             if(sonic_ok) {
-                if(last_udist > 0) {
-                    printf("  Sonic: %u mm\n", last_udist);
-                } else {
-                    printf("  Sonic: --\n");
-                }
+                printf("  Sonic: %u mm\n", last_udist);
             } else {
                 printf("  Sonic: [offline]\n");
             }
