@@ -106,6 +106,7 @@ int main() {
 
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
+            // Print raw data
             RawData rd = processor.raw();
             printf("Measurement:\n");
 
@@ -130,8 +131,9 @@ int main() {
                 printf("  Accel: [offline]\n");
             }
 
-            ProcessedData pd = processor.processed();
             // Print processed data
+            ProcessedData pd = processor.processed();
+
             printf("  Processed:\n");
             if(tof_ok) {
                 printf("    Grass height (ToF): %u mm\n", pd.grass_height_tof_mm);
