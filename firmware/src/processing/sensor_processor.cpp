@@ -23,13 +23,13 @@ void SensorProcessor::parseAccel(float x, float y, float z) {
   _raw.accel_z = z;
 }
 
-const ProcessedData SensorProcessor::processed() {
-  ProcessedData data;
+const ProcessedData SensorProcessor::processed() const {
+    ProcessedData data;
 
-  data.grass_height_tof_mm = _tof_ma.get();
-  data.grass_height_sonic_mm = _sonic_ma.get();
-
-  return data;
+    data.grass_height_tof_mm   = static_cast<uint16_t>(_tof_ma.get());
+    data.grass_height_sonic_mm = static_cast<uint16_t>(_sonic_ma.get());
+    
+    return data;
 }
 
 void SensorProcessor::reset() {
