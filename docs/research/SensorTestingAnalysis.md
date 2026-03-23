@@ -23,13 +23,13 @@
 
 #### Test 1 — ToF data op gladde vloer
 
-**Sensor:** VL53L1X
-**Datum:** 22 Maart 2026
-**Testduur:** 10 sec
-**Snelheid:** 2 km/h
-**Omstandigheden:** Binnen, vlake vloer
+**Sensor:** VL53L1X<br>
+**Datum:** 22 Maart 2026<br>
+**Testduur:** 10 sec<br>
+**Snelheid:** 2 km/h<br>
+**Omstandigheden:** Binnen, vlakke vloer
 
-| Meting     | Gemeten waarde (cm) | Werkelijke waarde (cm) | Afwijking (cm) | Margin of error (%) |
+| Meting     | Gemeten waarde (mm) | Werkelijke waarde (mm) | Afwijking (mm) | Margin of error (%) |
 | ---------- | ------------------- | ---------------------- | -------------- | ------------------- |
 | 1          | 137                 | 150                    | 13             | 8.7                 |
 | 2          | 138                 | 150                    | 12             | 8.0                 |
@@ -44,19 +44,18 @@
 | Gemiddelde | 137.5               | 150                    | 12.5           | 8.3                 |
 
 **Voldoet aan criteria:** Nee
-**Opmerkingen:** <!-- Opmerkingen invullen -->
 
 ---
 
 #### Test 2 — Sonic data op gladde vloer
 
-**Sensor:** RCWL-1604
-**Datum:** 22 Maart 2026
-**Testduur:** 10 sec
-**Snelheid:** 2 km/h
-**Omstandigheden:** Binnen, vlake vloer
+**Sensor:** RCWL-1604<br>
+**Datum:** 22 Maart 2026<br>
+**Testduur:** 10 sec<br>
+**Snelheid:** 2 km/h<br>
+**Omstandigheden:** Binnen, vlakke vloer
 
-| Meting     | Gemeten waarde (cm) | Werkelijke waarde (cm) | Afwijking (cm) | Margin of error (%) |
+| Meting     | Gemeten waarde (mm) | Werkelijke waarde (mm) | Afwijking (mm) | Margin of error (%) |
 | ---------- | ------------------- | ---------------------- | -------------- | ------------------- |
 | 1          | 144                 | 150                    | 6              | 4.0                 |
 | 2          | 144                 | 150                    | 6              | 4.0                 |
@@ -71,19 +70,18 @@
 | Gemiddelde | 146.2               | 150                    | 6.2            | 4.1                 |
 
 **Voldoet aan criteria:** Ja
-**Opmerkingen:** <!-- Opmerkingen invullen -->
 
 ---
 
 #### Test 3 — ToF data 3cm gras
 
-**Sensor:** VL53L1X
-**Datum:** 22 Maart 2026
-**Testduur:** 10 sec
-**Snelheid:** 5 km/h
+**Sensor:** VL53L1X<br>
+**Datum:** 22 Maart 2026<br>
+**Testduur:** 10 sec<br>
+**Snelheid:** 5 km/h<br>
 **Omstandigheden:** Buiten, 3cm gras, vochtig, schemerend weer
 
-| Meting     | Gemeten waarde (cm) | Werkelijke waarde (cm) | Afwijking (cm) | Margin of error (%) |
+| Meting     | Gemeten waarde (mm) | Werkelijke waarde (mm) | Afwijking (mm) | Margin of error (%) |
 | ---------- | ------------------- | ---------------------- | -------------- | ------------------- |
 | 1          | 129                 | 140                    | 11             | 7.9                 |
 | 2          | 129                 | 140                    | 11             | 7.9                 |
@@ -98,19 +96,18 @@
 | Gemiddelde | 136.6               | 140                    | 6.8            | 4.9                 |
 
 **Voldoet aan criteria:** Ja
-**Opmerkingen:** <!-- Opmerkingen invullen -->
 
 ---
 
 #### Test 4 — Sonic data 3cm gras
 
-**Sensor:** RCWL-1604
-**Datum:** 22 Maart 2026
-**Testduur:** 10 sec
-**Snelheid:** 5 km/h
+**Sensor:** RCWL-1604<br>
+**Datum:** 22 Maart 2026<br>
+**Testduur:** 10 sec<br>
+**Snelheid:** 5 km/h<br>
 **Omstandigheden:** Buiten, 3cm gras, vochtig, schemerend weer
 
-| Meting     | Gemeten waarde (cm) | Werkelijke waarde (cm) | Afwijking (cm) | Margin of error (%) |
+| Meting     | Gemeten waarde (mm) | Werkelijke waarde (mm) | Afwijking (mm) | Margin of error (%) |
 | ---------- | ------------------- | ---------------------- | -------------- | ------------------- |
 | 1          | 161                 | 140                    | 21             | 15.0                |
 | 2          | 177                 | 140                    | 37             | 26.4                |
@@ -125,7 +122,6 @@
 | Gemiddelde | 168                 | 140                    | 28             | 20.0                |
 
 **Voldoet aan criteria:** Nee
-**Opmerkingen:** <!-- Opmerkingen invullen -->
 
 ---
 
@@ -133,22 +129,18 @@
 
 #### Samenvatting resultaten
 
-| Sensor | Gemiddelde margin of error (%) | Werkt op 10 km/h | Voldoet aan alle criteria |
-|--------|-------------------------------|------------------|---------------------------|
-| VL53L1X |              |                  |                           |
-| RCWL-1604 |              |                  |                           |
+| Sensor    | Margin of error (%) | Werkt op 10 km/h | Voldoet aan alle criteria |
+| --------- | ------------------- | ---------------- | ------------------------- |
+| VL53L1X   | V: 8.3% / G: 4.9%   | Onbekend         | Niet zonder refinement    |
+| RCWL-1604 | V: 4.1% / G: 20.0%  | Onbekend         | Niet zonder refinement    |
 
 #### Overwegingen
 
-<!-- Overwegingen invullen op basis van de testdata -->
+Tijdens het testen merkten we dat de metingen op de vloer op sommige momenten minder accuraat was dan de metingen op gras. We vermoeden dat dit komt door de weerkaatsingen van de laser op de vloer (ToF). De metingen op gras leken het wel goed te doen met de Time of Flight sensor. We merken dat de ultrasonic sensor erg veel last heeft van de trillingen tijdens het meten op gras. Vandaar de keuze om dit door verwerkingscode te halen om met een accelerometer de trillingen tegen te gaan.
 
 ---
 
 ### Conclusie
 
-<!-- Conclusie invullen -->
-
----
-
-### Bronnen
-<!-- Bronnen invullen -->
+We hebben de twee sensoren nu getest, hieruit bleek dat de data soms best inaccuraat kan zijn. De ToF had wel een gemiddelde margin of error van 4.9% op gras. Dit was verassend goed.
+Voor de ultrasonic gaan we de data refinen met de data die wordt opgehaald via de accelerometer, zodat we de bewegingen tegen de meetdata kunnen laten inwerken waardoor het eindresultaat meer overeenkomt met de daadwerkelijke afmetingen.
