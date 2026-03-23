@@ -4,6 +4,7 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include <cstdio>
+#include "processing/sensor_processor.h"
 
 // for VL53L1X & ADXL345
 constexpr uint I2C0_SDA = 0;
@@ -73,15 +74,12 @@ int main() {
         printf("RCWL1604 initialised OK\n\n");
     }
 
-    uint16_t  last_udist     = 0;
-    uint16_t  last_tof_dist  = 0;
-    uint8_t   last_tof_status = 255;
-    AccelData last_accel     = {0.0f, 0.0f, 0.0f};
-
     uint32_t last_sonic_ms = 0;
     uint32_t last_tof_ms   = 0;
     uint32_t last_accel_ms = 0;
     uint32_t last_print_ms = 0;
+
+    SensorProcessor processor = SensorProcessor();
 
     while(true) {
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
@@ -89,48 +87,62 @@ int main() {
         // tof
         if(tof_ok && (now_ms - last_tof_ms) >= TOF_INTERVAL_MS) {
             if(tof.dataReady()) {
-                last_tof_status = tof.rangeStatus();
-                last_tof_dist   = tof.readDistance();
+                processor.parseTof(tof.readDistance());
                 last_tof_ms     = now_ms;
             }
         }
 
         // sonic
         if(sonic_ok && (now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
-            last_udist    = ultrasonic.readDistance();
+            processor.parseSonic(ultrasonic.readDistance());
             last_sonic_ms = now_ms;
         }
 
         // accelerometer
         if(accel_ok && (now_ms - last_accel_ms) >= PRINT_INTERVAL_MS) {
-            last_accel    = accel.read();
+            processor.parseAccel(accel.read().x, accel.read().y, accel.read().z);
             last_accel_ms = now_ms;
         }
 
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
+
+            RawData rd = processor.raw();
             printf("Measurement:\n");
 
             if(tof_ok) {
-                if(last_tof_status == 0 || last_tof_status == 1) {
-                    printf("  ToF:   %u mm\n", last_tof_dist);
-                } else {
-                    printf("  ToF:   -- (status %u)\n", last_tof_status);
-                }
+                printf("  ToF:   %u mm\n", rd.tof_mm);
             } else {
                 printf("  ToF:   [offline]\n");
             }
 
             if(sonic_ok) {
-                printf("  Sonic: %u mm\n", last_udist);
+                printf("  Sonic: %u mm\n", rd.sonic_mm);
             } else {
                 printf("  Sonic: [offline]\n");
             }
 
             if(accel_ok) {
-                printf("  Accel: (X%6.2f) (Y%6.2f) (Z%6.2f) (g)\n",
-                       last_accel.x, last_accel.y, last_accel.z);
+                printf("  Accel: x=%.2f y=%.2f z=%.2f\n",
+                    rd.accel_x,
+                    rd.accel_y,
+                    rd.accel_z);
             } else {
                 printf("  Accel: [offline]\n");
+            }
+
+            ProcessedData pd = processor.processed();
+            // Print processed data
+            printf("  Processed:\n");
+            if(tof_ok) {
+                printf("    Grass height (ToF): %u mm\n", pd.grass_height_tof_mm);
+            } else {
+                printf("    Grass height (ToF): [offline]\n");
+            }
+
+            if(sonic_ok) {
+                printf("    Grass height (Sonic): %u mm\n", pd.grass_height_sonic_mm);
+            } else {
+                printf("    Grass height (Sonic): [offline]\n");
             }
 
             printf("\n");
