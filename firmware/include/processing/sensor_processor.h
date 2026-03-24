@@ -32,6 +32,6 @@ public:
 private:
     RawData _raw;
 
-    MovingAverage _tof_ma{5};
-    MovingAverage _sonic_ma{10};
+    MovingAverage _tof_avg{5};
+    MovingAverage _sonic_avg{10};
 };

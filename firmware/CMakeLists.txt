@@ -15,6 +15,7 @@ add_executable(grass_monitor_pico
     src/sensors/rcwl1604.cpp
     src/processing/sensor_processor.cpp
     src/processing/moving_average.cpp
+    src/processing/vibration_processor.cpp
 )
 
 target_include_directories(grass_monitor_pico PRIVATE

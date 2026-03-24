@@ -15,7 +15,7 @@ constexpr uint I2C_FREQ = 400000;
 constexpr uint RCWL_TRIG = 2;
 constexpr uint RCWL_ECHO = 3;
 
-constexpr uint32_t TOF_INTERVAL_MS   = 20;
+constexpr uint32_t TOF_INTERVAL_MS = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t PRINT_INTERVAL_MS = 500;
 
@@ -51,7 +51,7 @@ int main() {
     ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
     RCWL1604 ultrasonic(RCWL_TRIG, RCWL_ECHO);
 
-    bool tof_ok   = tof.init();
+    bool tof_ok = tof.init();
     bool accel_ok = accel.init();
     bool sonic_ok = ultrasonic.init();
 
@@ -75,7 +75,7 @@ int main() {
     }
 
     uint32_t last_sonic_ms = 0;
-    uint32_t last_tof_ms   = 0;
+    uint32_t last_tof_ms = 0;
     uint32_t last_accel_ms = 0;
     uint32_t last_print_ms = 0;
 
@@ -88,7 +88,7 @@ int main() {
         if(tof_ok && (now_ms - last_tof_ms) >= TOF_INTERVAL_MS) {
             if(tof.dataReady()) {
                 processor.parseTof(tof.readDistance());
-                last_tof_ms     = now_ms;
+                last_tof_ms = now_ms;
             }
         }
 
@@ -107,47 +107,47 @@ int main() {
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
             // Print raw data
-            RawData rd = processor.raw();
-            printf("Measurement:\n");
+            RawData raw = processor.raw();
+            printf("Raw:\n");
 
             if(tof_ok) {
-                printf("  ToF:   %u mm\n", rd.tof_mm);
+                printf("  ToF: %u mm\n", raw.tof_mm);
             } else {
-                printf("  ToF:   [offline]\n");
+                printf("  ToF: [offline]\n");
             }
 
             if(sonic_ok) {
-                printf("  Sonic: %u mm\n", rd.sonic_mm);
+                printf("  Sonic: %u mm\n", raw.sonic_mm);
             } else {
                 printf("  Sonic: [offline]\n");
             }
 
             if(accel_ok) {
-                printf("  Accel: x=%.2f y=%.2f z=%.2f\n",
-                    rd.accel_x,
-                    rd.accel_y,
-                    rd.accel_z);
+                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n",
+                    raw.accel_x,
+                    raw.accel_y,
+                    raw.accel_z);
             } else {
-                printf("  Accel: [offline]\n");
+                printf("  Accel: [offline]\n\n");
             }
 
-            // Print processed data
-            ProcessedData pd = processor.processed();
+            // Print processed data (absolute processed data, so ready-to-use values)
+            ProcessedData processed = processor.processed();
 
-            printf("  Processed:\n");
+            printf("Processed:\n");
             if(tof_ok) {
-                printf("    Grass height (ToF): %u mm\n", pd.grass_height_tof_mm);
+                printf("  ToF: %u mm\n", processed.grass_height_tof_mm);
             } else {
-                printf("    Grass height (ToF): [offline]\n");
+                printf("  ToF: [offline]\n");
             }
 
             if(sonic_ok) {
-                printf("    Grass height (Sonic): %u mm\n", pd.grass_height_sonic_mm);
+                printf("  Sonic: %u mm\n", processed.grass_height_sonic_mm);
             } else {
-                printf("    Grass height (Sonic): [offline]\n");
+                printf("  Sonic: [offline]\n\n");
             }
 
-            printf("\n");
+            printf("------------------------------\n\n");
             last_print_ms = now_ms;
         }
 
