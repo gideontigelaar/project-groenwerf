@@ -106,6 +106,8 @@ int main() {
 
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
+            printf(processor.is_calibrated() ? "Calibrated (%.2f, %.2f)\n" : "Not calibrated\n", processor.get_calibration().tof_offset_mm, processor.get_calibration().sonic_offset_mm);
+
             // Print raw data
             RawData raw = processor.raw();
             printf("Raw:\n");
@@ -136,13 +138,13 @@ int main() {
 
             printf("Processed:\n");
             if(tof_ok) {
-                printf("  ToF: %u mm\n", processed.grass_height_tof_mm);
+                printf("  ToF: %u cm\n", processed.grass_height_tof_mm / 10);
             } else {
                 printf("  ToF: [offline]\n");
             }
 
             if(sonic_ok) {
-                printf("  Sonic: %u mm\n", processed.grass_height_sonic_mm);
+                printf("  Sonic: %u cm\n", processed.grass_height_sonic_mm / 10);
             } else {
                 printf("  Sonic: [offline]\n\n");
             }
