@@ -11,7 +11,7 @@ void MedianFilter::push(float value) {
 float MedianFilter::get() const {
     if (_buf.empty()) return 0.0f;
 
-    std::vector<float> sorted(_buf);           // copy — don't mutate the buffer
+    std::vector<float> sorted(_buf);
     std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
 
     return sorted[sorted.size() / 2];

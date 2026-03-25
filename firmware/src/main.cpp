@@ -84,7 +84,6 @@ int main() {
     } else {
         printf("RCWL1604 #2 initialised OK\n\n");
     }
-    
 
     uint32_t last_sonic_ms = 0;
     uint32_t last_tof_ms = 0;
@@ -114,7 +113,8 @@ int main() {
 
         // accelerometer
         if(accel_ok && (now_ms - last_accel_ms) >= PRINT_INTERVAL_MS) {
-            processor.parseAccel(accel.read().x, accel.read().y, accel.read().z);
+            AccelData accel_data = accel.read();
+            processor.parseAccel(accel_data.x, accel_data.y, accel_data.z);
             last_accel_ms = now_ms;
         }
 
@@ -148,17 +148,15 @@ int main() {
             }
 
             // Print processed data (absolute processed data, so ready-to-use values)
-            ProcessedData processed = processor.processed();
-
             printf("Processed:\n");
             if(tof_ok) {
-                printf("  ToF: %u cm\n", processed.grass_height_tof_mm / 10);
+                printf("  ToF: %u cm\n", processor.grassHeightTof() / 10);
             } else {
                 printf("  ToF: [offline]\n");
             }
 
             if(sonic_1_ok && sonic_2_ok) {
-                printf("  Sonic: %u cm\n", processed.grass_height_sonic_mm / 10);
+                printf("  Sonic: %u cm\n", processor.grassHeightSonic() / 10);
             } else {
                 printf("  Sonic: [offline]\n\n");
             }
