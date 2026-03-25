@@ -7,13 +7,16 @@
 #include "processing/sensor_processor.h"
 
 // for VL53L1X & ADXL345
-constexpr uint I2C0_SDA = 0;
-constexpr uint I2C0_SCL = 1;
+constexpr uint I2C0_SDA = 12;
+constexpr uint I2C0_SCL = 13;
 constexpr uint I2C_FREQ = 400000;
 
 // for RCWL-1604
-constexpr uint RCWL_TRIG = 2;
-constexpr uint RCWL_ECHO = 3;
+constexpr uint RCWL_1_TRIG = 14;
+constexpr uint RCWL_1_ECHO = 15;
+
+constexpr uint RCWL_2_TRIG = 16;
+constexpr uint RCWL_2_ECHO = 17;
 
 constexpr uint32_t TOF_INTERVAL_MS = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
@@ -45,15 +48,17 @@ int main() {
     gpio_pull_up(I2C0_SCL);
 
     printf("=== Grass Monitor Pico ===\n\n");
-    i2c_scan(i2c0, "i2c0 (GP0/GP1)");
+    i2c_scan(i2c0, "i2c0 (GP12/GP13)");
 
     VL53L1X tof(i2c0, VL53L1X::DEFAULT_ADDR);
     ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
-    RCWL1604 ultrasonic(RCWL_TRIG, RCWL_ECHO);
+    RCWL1604 ultrasonic1(RCWL_1_TRIG, RCWL_1_ECHO);
+    RCWL1604 ultrasonic2(RCWL_2_TRIG, RCWL_2_ECHO);
 
     bool tof_ok = tof.init();
     bool accel_ok = accel.init();
-    bool sonic_ok = ultrasonic.init();
+    bool sonic_1_ok = ultrasonic1.init();
+    bool sonic_2_ok = ultrasonic2.init();
 
     if(!tof_ok) {
         printf("WARNING: VL53L1X init failed, continuing without it\n\n");
@@ -68,11 +73,18 @@ int main() {
         printf("ADXL345 initialised OK\n\n");
     }
 
-    if(!sonic_ok) {
-        printf("WARNING: RCWL1604 init failed, continuing without it\n\n");
+    if(!sonic_1_ok) {
+        printf("WARNING: RCWL1604 #1 init failed, continuing without it\n\n");
     } else {
-        printf("RCWL1604 initialised OK\n\n");
+        printf("RCWL1604 #1 initialised OK\n\n");
     }
+
+    if(!sonic_2_ok) {
+        printf("WARNING: RCWL1604 #2 init failed, continuing without it\n\n");
+    } else {
+        printf("RCWL1604 #2 initialised OK\n\n");
+    }
+    
 
     uint32_t last_sonic_ms = 0;
     uint32_t last_tof_ms = 0;
@@ -93,8 +105,10 @@ int main() {
         }
 
         // sonic
-        if(sonic_ok && (now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
-            processor.parseSonic(ultrasonic.readDistance());
+        if(sonic_1_ok && sonic_2_ok && (now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
+            uint16_t dist1 = ultrasonic1.readDistance();
+            uint16_t dist2 = ultrasonic2.readDistance();
+            processor.parseSonic(dist1 + dist2 / 2);
             last_sonic_ms = now_ms;
         }
 
@@ -118,7 +132,7 @@ int main() {
                 printf("  ToF: [offline]\n");
             }
 
-            if(sonic_ok) {
+            if(sonic_1_ok && sonic_2_ok) {
                 printf("  Sonic: %u mm\n", raw.sonic_mm);
             } else {
                 printf("  Sonic: [offline]\n");
@@ -143,7 +157,7 @@ int main() {
                 printf("  ToF: [offline]\n");
             }
 
-            if(sonic_ok) {
+            if(sonic_1_ok && sonic_2_ok) {
                 printf("  Sonic: %u cm\n", processed.grass_height_sonic_mm / 10);
             } else {
                 printf("  Sonic: [offline]\n\n");
