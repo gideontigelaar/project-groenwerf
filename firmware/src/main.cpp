@@ -109,9 +109,10 @@ int main() {
         // Print
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
-            printf(processor.is_calibrated() ? "Calibrated (%.2f, %.2f)\n" : "Not calibrated\n",
-                processor.get_calibration().tof_offset_mm,
-                processor.get_calibration().sonic_offset_mm
+            CalibrationData cal = processor.get_calibration();
+            printf("Calibrated (%.2f, %.2f)\n",
+                cal.tof_calibrated ? cal.tof_offset_mm : -1.0f,
+                cal.sonic_calibrated ? cal.sonic_offset_mm : -1.0f
             );
 
             // Print raw data

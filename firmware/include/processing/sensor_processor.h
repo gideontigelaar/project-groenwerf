@@ -16,7 +16,6 @@ struct CalibrationData {
     float sonic_offset_mm  = 0.0f;
     bool  tof_calibrated   = false;
     bool  sonic_calibrated = false;
-    bool  is_calibrated    = false;
 };
 
 class SensorProcessor {
@@ -26,7 +25,7 @@ public:
     void parseAccel(float x, float y, float z, uint32_t now_ms);
 
     void calibrate();
-    bool            is_calibrated()   const { return _cal.is_calibrated; }
+    bool            is_calibrated()   const { return _cal.tof_calibrated && _cal.sonic_calibrated; }
     CalibrationData get_calibration() const { return _cal; }
 
     const RawData& raw() const { return _raw; }
@@ -38,7 +37,7 @@ public:
     void reset();
 
 private:
-    static constexpr float KNOWN_HEIGHT_MM     = 40.0f;
+    static constexpr float KNOWN_HEIGHT_MM     =185.0f;
     static constexpr int   CALIBRATION_SAMPLES = 10;
 
     CalibrationData _cal;
