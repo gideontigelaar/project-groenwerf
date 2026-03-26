@@ -13,6 +13,9 @@ add_executable(grass_monitor_pico
     src/sensors/vl53l1x.cpp
     src/sensors/adxl345.cpp
     src/sensors/rcwl1604.cpp
+    src/processing/sensor_processor.cpp
+    src/processing/median_filter.cpp
+    src/processing/vibration_processor.cpp
 )
 
 target_include_directories(grass_monitor_pico PRIVATE
