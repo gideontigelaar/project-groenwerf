@@ -1,27 +1,20 @@
-## Sensorbescherming
-### behuizing
-- de behuizing gaat 3D geprint worden, omdat dit veruit het goedkoopste en meeste makkelijke materiaal voor ons is om te gebruiken. hierin hebben we twee keuzes qua materiaal, FDM en SLS. de voorkeur gaat hierbij naar FDM omdat deze prints een stuk goedkoper zijn en hebben we geen complexe mechanische componenten nodig, waar SLS het beste voor is.
+# Sensor Bescherming
+## Behuizing
+Voor de behuizing hebben we gekozen dat deze geprint wordt omdat dit veruit het goedkoopste en meeste makkelijke materiaal voor ons is om te gebruiken. Voor het materiaal hebben we twee keuzes:
+- FDM
+- SLS
 
-##### conclusie
-voor de behuizing gaan we FDM gebruiken.
+Wij kiezen voor DFM omdat dit materiaal goedkoper is en we geen complexe mechanishe componenten nodig hebben, waarvoor SLS juist het beste voor is.
 
+## Time of Flight (ToF)
+Voor de bescherming van de Time of Flight-sensor kunnen zowel glas als acrylplaatjes worden gebruikt, mits het materiaal infrarood (IR) transparant is.
 
-### time of flight:
-- glas en acrylplaatjes kunnen beide gebruikt worden als cover voor de time of flight sensor, met de voorwaarde dat het gekozen materiaal infrarood (ir) transparant is. in onze use case zijn acrylplaatjes de betere keuze, het is ook iets makkelijker op formaat te krijgen waar wij wat aan hebben, en hebben de beste IR-doorlating. ze zijn ook best dun met 1mm.
+Binnen onze toepassing is acryl (PMMA) de beste keuze. Dit materiaal is eenvoudig op maat te maken, heeft een goede IR-doorlaatbaarheid en is verkrijgbaar in dunne platen (ongeveer 1 mm), wat geschikt is voor onze toepassing.
 
-##### conclusie
-voor het beschermen van de time of flight sensor gaan we waarschijnlijk PMMA acrylplaatjes gebruiken
+### Mogelijke opties:
+PMMA plaatjes: [amazon.nl](https://www.amazon.nl/-/en/Langaeleax-10-Transparent-Plexiglass-Projects/dp/B08NVGT43P)
 
-### ultrasound:
-- iets als dun genoeg plastic of glas zou bij deze sensor niet werken omdat geluid hier niet doorheen kan. er bestaan ook modellen ultrasound sensors die waterdicht zijn alleen deze geven minder accurate resultaten bij kleinere objecten ten opzichte van de sensor die we nu gebruiken en zijn bovendien ook best duur, dus dit is geen goed idee. er is voor de ultrasound verder niet echt een goedkope optie om de ultrasound te beschermen tegen gras en water. ik denk ook niet dat dit een heel groot probleem gaat zijn als de ultrasound niet al te dicht op de grond zit
+## Ultrasound
+Het gebruik van dun plastic of glas als bescherming is bij deze sensor geen goede optie, omdat geluid hier niet goed doorheen kan. Er bestaan wel waterdichte ultrasone sensoren, maar deze geven minder nauwkeurige resultaten bij kleinere objecten dan de sensor die wij momenteel gebruiken. Daarnaast zijn ze relatief duur, waardoor dit geen geschikte oplossing is.
 
-
-##### conclusie
-
-waterdichte ultrasound zou ideaal zijn; alleen deze is buiten budget
-
-
-#### mogelijke opties:
-
-PMMA plaatjes: https://www.amazon.nl/-/en/Langaeleax-10-Transparent-Plexiglass-Projects/dp/B08NVGT43P?crid=GM4P3XWINNNV&dib=eyJ2IjoiMSJ9.EIJeSDK5-YEBna5xBVbkdFu-VaQ7IilD-bm0QuI_Tpk3fNfD580C_nRKNp8ZUJmaAKjzRrby8gvJVKiQ6aop92_Aqdcwj3WxvxSw4E0Ej5uyEf8BfD7sTD0C-ePFoHjuoV-7rG9__YVOXVa5dpTFT1uEIz6K8W6o_3XYb4hP6pHzuEFX1ORY5ZAgmpAf2HmLBc1lVi2C7wH6I9rIZ8mENRxJydFnSA3M3F5zJKjmTXMpL_XR0cWDqzV0bmmGEEYFlEpnrSpscZwXZ518OgEnKHn-LK6Ow9ZG76Hnliha4jo.drCqXC1KbjCVhOjtgJ8ZID75tZfeXF2Zs_A9Pz-lXq4&dib_tag=se&keywords=pmma%2Bplaatje&qid=1774546333&sprefix=pmma%2Bplaatje%2Caps%2C152&sr=8-1&th=1
-
+Voor de ultrasone sensor is er dus geen echt goedkope manier om deze volledig te beschermen tegen gras en water. We verwachten echter dat dit geen groot probleem zal zijn, zolang de sensor niet te dicht bij de grond geplaatst wordt.
