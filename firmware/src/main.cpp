@@ -166,9 +166,6 @@ int main() {
             else {
                 printf("  Sonic: [offline]\n");
                 data += ",\"grassHeightSonic\":-1";
-            } else {
-                printf("  Sonic: [offline]\n");
-                printf("  Sonic (accel): [offline]\n");
             }
 
             data += "}";
