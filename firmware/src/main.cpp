@@ -12,11 +12,12 @@ constexpr uint I2C0_SCL = 13;
 constexpr uint I2C_FREQ = 400000;
 
 // for RCWL-1604
-constexpr uint RCWL_1_TRIG = 14;
-constexpr uint RCWL_1_ECHO = 15;
+constexpr uint RCWL_TRIG = 14;
+constexpr uint RCWL_ECHO = 15;
 
 constexpr uint32_t TOF_INTERVAL_MS = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
+constexpr uint32_t ACCEL_INTERVAL_MS = 10;
 constexpr uint32_t PRINT_INTERVAL_MS = 500;
 
 static void i2c_scan(i2c_inst_t* i2c, const char* label) {
@@ -49,7 +50,7 @@ int main() {
 
     VL53L1X tof(i2c0, VL53L1X::DEFAULT_ADDR);
     ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
-    RCWL1604 ultrasonic(RCWL_1_TRIG, RCWL_1_ECHO);
+    RCWL1604 ultrasonic(RCWL_TRIG, RCWL_ECHO);
 
     bool tof_ok = tof.init();
     bool accel_ok = accel.init();
@@ -74,17 +75,17 @@ int main() {
         printf("RCWL1604 initialised OK\n\n");
     }
 
-    uint32_t last_sonic_ms = 0;
     uint32_t last_tof_ms = 0;
+    uint32_t last_sonic_ms = 0;
     uint32_t last_accel_ms = 0;
     uint32_t last_print_ms = 0;
 
-    SensorProcessor processor = SensorProcessor();
+    SensorProcessor processor;
 
     while(true) {
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-        // tof
+        // ToF
         if(tof_ok && (now_ms - last_tof_ms) >= TOF_INTERVAL_MS) {
             if(tof.dataReady()) {
                 processor.parseTof(tof.readDistance());
@@ -92,19 +93,20 @@ int main() {
             }
         }
 
-        // sonic
-        if ((now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
-            if (sonic_ok) processor.parseSonic(ultrasonic.readDistance());
+        // Sonic
+        if((now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
+            if(sonic_ok) processor.parseSonic(ultrasonic.readDistance());
             last_sonic_ms = now_ms;
         }
 
-        // accelerometer
-        if(accel_ok && (now_ms - last_accel_ms) >= PRINT_INTERVAL_MS) {
+        // Accelerometer
+        if(accel_ok && (now_ms - last_accel_ms) >= ACCEL_INTERVAL_MS) {
             AccelData accel_data = accel.read();
-            processor.parseAccel(accel_data.x, accel_data.y, accel_data.z);
+            processor.parseAccel(accel_data.x, accel_data.y, accel_data.z, now_ms);
             last_accel_ms = now_ms;
         }
 
+        // Print
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
             printf(processor.is_calibrated() ? "Calibrated (%.2f, %.2f)\n" : "Not calibrated\n",
@@ -124,38 +126,41 @@ int main() {
 
             if(sonic_ok) {
                 printf("  Sonic: %u mm\n", raw.sonic_mm);
-                sleep_ms(10);
             } else {
                 printf("  Sonic: [offline]\n");
             }
 
             if(accel_ok) {
-                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n",
-                    raw.accel_x,
-                    raw.accel_y,
-                    raw.accel_z);
+                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n", raw.accel_x, raw.accel_y, raw.accel_z);
             } else {
                 printf("  Accel: [offline]\n\n");
             }
 
-            // Print processed data (absolute processed data, so ready-to-use values)
+            // Print processed data
             printf("Processed:\n");
+
             if(tof_ok) {
                 printf("  ToF: %u mm\n", processor.grassHeightTof());
             } else {
                 printf("  ToF: [offline]\n");
             }
 
-            if (sonic_ok) {
+            if(sonic_ok) {
                 printf("  Sonic: %u mm\n", processor.grassHeightSonic());
+                if(accel_ok) {
+                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicCompensated());
+                } else {
+                    printf("  Sonic (accel): [accel offline]\n");
+                }
             } else {
                 printf("  Sonic: [offline]\n");
+                printf("  Sonic (accel): [offline]\n");
             }
 
             printf("------------------------------\n\n");
             last_print_ms = now_ms;
         }
 
-        sleep_ms(5);
+        sleep_ms(1);
     }
 }
