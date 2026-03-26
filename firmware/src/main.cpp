@@ -15,9 +15,6 @@ constexpr uint I2C_FREQ = 400000;
 constexpr uint RCWL_1_TRIG = 14;
 constexpr uint RCWL_1_ECHO = 15;
 
-constexpr uint RCWL_2_TRIG = 16;
-constexpr uint RCWL_2_ECHO = 17;
-
 constexpr uint32_t TOF_INTERVAL_MS = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t PRINT_INTERVAL_MS = 500;
@@ -52,13 +49,11 @@ int main() {
 
     VL53L1X tof(i2c0, VL53L1X::DEFAULT_ADDR);
     ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
-    RCWL1604 ultrasonic1(RCWL_1_TRIG, RCWL_1_ECHO);
-    RCWL1604 ultrasonic2(RCWL_2_TRIG, RCWL_2_ECHO);
+    RCWL1604 ultrasonic(RCWL_1_TRIG, RCWL_1_ECHO);
 
     bool tof_ok = tof.init();
     bool accel_ok = accel.init();
-    bool sonic_1_ok = ultrasonic1.init();
-    bool sonic_2_ok = ultrasonic2.init();
+    bool sonic_ok = ultrasonic.init();
 
     if(!tof_ok) {
         printf("WARNING: VL53L1X init failed, continuing without it\n\n");
@@ -73,16 +68,10 @@ int main() {
         printf("ADXL345 initialised OK\n\n");
     }
 
-    if(!sonic_1_ok) {
-        printf("WARNING: RCWL1604 #1 init failed, continuing without it\n\n");
+    if(!sonic_ok) {
+        printf("WARNING: RCWL1604 init failed, continuing without it\n\n");
     } else {
-        printf("RCWL1604 #1 initialised OK\n\n");
-    }
-
-    if(!sonic_2_ok) {
-        printf("WARNING: RCWL1604 #2 init failed, continuing without it\n\n");
-    } else {
-        printf("RCWL1604 #2 initialised OK\n\n");
+        printf("RCWL1604 initialised OK\n\n");
     }
 
     uint32_t last_sonic_ms = 0;
@@ -104,10 +93,8 @@ int main() {
         }
 
         // sonic
-        if(sonic_1_ok && sonic_2_ok && (now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
-            uint16_t dist1 = ultrasonic1.readDistance();
-            uint16_t dist2 = ultrasonic2.readDistance();
-            processor.parseSonic(dist1 + dist2 / 2);
+        if ((now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
+            if (sonic_ok) processor.parseSonic(ultrasonic.readDistance());
             last_sonic_ms = now_ms;
         }
 
@@ -120,7 +107,10 @@ int main() {
 
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
-            printf(processor.is_calibrated() ? "Calibrated (%.2f, %.2f)\n" : "Not calibrated\n", processor.get_calibration().tof_offset_mm, processor.get_calibration().sonic_offset_mm);
+            printf(processor.is_calibrated() ? "Calibrated (%.2f, %.2f)\n" : "Not calibrated\n",
+                processor.get_calibration().tof_offset_mm,
+                processor.get_calibration().sonic_offset_mm
+            );
 
             // Print raw data
             RawData raw = processor.raw();
@@ -132,8 +122,9 @@ int main() {
                 printf("  ToF: [offline]\n");
             }
 
-            if(sonic_1_ok && sonic_2_ok) {
+            if(sonic_ok) {
                 printf("  Sonic: %u mm\n", raw.sonic_mm);
+                sleep_ms(10);
             } else {
                 printf("  Sonic: [offline]\n");
             }
@@ -150,15 +141,15 @@ int main() {
             // Print processed data (absolute processed data, so ready-to-use values)
             printf("Processed:\n");
             if(tof_ok) {
-                printf("  ToF: %u cm\n", processor.grassHeightTof() / 10);
+                printf("  ToF: %u mm\n", processor.grassHeightTof());
             } else {
                 printf("  ToF: [offline]\n");
             }
 
-            if(sonic_1_ok && sonic_2_ok) {
-                printf("  Sonic: %u cm\n", processor.grassHeightSonic() / 10);
+            if (sonic_ok) {
+                printf("  Sonic: %u mm\n", processor.grassHeightSonic());
             } else {
-                printf("  Sonic: [offline]\n\n");
+                printf("  Sonic: [offline]\n");
             }
 
             printf("------------------------------\n\n");
