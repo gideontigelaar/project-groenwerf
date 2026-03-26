@@ -5,6 +5,9 @@
 #include "hardware/i2c.h"
 #include <cstdio>
 #include "processing/sensor_processor.h"
+#include "networkmanager.h"
+#include "lwip/netif.h"
+#include <string>
 
 // for VL53L1X & ADXL345
 constexpr uint I2C0_SDA = 12;
@@ -37,6 +40,9 @@ int main() {
         sleep_ms(100);
     }
     sleep_ms(100);
+
+    NetworkManager nm;
+    nm.Init();
 
     i2c_init(i2c0, I2C_FREQ);
     gpio_set_function(I2C0_SDA, GPIO_FUNC_I2C);
@@ -138,20 +144,27 @@ int main() {
                 printf("  Accel: [offline]\n\n");
             }
 
-            // Print processed data (absolute processed data, so ready-to-use values)
-            printf("Processed:\n");
-            if(tof_ok) {
+            std::string data = "{";
+
+            if (tof_ok) {
                 printf("  ToF: %u mm\n", processor.grassHeightTof());
+                data += "\"grassHeightTof\":" + std::to_string(processor.grassHeightTof());
             } else {
                 printf("  ToF: [offline]\n");
+                data += "\"grassHeightTof\":-1";
             }
 
             if (sonic_ok) {
                 printf("  Sonic: %u mm\n", processor.grassHeightSonic());
+                data += ",\"grassHeightSonic\":" + std::to_string(processor.grassHeightSonic());
             } else {
                 printf("  Sonic: [offline]\n");
+                data += ",\"grassHeightSonic\":-1";
             }
 
+            data += "}";
+            nm.SendData(data.data());
+            printf(data.c_str());
             printf("------------------------------\n\n");
             last_print_ms = now_ms;
         }

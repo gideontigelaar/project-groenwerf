@@ -17,6 +17,7 @@ add_executable(grass_monitor_pico
     src/processing/sensor_processor.cpp
     src/processing/median_filter.cpp
     src/processing/vibration_processor.cpp
+    src/networkmanager.cpp
 )
 
 target_include_directories(grass_monitor_pico PRIVATE
