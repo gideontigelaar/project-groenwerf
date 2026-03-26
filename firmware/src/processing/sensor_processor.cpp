@@ -36,8 +36,6 @@ void SensorProcessor::calibrate() {
         _cal.sonic_offset_mm = KNOWN_HEIGHT_MM - _sonic_median.get();
         _cal.sonic_calibrated = true;
     }
-
-    _cal.is_calibrated = _cal.tof_calibrated || _cal.sonic_calibrated;
 }
 
 uint16_t SensorProcessor::applyOffset(float median, float offset) const {
