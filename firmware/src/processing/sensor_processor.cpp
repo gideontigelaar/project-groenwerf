@@ -63,16 +63,22 @@ uint16_t SensorProcessor::grassHeightTof() const {
     return applyOffset(_tof_median.get(), _cal.tof_offset_mm);
 }
 
-uint16_t SensorProcessor::grassHeightSonic() const {
+uint16_t SensorProcessor::grassHeightSonicMedian() const {
     if(!_cal.sonic_calibrated) return 0;
     // apply median filtering
     return applyOffset(activeSonicFilter().get(), _cal.sonic_offset_mm);
 }
 
-uint16_t SensorProcessor::grassHeightSonicCompensated() const {
+uint16_t SensorProcessor::grassHeightSonicAccel() const {
+    if(!_cal.sonic_calibrated) return 0;
+    // apply spike rejection to raw, then apply offset
+    return applyOffset(_vibration.compensate(_raw.sonic_mm), _cal.sonic_offset_mm);
+}
+
+uint16_t SensorProcessor::grassHeightSonicMedianAccel() const {
     if(!_cal.sonic_calibrated) return 0;
     // apply median + spike rejection
-    return _vibration.compensate(grassHeightSonic());
+    return _vibration.compensate(grassHeightSonicMedian());
 }
 
 void SensorProcessor::reset() {

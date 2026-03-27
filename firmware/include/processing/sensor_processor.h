@@ -31,8 +31,9 @@ public:
     const RawData& raw() const { return _raw; }
 
     uint16_t grassHeightTof()               const;
-    uint16_t grassHeightSonic()             const;
-    uint16_t grassHeightSonicCompensated()  const;
+    uint16_t grassHeightSonicMedian()       const; // sonic with median filter
+    uint16_t grassHeightSonicAccel()        const; // sonic with accel filter
+    uint16_t grassHeightSonicMedianAccel()  const; // sonic with accel + median filter
 
     // vibration intensity in g rms
     float vibrationIntensity() const { return _vibration.intensity(); }
