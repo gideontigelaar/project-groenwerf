@@ -110,7 +110,7 @@ int main() {
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
             CalibrationData cal = processor.get_calibration();
-            printf("Calibrated (%.2f, %.2f)\n",
+            printf("Calibrated (%.2f, %.2f)\n\n",
                 cal.tof_calibrated ? cal.tof_offset_mm : -1.0f,
                 cal.sonic_calibrated ? cal.sonic_offset_mm : -1.0f
             );
@@ -147,15 +147,18 @@ int main() {
             }
 
             if(sonic_ok) {
-                printf("  Sonic: %u mm\n", processor.grassHeightSonic());
+                printf("  Sonic (median): %u mm\n", processor.grassHeightSonicMedian());
                 if(accel_ok) {
-                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicCompensated());
+                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicAccel());
+                    printf("  Sonic (median+accel): %u mm\n", processor.grassHeightSonicMedianAccel());
                 } else {
                     printf("  Sonic (accel): [accel offline]\n");
+                    printf("  Sonic (median+accel): [accel offline]\n");
                 }
             } else {
-                printf("  Sonic: [offline]\n");
+                printf("  Sonic (median): [offline]\n");
                 printf("  Sonic (accel): [offline]\n");
+                printf("  Sonic (median+accel): [offline]\n");
             }
 
             printf("------------------------------\n\n");

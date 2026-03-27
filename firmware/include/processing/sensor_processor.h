@@ -31,23 +31,38 @@ public:
     const RawData& raw() const { return _raw; }
 
     uint16_t grassHeightTof()               const;
-    uint16_t grassHeightSonic()             const;
-    uint16_t grassHeightSonicCompensated()  const;
+    uint16_t grassHeightSonicMedian()       const; // sonic with median filter
+    uint16_t grassHeightSonicAccel()        const; // sonic with accel filter
+    uint16_t grassHeightSonicMedianAccel()  const; // sonic with accel + median filter
+
+    // vibration intensity in g rms
+    float vibrationIntensity() const { return _vibration.intensity(); }
 
     void reset();
 
 private:
-    static constexpr float KNOWN_HEIGHT_MM     =185.0f;
-    static constexpr int   CALIBRATION_SAMPLES = 10;
+    static constexpr float  KNOWN_HEIGHT_MM     = 185.0f; // distance from sensor to ground
+    static constexpr int    CALIBRATION_SAMPLES = 10;
+
+    static constexpr float  VIBRATION_LOW_G     = 0.05f; // idle threshold
+    static constexpr float  VIBRATION_HIGH_G    = 0.15f;
+    static constexpr size_t WINDOW_NARROW       = 10; // fastest (500ms)
+    static constexpr size_t WINDOW_MEDIUM       = 18;
+    static constexpr size_t WINDOW_WIDE         = 25; // max smoothing has 1.25s latency
 
     CalibrationData _cal;
     RawData         _raw;
 
     MedianFilter        _tof_median{5};
-    MedianFilter        _sonic_median{10};
+    MedianFilter        _sonic_narrow{WINDOW_NARROW};
+    MedianFilter        _sonic_medium{WINDOW_MEDIUM};
+    MedianFilter        _sonic_wide{WINDOW_WIDE};
     VibrationProcessor  _vibration;
 
     uint32_t _last_accel_ms = 0;
 
     uint16_t applyOffset(float median, float offset) const;
+
+    // returns reference to which median filter is appropriate for current vibration level
+    const MedianFilter& activeSonicFilter() const;
 };
