@@ -31,7 +31,7 @@ void ADXL345::readRegs(uint8_t reg, uint8_t* buf, uint8_t len) {
 bool ADXL345::init() {
     uint8_t id = readReg(REG_DEVID);
     printf("  [ADXL345] device ID: 0x%02X (expect 0xE5)\n", id);
-    if (id != 0xE5) return false;
+    if(id != 0xE5) return false;
 
     // +/-2g range, full resolution
     writeReg(REG_DATA_FORMAT, 0x08);
