@@ -111,7 +111,7 @@ int NetworkManager::Init() {
     cyw43_arch_enable_sta_mode();
     printf("Connecting to Wi-Fi...\n");
 
-    if (cyw43_arch_wifi_connect_timeout_ms("SSID", "Password",
+    if (cyw43_arch_wifi_connect_timeout_ms("iPhonevanSander", "password",
             CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect.\n");
         return -1;
