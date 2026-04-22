@@ -1,4 +1,4 @@
-#include "sensors/vl53l1x.h"
+#include "sensors/tof_sensor.h"
 #include "sensors/adxl345.h"
 #include "sensors/rcwl1604.h"
 #include "pico/stdlib.h"
@@ -6,7 +6,7 @@
 #include <cstdio>
 #include "processing/sensor_processor.h"
 
-// for VL53L1X & ADXL345
+// for ToF & ADXL345
 constexpr uint I2C0_SDA = 12;
 constexpr uint I2C0_SCL = 13;
 constexpr uint I2C_FREQ = 400000;
@@ -48,7 +48,7 @@ int main() {
     printf("=== Grass Monitor Pico ===\n\n");
     i2c_scan(i2c0, "i2c0 (GP12/GP13)");
 
-    VL53L1X tof(i2c0, VL53L1X::DEFAULT_ADDR);
+    TofSensor tof(i2c0, TofSensor::DEFAULT_ADDR);
     ADXL345 accel(i2c0, ADXL345::DEFAULT_ADDR);
     RCWL1604 ultrasonic(RCWL_TRIG, RCWL_ECHO);
 
@@ -57,9 +57,9 @@ int main() {
     bool sonic_ok = ultrasonic.init();
 
     if(!tof_ok) {
-        printf("WARNING: VL53L1X init failed, continuing without it\n\n");
+        printf("WARNING: ToF init failed, continuing without it\n\n");
     } else {
-        printf("VL53L1X initialised OK\n\n");
+        printf("ToF initialised OK\n\n");
         tof.startContinuous(TOF_INTERVAL_MS);
     }
 

@@ -10,7 +10,7 @@ pico_sdk_init()
 
 add_executable(grass_monitor_pico
     src/main.cpp
-    src/sensors/vl53l1x.cpp
+    src/sensors/tof_sensor.cpp
     src/sensors/adxl345.cpp
     src/sensors/rcwl1604.cpp
     src/processing/sensor_processor.cpp
