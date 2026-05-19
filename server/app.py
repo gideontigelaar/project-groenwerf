@@ -5,8 +5,8 @@ app = Flask(__name__)
 # Store the latest data
 latest_data = {}
 
-@app.route('/message', methods=['POST'])
-def receive_message():
+@app.route('/data', methods=['POST'])
+def receive_data():
     global latest_data
     latest_data = request.get_json()
     print(f"Received: {latest_data}")
