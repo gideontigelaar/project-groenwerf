@@ -14,7 +14,7 @@
 #define NAV_CLASS     0x01
 
 #define ACK_TIMEOUT_MS 1500
-#define UBX_TIMEOUT_MS 1500
+#define UBX_TIMEOUT_MS 100
 #define UBX_MAX_PAYLOAD 40
 
 typedef struct {
