@@ -13,6 +13,7 @@ add_executable(grass_monitor_pico
     src/sensors/tof_sensor.cpp
     src/sensors/adxl345.cpp
     src/sensors/rcwl1604.cpp
+    src/sensors/vma430_gps.cpp
     src/processing/sensor_processor.cpp
     src/processing/median_filter.cpp
     src/processing/vibration_processor.cpp
@@ -26,6 +27,7 @@ target_include_directories(grass_monitor_pico PRIVATE
 target_link_libraries(grass_monitor_pico
     pico_stdlib
     hardware_i2c
+    hardware_uart
 )
 
 pico_enable_stdio_uart(grass_monitor_pico 1)
