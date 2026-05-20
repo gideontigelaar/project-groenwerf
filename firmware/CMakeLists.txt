@@ -9,6 +9,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 pico_sdk_init()
 
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/credentials.h")
+    message(FATAL_ERROR "Missing credentials.h — copy include/credentials.h.template and fill in details.")
+endif()
+
 add_executable(grass_monitor_pico
     src/main.cpp
     src/sensors/tof_sensor.cpp

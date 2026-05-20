@@ -1,4 +1,5 @@
 #include "networkmanager.h"
+#include "credentials.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -111,8 +112,7 @@ int NetworkManager::Init() {
     cyw43_arch_enable_sta_mode();
     printf("Connecting to Wi-Fi...\n");
 
-    if (cyw43_arch_wifi_connect_timeout_ms("wifi", "password",
-            CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect.\n");
         return -1;
     }
