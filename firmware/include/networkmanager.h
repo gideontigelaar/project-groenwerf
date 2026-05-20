@@ -2,9 +2,9 @@
 #include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
 
-#define SERVER_IP     "172.20.10.10"   // Your Flask server IP
+#define SERVER_IP     "10.0.0.91"   // Your Flask server IP
 #define SERVER_PORT   5002
-#define HTTP_PATH     "/message"
+#define HTTP_PATH     "/data"
 
 class NetworkManager
 {

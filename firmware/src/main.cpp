@@ -24,22 +24,81 @@ constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t ACCEL_INTERVAL_MS = 10;
 constexpr uint32_t GPS_INTERVAL_MS   = 1000;
 constexpr uint32_t PRINT_INTERVAL_MS = 500;
+constexpr int      SEND_BATCH_SIZE   = 5;
 
 static void i2c_scan(i2c_inst_t* i2c, const char* label) {
     printf("Scanning %s...\n", label);
-    for(uint8_t addr = 0x08; addr < 0x78; addr++) {
+    for (uint8_t addr = 0x08; addr < 0x78; addr++) {
         uint8_t dummy;
-        if(i2c_read_blocking(i2c, addr, &dummy, 1, false) >= 0) {
+        if (i2c_read_blocking(i2c, addr, &dummy, 1, false) >= 0) {
             printf("  Device found at 0x%02X\n", addr);
         }
     }
     printf("\n");
 }
 
+// Returns a single JSON object string for one reading.
+// All uncalibrated / offline fields are emitted as null (valid JSON).
+static std::string build_json_reading(
+    bool tof_ok, bool sonic_ok, bool accel_ok, bool gps_ok,
+    const CalibrationData& cal,
+    SensorProcessor& processor)
+{
+    std::string obj = "{";
+
+    // --- ToF ---
+    if (tof_ok && cal.tof_calibrated) {
+        obj += "\"grassHeightTof\":" + std::to_string(processor.grassHeightTof());
+    } else {
+        obj += "\"grassHeightTof\":null";
+    }
+
+    // --- Sonic variants ---
+    if (sonic_ok && cal.sonic_calibrated) {
+        obj += ",\"grassHeightSonicMedian\":"    + std::to_string(processor.grassHeightSonicMedian());
+        if (accel_ok) {
+            obj += ",\"grassHeightSonicAccel\":"      + std::to_string(processor.grassHeightSonicAccel());
+            obj += ",\"grassHeightSonicMedianAccel\":" + std::to_string(processor.grassHeightSonicMedianAccel());
+        } else {
+            obj += ",\"grassHeightSonicAccel\":null";
+            obj += ",\"grassHeightSonicMedianAccel\":null";
+        }
+    } else {
+        obj += ",\"grassHeightSonicMedian\":null";
+        obj += ",\"grassHeightSonicAccel\":null";
+        obj += ",\"grassHeightSonicMedianAccel\":null";
+    }
+
+    // --- GPS ---
+    if (gps_ok && utc_time.valid) {
+        // ISO 8601 timestamp
+        char ts[32];
+        snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            utc_time.year, utc_time.month, utc_time.day,
+            utc_time.hour, utc_time.minute, utc_time.second);
+        char coords[64];
+        snprintf(coords, sizeof(coords), "%.7f", location.latitude);
+        std::string lat_str(coords);
+        snprintf(coords, sizeof(coords), "%.7f", location.longitude);
+        std::string lon_str(coords);
+
+        obj += ",\"gpsTime\":\"" + std::string(ts) + "\"";
+        obj += ",\"lat\":"  + lat_str;
+        obj += ",\"lon\":"  + lon_str;
+    } else {
+        obj += ",\"gpsTime\":null";
+        obj += ",\"lat\":null";
+        obj += ",\"lon\":null";
+    }
+
+    obj += "}";
+    return obj;
+}
+
 int main() {
     stdio_init_all();
 
-    while(!stdio_usb_connected()) {
+    while (!stdio_usb_connected()) {
         sleep_ms(100);
     }
     sleep_ms(100);
@@ -47,8 +106,8 @@ int main() {
     NetworkManager nm;
     nm.Init();
 
-    int readingCounter = 0;
-    std::string data = "";
+    int         readingCounter = 0;
+    std::string readings       = "";   // accumulates JSON objects
 
     i2c_init(i2c0, I2C_FREQ);
     gpio_set_function(I2C0_SDA, GPIO_FUNC_I2C);
@@ -101,7 +160,7 @@ int main() {
 
     SensorProcessor processor;
 
-    while(true) {
+    while (true) {
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
         // ToF
@@ -133,15 +192,16 @@ int main() {
             last_gps_ms = now_ms;
         }
 
-        // Print
+        // Print + batch send
         if ((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
             CalibrationData cal = processor.get_calibration();
             printf("Calibrated (%.2f, %.2f)\n\n",
-                cal.tof_calibrated ? cal.tof_offset_mm : -1.0f,
+                cal.tof_calibrated  ? cal.tof_offset_mm   : -1.0f,
                 cal.sonic_calibrated ? cal.sonic_offset_mm : -1.0f
             );
 
+            // --- Raw ---
             RawData raw = processor.raw();
             printf("Raw:\n");
 
@@ -158,35 +218,34 @@ int main() {
             }
 
             if (accel_ok) {
-                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n", raw.accel_x, raw.accel_y, raw.accel_z);
+                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n",
+                    raw.accel_x, raw.accel_y, raw.accel_z);
             } else {
                 printf("  Accel: [offline]\n\n");
             }
 
-            data += "{";
+            // --- Processed ---
             printf("Processed:\n");
-            
+
             if (tof_ok) {
-            // Print processed data
                 printf("  ToF: %u mm\n", processor.grassHeightTof());
-                if (cal.tof_calibrated) data += "\"grassHeightTof\":" + std::to_string(processor.grassHeightTof());
             } else {
                 printf("  ToF: [offline]\n");
-                data += "\"grassHeightTof\":offline";
             }
 
-            if(sonic_ok) {
-                if(accel_ok) {
-                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicCompensated());
-                    if (cal.sonic_calibrated) data += ",\"grassHeightSonic\":" + std::to_string(processor.grassHeightSonic());
+            if (sonic_ok) {
+                printf("  Sonic (median): %u mm\n", processor.grassHeightSonicMedian());
+                if (accel_ok) {
+                    printf("  Sonic (accel): %u mm\n",         processor.grassHeightSonicAccel());
+                    printf("  Sonic (median+accel): %u mm\n",  processor.grassHeightSonicMedianAccel());
                 } else {
                     printf("  Sonic (accel): [accel offline]\n");
-                    data += ",\"grassHeightSonic\":offline";
+                    printf("  Sonic (median+accel): [accel offline]\n");
                 }
-            }
-            else {
-                printf("  Sonic: [offline]\n");
-                data += ",\"grassHeightSonic\":offline";
+            } else {
+                printf("  Sonic (median): [offline]\n");
+                printf("  Sonic (accel): [offline]\n");
+                printf("  Sonic (median+accel): [offline]\n");
             }
 
             if (gps_ok) {
@@ -203,17 +262,25 @@ int main() {
                 printf("  GPS: [offline]\n");
             }
 
-            data += "}";
-            if (readingCounter == 10) 
-            {
-                nm.SendData(data.data());
-                printf(data.c_str());
-                data = "";
-                readingCounter = 0;
-            }
             printf("------------------------------\n\n");
             last_print_ms = now_ms;
-            if (cal.tof_calibrated || cal.sonic_calibrated) readingCounter++;
+
+            // Accumulate into the JSON array if at least one sensor is calibrated
+            if (cal.tof_calibrated || cal.sonic_calibrated) {
+                if (readingCounter > 0) readings += ",";
+                readings += build_json_reading(
+                    tof_ok, sonic_ok, accel_ok, gps_ok, cal, processor);
+                readingCounter++;
+            }
+
+            // Send when the batch is full
+            if (readingCounter >= SEND_BATCH_SIZE) {
+                std::string payload = "[" + readings + "]";
+                printf("Sending: %s\n\n", payload.c_str());
+                nm.SendData(const_cast<char*>(payload.c_str()));
+                readings       = "";
+                readingCounter = 0;
+            }
         }
 
         sleep_ms(1);

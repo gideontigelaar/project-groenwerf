@@ -9,7 +9,7 @@ typedef struct {
     struct tcp_pcb *pcb;
     bool complete;
     bool error;
-    char request[512];
+    char request[2048];
 } TCP_STATE_T;
 
 // --- Callbacks (must be static) ---
@@ -111,7 +111,7 @@ int NetworkManager::Init() {
     cyw43_arch_enable_sta_mode();
     printf("Connecting to Wi-Fi...\n");
 
-    if (cyw43_arch_wifi_connect_timeout_ms("iPhonevanSander", "password",
+    if (cyw43_arch_wifi_connect_timeout_ms("wifi", "password",
             CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         printf("Failed to connect.\n");
         return -1;
@@ -123,7 +123,7 @@ int NetworkManager::Init() {
 }
 
 int NetworkManager::SendData(char *data) {
-    static TCP_STATE_T state;
+    TCP_STATE_T state;
     memset(&state, 0, sizeof(state));
 
     // Build the HTTP request
