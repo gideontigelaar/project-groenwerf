@@ -22,9 +22,8 @@ constexpr uint RCWL_ECHO = 15;
 constexpr uint32_t TOF_INTERVAL_MS   = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t ACCEL_INTERVAL_MS = 10;
-constexpr uint32_t GPS_INTERVAL_MS   = 1000;
-constexpr uint32_t PRINT_INTERVAL_MS = 500;
-constexpr int      SEND_BATCH_SIZE   = 5;
+constexpr uint32_t PRINT_INTERVAL_MS = 250;
+constexpr int      SEND_BATCH_SIZE   = 10;
 
 static void i2c_scan(i2c_inst_t* i2c, const char* label) {
     printf("Scanning %s...\n", label);
@@ -106,6 +105,17 @@ int main() {
     NetworkManager nm;
     nm.Init();
 
+    nm.Poll();
+
+    if (nm.IsDone()) {
+        printf("Send complete\n");
+        nm.ResetState();
+    }
+    if (nm.HasError()) {
+        printf("Send failed\n");
+        nm.ResetState();
+    }
+
     int         readingCounter = 0;
     std::string readings       = "";   // accumulates JSON objects
 
@@ -155,7 +165,6 @@ int main() {
     uint32_t last_tof_ms   = 0;
     uint32_t last_sonic_ms = 0;
     uint32_t last_accel_ms = 0;
-    uint32_t last_gps_ms   = 0;
     uint32_t last_print_ms = 0;
 
     SensorProcessor processor;
@@ -185,11 +194,10 @@ int main() {
         }
 
         // GPS
-        if (gps_ok && (now_ms - last_gps_ms) >= GPS_INTERVAL_MS) {
+        if (gps_ok) {
             if (gps_get_ubx_packet()) {
                 gps_parse_ubx_data();
             }
-            last_gps_ms = now_ms;
         }
 
         // Print + batch send
@@ -275,12 +283,15 @@ int main() {
 
             // Send when the batch is full
             if (readingCounter >= SEND_BATCH_SIZE) {
-                std::string payload = "[" + readings + "]";
-                printf("Sending: %s\n\n", payload.c_str());
-                nm.SendData(const_cast<char*>(payload.c_str()));
+            std::string payload = "[" + readings + "]";
+            printf("Sending: %s\n\n", payload.c_str());
+            if (nm.StartSend(payload.c_str())) {
                 readings       = "";
                 readingCounter = 0;
+            } else {
+                printf("Failed to start send, will retry in next batch\n\n");
             }
+        }
         }
 
         sleep_ms(1);
