@@ -12,12 +12,12 @@ brew install --cask gcc-arm-embedded
 
 If you already have the full Xcode app installed, skip the `xcode-select` step.
 
-Once done, set `PICO_SDK_PATH` in your environment before building:
+Once done, set `PICO_SDK_PATH` in your environment before building from the terminal:
 ```bash
 export PICO_SDK_PATH=~/.pico-sdk/sdk/2.2.0
 ```
 
-`CMakeLists.txt` reads this variable via `$ENV{PICO_SDK_PATH}` to find the SDK.
+If you are compiling via the command line, the included `pico_sdk_import.cmake` file automatically reads this environment variable to locate the SDK. If you are building via the VS Code extension, the extension ignores this variable and handles the paths entirely on its own.
 
 ## Clean build
 Do this the first time, or after changing `CMakeLists.txt`. In `firmware/`:
