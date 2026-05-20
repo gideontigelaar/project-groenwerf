@@ -119,7 +119,7 @@ int main() {
         if((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
 
             CalibrationData cal = processor.get_calibration();
-            printf("Calibrated (%.2f, %.2f)\n",
+            printf("Calibrated (%.2f, %.2f)\n\n",
                 cal.tof_calibrated ? cal.tof_offset_mm : -1.0f,
                 cal.sonic_calibrated ? cal.sonic_offset_mm : -1.0f
             );
@@ -166,7 +166,7 @@ int main() {
                     printf("  Sonic (accel): [accel offline]\n");
                     data += ",\"grassHeightSonic\":offline";
                 }
-            } 
+            }
             else {
                 printf("  Sonic: [offline]\n");
                 data += ",\"grassHeightSonic\":offline";

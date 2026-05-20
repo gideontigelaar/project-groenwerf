@@ -1,36 +1,40 @@
 #include "processing/vibration_processor.h"
 #include <cmath>
 
-VibrationProcessor::VibrationProcessor() {}
-
 void VibrationProcessor::updateAccel(float accel_z, float dt_s) {
-    float accel_ms2 = accel_z * 9.81f;
+    // ### high-pass filter ###
+    float accel_ms2 = accel_z * 9.81f; // convert g reading to m/s^2
 
-    // remove drift from accelerometer
+    // cancel out DC offset caused by gravity and center to 0
     float hpf = HPF_ALPHA * (_prev_hpf + accel_ms2 - _prev_raw);
     _prev_raw = accel_ms2;
     _prev_hpf = hpf;
-    _accel_z_filtered = hpf;
+    _accel_z_filtered = hpf; // stored in m/s^2 for spike check
 
-    _velocity = (_velocity + (hpf * dt_s)) * 0.98f;
-    _displacement_mm = (_displacement_mm + (_velocity * dt_s * 1000.0f)) * 0.90f; // TODO: 10% offset from real measurement, change to more reliable method to handle vibrations
+    // ### rms vibration intensity ###
+    _rms_accum = RMS_ALPHA * _rms_accum + (1.0f - RMS_ALPHA) * (hpf * hpf); // square signal and apply exponential moving avg
+    _rms_g = sqrtf(_rms_accum) / 9.81f; // convert to g units
 }
 
 uint16_t VibrationProcessor::compensate(uint16_t sonic_mm) const {
-    // reject sample entirely on large spike
-    if (fabsf(_accel_z_filtered) > (REJECT_THRESHOLD_G * 9.81f)) {
-        return sonic_mm;
+    // ### spike rejection ###
+    if(fabsf(_accel_z_filtered) > (SPIKE_THRESHOLD_G * 9.81f)) {
+        _last_was_spike = true; // spike event is occurring
+        return (_last_good_mm > 0) ? _last_good_mm : sonic_mm; // return last clean sample, or current as fallback
     }
+    _last_was_spike = false;
 
-    float corrected = static_cast<float>(sonic_mm) - _displacement_mm;
-    if (corrected < 0.0f) corrected = 0.0f;
-    return static_cast<uint16_t>(corrected);
+    // no spike: accept & store reading
+    _last_good_mm = sonic_mm;
+    return sonic_mm;
 }
 
 void VibrationProcessor::reset() {
     _prev_raw = 0.0f;
     _prev_hpf = 0.0f;
-    _velocity = 0.0f;
-    _displacement_mm = 0.0f;
     _accel_z_filtered = 0.0f;
+    _rms_accum = 0.0f;
+    _rms_g = 0.0f;
+    _last_good_mm = 0;
+    _last_was_spike = false;
 }

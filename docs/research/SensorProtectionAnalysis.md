@@ -15,6 +15,4 @@ Binnen onze toepassing is acryl (PMMA) de beste keuze. Dit materiaal is eenvoudi
 PMMA plaatjes: [amazon.nl](https://www.amazon.nl/-/en/Langaeleax-10-Transparent-Plexiglass-Projects/dp/B08NVGT43P)
 
 ## Ultrasound
-Het gebruik van dun plastic of glas als bescherming is bij deze sensor geen goede optie, omdat geluid hier niet goed doorheen kan. Er bestaan wel waterdichte ultrasone sensoren, maar deze geven minder nauwkeurige resultaten bij kleinere objecten dan de sensor die wij momenteel gebruiken. Daarnaast zijn ze relatief duur, waardoor dit geen geschikte oplossing is.
-
-Voor de ultrasone sensor is er dus geen echt goedkope manier om deze volledig te beschermen tegen gras en water. We verwachten echter dat dit geen groot probleem zal zijn, zolang de sensor niet te dicht bij de grond geplaatst wordt.
+Het gebruik van dun plastic of glas als bescherming is bij deze sensor geen goede optie, omdat geluid hier niet goed doorheen kan. Er bestaan genoeg goedkope waterdichte ultrasone sensoren, dus dit wordt geen probleem.
