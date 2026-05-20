@@ -5,6 +5,9 @@
 #include "hardware/i2c.h"
 #include <cstdio>
 #include "processing/sensor_processor.h"
+#include "networkmanager.h"
+#include "lwip/netif.h"
+#include <string>
 
 // for VL53L1X & ADXL345
 constexpr uint I2C0_SDA = 12;
@@ -38,6 +41,12 @@ int main() {
         sleep_ms(100);
     }
     sleep_ms(100);
+
+    NetworkManager nm;
+    nm.Init();
+
+    int readingCounter = 0;
+    std::string data = "";
 
     i2c_init(i2c0, I2C_FREQ);
     gpio_set_function(I2C0_SDA, GPIO_FUNC_I2C);
@@ -137,32 +146,43 @@ int main() {
                 printf("  Accel: [offline]\n\n");
             }
 
-            // Print processed data
+            data += "{";
             printf("Processed:\n");
-
-            if(tof_ok) {
+            
+            if (tof_ok) {
+            // Print processed data
                 printf("  ToF: %u mm\n", processor.grassHeightTof());
+                if (cal.tof_calibrated) data += "\"grassHeightTof\":" + std::to_string(processor.grassHeightTof());
             } else {
                 printf("  ToF: [offline]\n");
+                data += "\"grassHeightTof\":offline";
             }
 
             if(sonic_ok) {
-                printf("  Sonic (median): %u mm\n", processor.grassHeightSonicMedian());
                 if(accel_ok) {
-                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicAccel());
-                    printf("  Sonic (median+accel): %u mm\n", processor.grassHeightSonicMedianAccel());
+                    printf("  Sonic (accel): %u mm\n", processor.grassHeightSonicCompensated());
+                    if (cal.sonic_calibrated) data += ",\"grassHeightSonic\":" + std::to_string(processor.grassHeightSonic());
                 } else {
                     printf("  Sonic (accel): [accel offline]\n");
-                    printf("  Sonic (median+accel): [accel offline]\n");
+                    data += ",\"grassHeightSonic\":offline";
                 }
-            } else {
-                printf("  Sonic (median): [offline]\n");
-                printf("  Sonic (accel): [offline]\n");
-                printf("  Sonic (median+accel): [offline]\n");
+            }
+            else {
+                printf("  Sonic: [offline]\n");
+                data += ",\"grassHeightSonic\":offline";
             }
 
+            data += "}";
+            if (readingCounter == 10) 
+            {
+                nm.SendData(data.data());
+                printf(data.c_str());
+                data = "";
+                readingCounter = 0;
+            }
             printf("------------------------------\n\n");
             last_print_ms = now_ms;
+            if (cal.tof_calibrated || cal.sonic_calibrated) readingCounter++;
         }
 
         sleep_ms(1);
