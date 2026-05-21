@@ -1,69 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groenwerf dashboard</title>
-    <link rel="stylesheet" href="style.css">
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Tailwind -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+ 
+    <link href="style.css" rel="stylesheet">
     <script src="/node_modules/chart.js/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
 
-<div class="sidebar">
-    <h2 class="text-center">Groenvoorziening</h2>
-    <ul>
-        <a href="index.php"> <li class="active">Dashboard</li> </a>
-        <a href="rapport.php"> <li>Rapport</li> </a>
-    </ul>
-</div>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Groenvoorziening</h2>
 
-<div class="flex p-5 w-full flex-col pl-[220px]">
-    <h1 class="px-6 text-2xl font-bold mb-2">Dashboard</h1>
-    <div class="w-full grid grid-cols-1 gap-4 p-6">
-        <div class="row-span-2 grid grid-cols-1 aspect-16/9 shadow-lg rounded-lg border border-gray-200 p-4">
-            <p class="text-3xl row-span-1 font-bold flex items-center justify-center h-auto">Veld 1</p>
-            <div id="ChartContainer" class="w-full h-full grid grid-cols-4 gap-0 items-center row-span-5 justify-center">
-                <div class="flex flex-col w-full col-span-1 text-5xl justify-items-center">
-                    <div class="flex flex-row items-center" style="color:#16a34a">
-                        <p class="w-auto">S:</p>
-                        <div class="mx-4 text-4xl text-end w-3/5">
-                            <p class="">20%</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-row items-center" style="color:#4ade80">
-                        <p class="w-auto">A:</p>
-                        <div class="mx-4 text-4xl text-end w-3/5">
-                            <p class="">20%</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-row items-center" style="color:#a3e635">
-                        <p class="w-auto">B:</p>
-                        <div class="mx-4 text-4xl text-end w-3/5">
-                            <p class="">20%</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-row items-center" style="color:#fbbf24">
-                        <p class="w-auto">C:</p>
-                        <div class="mx-4 text-4xl text-end w-3/5">
-                            <p class="">20%</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-row items-center" style="color:#f97316">
-                        <p class="w-auto">D:</p>
-                        <div class="mx-4 text-4xl text-end w-3/5">
-                            <p class="">20%</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-3 object-contain">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <!-- <div class="row-span-2 aspect-16/9 shadow-lg rounded-lg border border-gray-200">
-    
-        </div> -->
+        <ul>
+            <a href="index.php">
+                <li>Dashboard</li>
+            </a>
+
+            <a href="rapport.php">
+                <li class="active">Rapport</li>
+            </a>
+        </ul>
     </div>
-</div>  
-<script src="PieChart.js"></script>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
+
+            <!-- Indicators -->
+            <div class="carousel-indicators">
+                <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active"></button>
+
+                <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1"></button>
+
+                <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2"></button>
+            </div>
+
+            <!-- Slides -->
+            <div class="carousel-inner">
+
+                <div id="ChartContainer" class="carousel-item active">
+                    <div class="col-span-3 object-contain">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="carousel-item">
+                    <img
+                        src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
+                        class="d-block w-100"
+                        alt="Nature 2"
+                    >
+                </div>
+
+                <div class="carousel-item">
+                    <img
+                        src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e"
+                        class="d-block w-100"
+                        alt="Nature 3"
+                    >
+                </div>
+
+            </div>
+
+            <!-- Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+
+            <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="PieChart.js"></script>
 </body>
 </html>

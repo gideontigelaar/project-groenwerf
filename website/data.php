@@ -1,18 +1,21 @@
 <?php
-// Threshold
-$threshold = 10;
+header('Content-Type: application/json');
 
-// Generate simulated historical data (last 7 readings)
-$history = [];
-for ($i = 0; $i < 7; $i++) {
-    $history[] = rand(5, 15);
+$conn = new mysqli('', '', '', '');
+
+if ($conn->connect_error) {
+    http_response_code(500);
+    echo json_encode([]);
+    exit;
 }
 
-// Average value
-$grassHeight = max($history);
+$result = $conn->query("SELECT tof_mm, sonic_mm, longitude, latitude, measured_at FROM sensor_readings ORDER BY measured_at DESC LIMIT 100");
 
-$difference = abs($grassHeight-$threshold)/$threshold*100;
-// Status
-$status = $grassHeight > $threshold ? "Te hoog met {$difference}%" : "Gehaald met {$difference}%";
-$color = $grassHeight > $threshold ? "#e74c3c" : "#2ecc71";
+$rows = [];
+while ($row = $result->fetch_assoc()) {
+    $rows[] = $row;
+}
+
+echo json_encode($rows);
+$conn->close();
 ?>

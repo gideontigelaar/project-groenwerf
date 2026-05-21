@@ -1,39 +1,46 @@
 body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: #f5f7fb;
     display: flex;
+    min-height: 100vh;
+    background: #f4f4f4;
 }
-
-/* Sidebar */
 .sidebar {
-    width: 220px;
+    width: 18rem;
     background: #1f3d2b;
     color: white;
-    height: 100vh;
     padding: 20px;
-    border-right-style: solid;
-    border-width: 2px;
-    border-color: black;
-    position: fixed;
 }
-
 .sidebar h2 {
+    text-align: center;
     margin-bottom: 30px;
 }
-
 .sidebar ul {
     list-style: none;
     padding: 0;
 }
-
-.sidebar li {
-    padding: 10px;
-    margin: 5px 0;
-    cursor: pointer;
+.sidebar a {
+    text-decoration: none;
+    color: white;
 }
-
+.sidebar li {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: 0.2s;
+}
+.sidebar li:hover,
 .sidebar .active {
     background: #6aa84f;
-    border-radius: 6px;
+}
+.main-content {
+    flex: 1;
+}
+.carousel-item img {
+    height: 500px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255);
 }
