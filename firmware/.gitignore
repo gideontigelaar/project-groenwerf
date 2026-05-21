@@ -1,8 +1,2 @@
-build/
-
-.vscode/
-.idea/
-
-.DS_Store
-
-credentials.h
+build
+!.vscode/*

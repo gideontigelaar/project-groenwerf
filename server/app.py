@@ -1,19 +1,27 @@
 from flask import Flask, request, jsonify, render_template_string
 import mysql.connector
+import sys
+
+try:
+    import credentials
+except ModuleNotFoundError:
+    sys.exit(
+        "ERROR: credentials.py not found.\n"
+        "Copy server/credentials.py.template to server/credentials.py and fill in your values."
+    )
 
 app = Flask(__name__)
 
-# MySQL connection
 db = mysql.connector.connect(
-    host="host",
-    user="username",
-    password="password",
-    database="database"
+    host=credentials.DB_HOST,
+    user=credentials.DB_USER,
+    password=credentials.DB_PASSWORD,
+    database=credentials.DB_NAME
 )
 
 cursor = db.cursor(dictionary=True)
 
-@app.route('/data', methods=['POST'])
+@app.route('/sensor-data', methods=['POST'])
 def receive_data():
 
     data = request.get_json()
@@ -49,7 +57,7 @@ def receive_data():
 
     return jsonify({"status": "ok"}), 200
 
-@app.route('/data', methods=['GET'])
+@app.route('/sensor-data', methods=['GET'])
 def get_data():
 
     cursor.execute("""
@@ -111,7 +119,7 @@ HTML = """
 <script>
 async function updateData() {
 
-    const res = await fetch('/data');
+    const res = await fetch('/sensor-data');
     const data = await res.json();
 
     document.getElementById('tof').textContent =
@@ -131,4 +139,4 @@ updateData();
 """
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002)
+    app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT)
