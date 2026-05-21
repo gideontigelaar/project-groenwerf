@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify, render_template_string
 import mysql.connector
+from mysql.connector import pooling, Error
+from datetime import datetime, timezone
 import sys
 
 try:
@@ -12,160 +14,300 @@ except ModuleNotFoundError:
 
 app = Flask(__name__)
 
-db = mysql.connector.connect(
+db_pool = pooling.MySQLConnectionPool(
+    pool_name="sensor_pool",
+    pool_size=5,
     host=credentials.DB_HOST,
     user=credentials.DB_USER,
     password=credentials.DB_PASSWORD,
     database=credentials.DB_NAME
 )
 
-cursor = db.cursor(dictionary=True)
+
+def get_db_connection():
+    return db_pool.get_connection()
 
 @app.route('/sensor-data', methods=['POST'])
 def receive_data():
 
+    # API Key Authentication
     if request.headers.get('X-API-Key') != credentials.API_KEY:
         return jsonify({"error": "unauthorized"}), 401
 
+    # Validate JSON
     data = request.get_json()
 
-    from datetime import datetime, timezone
+    if not data:
+        return jsonify({"error": "invalid json"}), 400
 
-    for item in data:
+    if not isinstance(data, list):
+        return jsonify({"error": "expected a list"}), 400
 
-        measured_at = item.get("measured_at")
+    db = None
+    cursor = None
 
-        # Convert UTC unix timestamp -> MySQL DATETIME string
-        if measured_at is not None:
-            measured_at = datetime.fromtimestamp(
-                measured_at,
-                tz=timezone.utc
-            ).strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
 
-        sql_processed = """
-        INSERT INTO sensor_readings
-        (
-            latitude,
-            longitude,
-            tof_mm,
-            sonic_mm,
-            temperature,
-            measured_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
+        for item in data:
 
-        values_processed = (
-            item.get("lat"),
-            item.get("lon"),
-            item.get("grassHeightTof"),
-            item.get("grassHeightSonicMedian"),
-            None,
-            measured_at
-        )
+            if not isinstance(item, dict):
+                continue
 
-        cursor.execute(sql_processed, values_processed)
+            measured_at = item.get("measured_at")
 
-        sql_raw = """
-        INSERT INTO raw_sensor_readings
-        (
-            sonic_raw_mm,
-            tof_raw_mm,
-            accel_raw_x,
-            accel_raw_y,
-            accel_raw_z,
-            measured_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
+            if measured_at is not None:
 
-        values_raw = (
-            item.get("sonic_raw_mm"),
-            item.get("tof_raw_mm"),
-            item.get("accel_raw_x"),
-            item.get("accel_raw_y"),
-            item.get("accel_raw_z"),
-            measured_at
-        )
+                try:
 
-        cursor.execute(sql_raw, values_raw)
+                    # Parse ISO 8601 UTC timestamp
+                    measured_at = datetime.strptime(
+                        measured_at,
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    ).strftime("%Y-%m-%d %H:%M:%S")
 
-    db.commit()
+                except (ValueError, TypeError):
 
-    return jsonify({"status": "ok"}), 200
+                    print("Invalid timestamp:", measured_at)
+
+                    measured_at = None
+
+            sql_processed = """
+            INSERT INTO sensor_readings
+            (
+                latitude,
+                longitude,
+                tof_mm,
+                sonic_mm,
+                temperature,
+                measured_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+
+            values_processed = (
+                item.get("lat"),
+                item.get("lon"),
+                item.get("grassHeightTof"),
+                item.get("grassHeightSonicMedian"),
+                item.get("temperature"),
+                measured_at
+            )
+
+            cursor.execute(sql_processed, values_processed)
+
+            sql_raw = """
+            INSERT INTO raw_sensor_readings
+            (
+                sonic_raw_mm,
+                tof_raw_mm,
+                accel_raw_x,
+                accel_raw_y,
+                accel_raw_z,
+                measured_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+
+            values_raw = (
+                item.get("sonic_raw_mm"),
+                item.get("tof_raw_mm"),
+                item.get("accel_raw_x"),
+                item.get("accel_raw_y"),
+                item.get("accel_raw_z"),
+                measured_at
+            )
+
+            cursor.execute(sql_raw, values_raw)
+
+        db.commit()
+
+        return jsonify({"status": "ok"}), 200
+
+    except Error as e:
+
+        if db:
+            db.rollback()
+
+        return jsonify({
+            "error": "database error",
+            "details": str(e)
+        }), 500
+
+    except Exception as e:
+
+        if db:
+            db.rollback()
+
+        return jsonify({
+            "error": "server error",
+            "details": str(e)
+        }), 500
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if db and db.is_connected():
+            db.close()
+
 
 @app.route('/sensor-data', methods=['GET'])
 def get_data():
-    cursor.execute("""
-        SELECT *
-        FROM sensor_readings
-        ORDER BY id DESC
-        LIMIT 1
-    """)
-    latest = cursor.fetchone()
-    return jsonify(latest)
+
+    db = None
+    cursor = None
+
+    try:
+        db = get_db_connection()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT *
+            FROM sensor_readings
+            ORDER BY id DESC
+            LIMIT 1
+        """)
+
+        latest = cursor.fetchone()
+
+        if latest is None:
+            return jsonify({})
+
+        return jsonify(latest)
+
+    except Error as e:
+
+        return jsonify({
+            "error": "database error",
+            "details": str(e)
+        }), 500
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if db and db.is_connected():
+            db.close()
 
 
 @app.route('/')
 def index():
     return render_template_string(HTML)
 
-
 HTML = """
 <!DOCTYPE html>
 <html>
 <head>
     <title>Pico Dashboard</title>
+
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             padding: 40px;
+            background: #fafafa;
+        }
+
+        h1 {
+            margin-bottom: 30px;
         }
 
         .card {
-            background: #f0f0f0;
+            background: white;
             padding: 20px;
             margin-bottom: 20px;
-            border-radius: 10px;
-            width: 300px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .label {
+            color: #666;
+            margin-top: 10px;
         }
 
         .value {
             font-size: 2em;
             font-weight: bold;
         }
+
+        .timestamp {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 15px;
+        }
     </style>
 </head>
+
 <body>
 
 <h1>Grass Height Monitor</h1>
 
 <div class="card">
     <div class="value" id="tof">--</div>
-    <div>ToF (mm)</div>
+    <div class="label">ToF (mm)</div>
 </div>
 
 <div class="card">
     <div class="value" id="sonic">--</div>
-    <div>Sonic (mm)</div>
+    <div class="label">Sonic (mm)</div>
+</div>
+
+<div class="card">
+    <div class="value" id="latlon">--</div>
+    <div class="label">Location</div>
+</div>
+
+<div class="card">
+    <div class="value" id="timestamp">--</div>
+    <div class="label">Measured At</div>
 </div>
 
 <script>
+
 async function updateData() {
 
-    const res = await fetch('/sensor-data');
-    const data = await res.json();
+    try {
 
-    document.getElementById('tof').textContent =
-        data.tof_mm ?? '--';
+        const res = await fetch('/sensor-data');
 
-    document.getElementById('sonic').textContent =
-        data.sonic_mm ?? '--';
+        if (!res.ok) {
+            console.error('Failed to fetch data');
+            return;
+        }
+
+        const data = await res.json();
+
+        if (!data || Object.keys(data).length === 0) {
+            return;
+        }
+
+        document.getElementById('tof').textContent =
+            data.tof_mm ?? '--';
+
+        document.getElementById('sonic').textContent =
+            data.sonic_mm ?? '--';
+
+        document.getElementById('latlon').textContent =
+            `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
+
+        document.getElementById('timestamp').textContent =
+            data.measured_at ?? '--';
+
+    } catch (err) {
+
+        console.error('Error updating data:', err);
+
+    }
 }
+
+updateData();
 
 setInterval(updateData, 2000);
 
-updateData();
 </script>
 
 </body>
@@ -173,4 +315,9 @@ updateData();
 """
 
 if __name__ == '__main__':
-    app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT)
+
+    app.run(
+        host=credentials.FLASK_HOST,
+        port=credentials.FLASK_PORT,
+        debug=True
+    )
