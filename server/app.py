@@ -77,65 +77,70 @@ def receive_data():
             sonic_median_val = item.get("grassHeightSonicMedian")
             sonic_accel_val  = item.get("grassHeightSonicAccel")
 
-            if not any([tof_val, sonic_median_val, sonic_accel_val]):
-                continue
+            raw_sonic  = item.get("sonic_raw_mm")
+            raw_tof    = item.get("tof_raw_mm")
+            raw_accel_x = item.get("accel_raw_x")
+            raw_accel_y = item.get("accel_raw_y")
+            raw_accel_z = item.get("accel_raw_z")
 
-            sql_processed = """
-            INSERT INTO sensor_readings
-            (
-                latitude,
-                longitude,
-                tof_mm,
-                sonic_median_mm,
-                sonic_accel_mm,
-                temperature,
-                measured_at
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
+            processed_id = None
+            raw_id       = None
 
-            values_processed = (
-                item.get("lat"),
-                item.get("lon"),
-                tof_val,
-                sonic_median_val,
-                sonic_accel_val,
-                item.get("temperature"),
-                measured_at
-            )
+            if any([tof_val, sonic_median_val, sonic_accel_val]):
+                sql_processed = """
+                INSERT INTO sensor_readings
+                (
+                    latitude,
+                    longitude,
+                    tof_mm,
+                    sonic_median_mm,
+                    sonic_accel_mm,
+                    temperature,
+                    measured_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """
+                values_processed = (
+                    item.get("lat"),
+                    item.get("lon"),
+                    tof_val,
+                    sonic_median_val,
+                    sonic_accel_val,
+                    item.get("temperature"),
+                    measured_at
+                )
+                cursor.execute(sql_processed, values_processed)
+                processed_id = cursor.lastrowid
 
-            cursor.execute(sql_processed, values_processed)
-            processed_id = cursor.lastrowid
+            if any([raw_sonic, raw_tof, raw_accel_x, raw_accel_y, raw_accel_z]):
+                sql_raw = """
+                INSERT INTO raw_sensor_readings
+                (
+                    sonic_raw_mm,
+                    tof_raw_mm,
+                    accel_raw_x,
+                    accel_raw_y,
+                    accel_raw_z,
+                    measured_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                values_raw = (
+                    raw_sonic,
+                    raw_tof,
+                    raw_accel_x,
+                    raw_accel_y,
+                    raw_accel_z,
+                    measured_at
+                )
+                cursor.execute(sql_raw, values_raw)
+                raw_id = cursor.lastrowid
 
-            sql_raw = """
-            INSERT INTO raw_sensor_readings
-            (
-                sonic_raw_mm,
-                tof_raw_mm,
-                accel_raw_x,
-                accel_raw_y,
-                accel_raw_z,
-                measured_at
-            )
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
-
-            values_raw = (
-                item.get("sonic_raw_mm"),
-                item.get("tof_raw_mm"),
-                item.get("accel_raw_x"),
-                item.get("accel_raw_y"),
-                item.get("accel_raw_z"),
-                measured_at
-            )
-
-            cursor.execute(sql_raw, values_raw)
-            raw_id = cursor.lastrowid
-
-            cursor.execute(
-                "INSERT INTO reading_pairs (raw_id, processed_id) VALUES (%s, %s)",
-                (raw_id, processed_id)
-            )
+            if raw_id is not None and processed_id is not None:
+                cursor.execute(
+                    "INSERT INTO reading_pairs (raw_id, processed_id) VALUES (%s, %s)",
+                    (raw_id, processed_id)
+                )
 
         db.commit()
 
