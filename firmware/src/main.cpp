@@ -4,6 +4,7 @@
 #include "sensors/vma430_gps.h"
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include "hardware/gpio.h"
 #include <cstdio>
 #include <string>
 #include "processing/sensor_processor.h"
@@ -18,11 +19,82 @@ constexpr uint I2C_FREQ = 400000;
 constexpr uint RCWL_TRIG = 14;
 constexpr uint RCWL_ECHO = 15;
 
+// for Network LEDs
+constexpr uint LED_GREEN = 18;
+constexpr uint LED_YELLOW = 19;
+
 constexpr uint32_t TOF_INTERVAL_MS   = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t ACCEL_INTERVAL_MS = 10;
 constexpr uint32_t PRINT_INTERVAL_MS = 250;
-constexpr int      SEND_BATCH_SIZE   = 10;
+constexpr int      SEND_BATCH_SIZE   = 5;
+
+// Network & System LED States
+enum class SystemState {
+    CALIBRATING,         // Green and Yellow Solid
+    READING,             // Green Solid
+    TRANSMITTING,        // Flashing Green
+    ERROR_WARNING,       // Yellow Solid
+    WIFI_RECONNECTING,   // Flashing Yellow
+    HALTED               // Green and Yellow Solid
+};
+
+// Init LED pins
+void init_system_leds() {
+    gpio_init(LED_GREEN);
+    gpio_set_dir(LED_GREEN, GPIO_OUT);
+
+    gpio_init(LED_YELLOW);
+    gpio_set_dir(LED_YELLOW, GPIO_OUT);
+
+    // Start with LEDs off
+    gpio_put(LED_GREEN, 0);
+    gpio_put(LED_YELLOW, 0);
+}
+
+void update_system_leds(SystemState state) {
+    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+
+    static SystemState last_state = SystemState::READING;
+    static uint32_t state_start_ms = 0;
+
+    if (state != last_state) {
+        state_start_ms = now_ms;
+        last_state = state;
+    }
+
+    uint32_t elapsed = now_ms - state_start_ms;
+
+    bool led_blink_start_off = (elapsed / 125) % 2 != 0;
+
+    switch (state) {
+        case SystemState::CALIBRATING:
+        case SystemState::HALTED:
+            gpio_put(LED_GREEN, 1);
+            gpio_put(LED_YELLOW, 1);
+            break;
+
+        case SystemState::READING:
+            gpio_put(LED_GREEN, 1);
+            gpio_put(LED_YELLOW, 0);
+            break;
+
+        case SystemState::TRANSMITTING:
+            gpio_put(LED_GREEN, led_blink_start_off ? 1 : 0);
+            gpio_put(LED_YELLOW, 0);
+            break;
+
+        case SystemState::ERROR_WARNING:
+            gpio_put(LED_GREEN, 0);
+            gpio_put(LED_YELLOW, 1);
+            break;
+
+        case SystemState::WIFI_RECONNECTING:
+            gpio_put(LED_GREEN, 0);
+            gpio_put(LED_YELLOW, led_blink_start_off ? 1 : 0);
+            break;
+    }
+}
 
 static void i2c_scan(i2c_inst_t* i2c, const char* label) {
     printf("Scanning %s...\n", label);
@@ -87,6 +159,9 @@ static std::string build_json_reading(
 int main() {
     stdio_init_all();
 
+    // Init LEDs
+    init_system_leds();
+
     while (!stdio_usb_connected()) {
         sleep_ms(100);
     }
@@ -117,14 +192,16 @@ int main() {
 
     if (tof_ok) tof.startContinuous(TOF_INTERVAL_MS);
 
-    // Calibration
+    // Calibration phase
     SensorProcessor processor;
     printf("\nCalibrating sensors based on ground height (keep the mower still)...\n");
 
     int cal_samples = 0;
     while(cal_samples < 25) {
-        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+        // Light up both LEDs
+        update_system_leds(SystemState::CALIBRATING);
 
+        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
         if (tof_ok && tof.dataReady()) processor.parseTof(tof.readDistance());
         if (sonic_ok && (now_ms % 50 == 0)) processor.parseSonic(ultrasonic.readDistance());
 
@@ -150,7 +227,28 @@ int main() {
         nm.Poll();
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-        // ToF
+        // Update LED state
+        SystemState current_state = SystemState::READING;
+        int wifi_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+
+        if (nm.IsHalted()) {
+            current_state = SystemState::HALTED;
+        } else if (wifi_status != CYW43_LINK_UP) {
+            current_state = SystemState::WIFI_RECONNECTING;
+        } else if (nm.HasError()) {
+            current_state = SystemState::ERROR_WARNING;
+        } else if (nm.IsBusy()) {
+            current_state = SystemState::TRANSMITTING;
+        }
+
+        update_system_leds(current_state);
+
+        // If halted, stop running sensors
+        if (current_state == SystemState::HALTED) {
+            sleep_ms(100);
+            continue;
+        }
+
         if (tof_ok && (now_ms - last_tof_ms) >= TOF_INTERVAL_MS) {
             if (tof.dataReady()) {
                 processor.parseTof(tof.readDistance());

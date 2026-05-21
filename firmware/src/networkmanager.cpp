@@ -32,9 +32,11 @@ void NetworkManager::ConnectInitial() {
 }
 
 bool NetworkManager::StartSend(const char *data) {
-    if (IsBusy()) {
+    if (IsBusy() || halted_) {
         return false;
     }
+
+    cyw43_arch_lwip_begin();
 
     memset(&ctx_, 0, sizeof(ctx_));
     ctx_.self = this;
@@ -60,6 +62,7 @@ bool NetworkManager::StartSend(const char *data) {
     if (!ctx_.pcb) {
         printf("NetworkManager: Failed to create PCB\n");
         state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
         return false;
     }
 
@@ -76,15 +79,21 @@ bool NetworkManager::StartSend(const char *data) {
         tcp_abort(ctx_.pcb);
         ctx_.pcb = nullptr;
         state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
         return false;
     }
 
     state_         = SendState::CONNECTING;
     send_start_ms_ = to_ms_since_boot(get_absolute_time());
+
+    cyw43_arch_lwip_end();
+
     return true;
 }
 
 void NetworkManager::Poll() {
+    if (halted_) return;
+
     cyw43_arch_poll();
 
     // Check Wi-Fi Link status
@@ -103,7 +112,8 @@ void NetworkManager::Poll() {
     } else if (status != CYW43_LINK_UP) {
         if (wifi_retry_count_ >= 10) {
             printf("NetworkManager: Wi-Fi failed 10 times. Halting completely.\n");
-            while(true) { sleep_ms(1000); } // Error out
+            halted_ = true;
+            return;
         }
         printf("NetworkManager: Wi-Fi disconnected. Reconnecting in background (attempt %d/10)...\n", wifi_retry_count_ + 1);
         cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
@@ -117,10 +127,14 @@ void NetworkManager::Poll() {
         uint32_t now = to_ms_since_boot(get_absolute_time());
         if (now - send_start_ms_ > SEND_TIMEOUT_MS) {
             printf("NetworkManager: send timeout\n");
+
+            cyw43_arch_lwip_begin();
             if (ctx_.pcb) {
                 tcp_abort(ctx_.pcb);
                 ctx_.pcb = nullptr;
             }
+            cyw43_arch_lwip_end();
+
             state_ = SendState::ERROR;
         }
     }
