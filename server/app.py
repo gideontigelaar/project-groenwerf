@@ -29,7 +29,19 @@ def receive_data():
 
     data = request.get_json()
 
+    from datetime import datetime, timezone
+
     for item in data:
+
+        measured_at = item.get("measured_at")
+
+        # Convert UTC unix timestamp -> MySQL DATETIME string
+        if measured_at is not None:
+            measured_at = datetime.fromtimestamp(
+                measured_at,
+                tz=timezone.utc
+            ).strftime('%Y-%m-%d %H:%M:%S')
+
         sql_processed = """
         INSERT INTO sensor_readings
         (
@@ -42,14 +54,16 @@ def receive_data():
         )
         VALUES (%s, %s, %s, %s, %s, %s)
         """
+
         values_processed = (
             item.get("lat"),
             item.get("lon"),
             item.get("grassHeightTof"),
             item.get("grassHeightSonicMedian"),
             None,
-            item.get("measured_at")
+            measured_at
         )
+
         cursor.execute(sql_processed, values_processed)
 
         sql_raw = """
@@ -64,14 +78,16 @@ def receive_data():
         )
         VALUES (%s, %s, %s, %s, %s, %s)
         """
+
         values_raw = (
             item.get("sonic_raw_mm"),
             item.get("tof_raw_mm"),
             item.get("accel_raw_x"),
             item.get("accel_raw_y"),
             item.get("accel_raw_z"),
-            item.get("measured_at")
+            measured_at
         )
+
         cursor.execute(sql_raw, values_raw)
 
     db.commit()
