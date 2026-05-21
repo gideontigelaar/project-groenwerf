@@ -32,7 +32,7 @@ private:
     struct TcpContext {
         struct tcp_pcb *pcb   = nullptr;
         NetworkManager *self  = nullptr;
-        char request[4096]    = {};
+        char request[8192]    = {};
     };
 
     TcpContext   ctx_;

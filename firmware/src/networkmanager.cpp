@@ -56,6 +56,17 @@ bool NetworkManager::StartSend(const char *data) {
         data
     );
 
+    size_t body_len   = strlen(data);
+    size_t total_len  = strlen(ctx_.request);
+    size_t buf_size   = sizeof(ctx_.request);
+    printf("NetworkManager: body=%u bytes, total_request=%u bytes, buffer=%u bytes\n", (unsigned)body_len, (unsigned)total_len, (unsigned)buf_size);
+    if (total_len >= buf_size - 1) {
+        printf("NetworkManager: WARNING — request was likely truncated! Increase request buffer.\n");
+        state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
+        return false;
+    }
+
     printf("NetworkManager: Initializing connection to server for batch...\n");
 
     ctx_.pcb = tcp_new_ip_type(IPADDR_TYPE_V4);

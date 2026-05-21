@@ -73,29 +73,39 @@ def receive_data():
 
                     measured_at = None
 
+            tof_val          = item.get("grassHeightTof")
+            sonic_median_val = item.get("grassHeightSonicMedian")
+            sonic_accel_val  = item.get("grassHeightSonicAccel")
+
+            if not any([tof_val, sonic_median_val, sonic_accel_val]):
+                continue
+
             sql_processed = """
             INSERT INTO sensor_readings
             (
                 latitude,
                 longitude,
                 tof_mm,
-                sonic_mm,
+                sonic_median_mm,
+                sonic_accel_mm,
                 temperature,
                 measured_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
 
             values_processed = (
                 item.get("lat"),
                 item.get("lon"),
-                item.get("grassHeightTof"),
-                item.get("grassHeightSonicMedian"),
+                tof_val,
+                sonic_median_val,
+                sonic_accel_val,
                 item.get("temperature"),
                 measured_at
             )
 
             cursor.execute(sql_processed, values_processed)
+            processed_id = cursor.lastrowid
 
             sql_raw = """
             INSERT INTO raw_sensor_readings
@@ -120,6 +130,12 @@ def receive_data():
             )
 
             cursor.execute(sql_raw, values_raw)
+            raw_id = cursor.lastrowid
+
+            cursor.execute(
+                "INSERT INTO reading_pairs (raw_id, processed_id) VALUES (%s, %s)",
+                (raw_id, processed_id)
+            )
 
         db.commit()
 
@@ -253,7 +269,7 @@ HTML = """
 
 <div class="card">
     <div class="value" id="sonic">--</div>
-    <div class="label">Sonic (mm)</div>
+    <div class="label">Sonic Median / Accel (mm)</div>
 </div>
 
 <div class="card">
@@ -289,7 +305,7 @@ async function updateData() {
             data.tof_mm ?? '--';
 
         document.getElementById('sonic').textContent =
-            data.sonic_mm ?? '--';
+            (data.sonic_median_mm ?? '--') + ' / ' + (data.sonic_accel_mm ?? '--');
 
         document.getElementById('latlon').textContent =
             `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;

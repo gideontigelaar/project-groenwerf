@@ -26,8 +26,9 @@ constexpr uint LED_YELLOW = 19;
 constexpr uint32_t TOF_INTERVAL_MS   = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t ACCEL_INTERVAL_MS = 10;
-constexpr uint32_t PRINT_INTERVAL_MS = 250;
-constexpr int      SEND_BATCH_SIZE   = 5;
+constexpr uint32_t PRINT_INTERVAL_MS = 500;
+constexpr uint32_t LOOP_TICK_MS      = 5;
+constexpr int      SEND_BATCH_SIZE   = 10;
 
 // Network & System LED States
 enum class SystemState {
@@ -124,8 +125,10 @@ static std::string build_json_reading(
 
     if (sonic_ok && cal.sonic_calibrated) {
         obj += ",\"grassHeightSonicMedian\":" + std::to_string(processor.grassHeightSonicMedian());
+        obj += ",\"grassHeightSonicAccel\":"  + std::to_string(processor.grassHeightSonicAccel());
     } else {
         obj += ",\"grassHeightSonicMedian\":null";
+        obj += ",\"grassHeightSonicAccel\":null";
     }
 
     // --- Raw data ---
@@ -189,6 +192,17 @@ int main() {
     bool tof_ok   = tof.init();
     bool accel_ok = accel.init();
     bool sonic_ok = ultrasonic.init();
+
+    if (!tof_ok && !sonic_ok) {
+        printf("FATAL: Neither ToF nor Sonic sensor found — cannot measure grass height. Halting.\n");
+        while (true) {
+            update_system_leds(SystemState::ERROR_WARNING);
+            sleep_ms(100);
+        }
+    }
+    if (!tof_ok)   printf("WARNING: ToF sensor not found — ToF grass height unavailable.\n");
+    if (!sonic_ok) printf("WARNING: Sonic sensor not found — Sonic grass height unavailable.\n");
+    if (!accel_ok) printf("WARNING: Accelerometer not found — vibration compensation unavailable.\n");
 
     if (tof_ok) tof.startContinuous(TOF_INTERVAL_MS);
 
@@ -317,6 +331,7 @@ int main() {
             }
         }
 
-        sleep_ms(1);
+        uint32_t loop_elapsed = to_ms_since_boot(get_absolute_time()) - now_ms;
+        if (loop_elapsed < LOOP_TICK_MS) sleep_ms(LOOP_TICK_MS - loop_elapsed);
     }
 }
