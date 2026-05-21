@@ -7,33 +7,36 @@
 NetworkManager::NetworkManager()  {}
 NetworkManager::~NetworkManager() {}
 
-int NetworkManager::Init() {
+void NetworkManager::ConnectInitial() {
     sleep_ms(2000);
 
     if (cyw43_arch_init()) {
         printf("Wi-Fi init failed\n");
-        return -1;
+        return;
     }
 
     cyw43_arch_enable_sta_mode();
-    printf("Connecting to Wi-Fi...\n");
 
-    if (cyw43_arch_wifi_connect_timeout_ms(
-            WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("Failed to connect.\n");
-        return -1;
+    while (true) {
+        printf("Connecting to Wi-Fi...\n");
+        int err = cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 5000);
+        if (err == 0) {
+            break;
+        }
+        printf("Wi-Fi connection failed. Retrying in 5 seconds...\n");
+        sleep_ms(5000);
     }
 
     uint8_t *ip = (uint8_t *)&(cyw43_state.netif[0].ip_addr.addr);
     printf("Connected. IP: %d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
-    return 1;
 }
 
 bool NetworkManager::StartSend(const char *data) {
-    if (IsBusy()) {
-        printf("NetworkManager: send already in progress, dropping batch\n");
+    if (IsBusy() || halted_) {
         return false;
     }
+
+    cyw43_arch_lwip_begin();
 
     memset(&ctx_, 0, sizeof(ctx_));
     ctx_.self = this;
@@ -53,12 +56,24 @@ bool NetworkManager::StartSend(const char *data) {
         data
     );
 
-    printf("StartSend: queuing %d bytes\n", (int)strlen(data));
+    size_t body_len   = strlen(data);
+    size_t total_len  = strlen(ctx_.request);
+    size_t buf_size   = sizeof(ctx_.request);
+    printf("NetworkManager: body=%u bytes, total_request=%u bytes, buffer=%u bytes\n", (unsigned)body_len, (unsigned)total_len, (unsigned)buf_size);
+    if (total_len >= buf_size - 1) {
+        printf("NetworkManager: WARNING — request was likely truncated! Increase request buffer.\n");
+        state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
+        return false;
+    }
+
+    printf("NetworkManager: Initializing connection to server for batch...\n");
 
     ctx_.pcb = tcp_new_ip_type(IPADDR_TYPE_V4);
     if (!ctx_.pcb) {
-        printf("StartSend: failed to create PCB\n");
+        printf("NetworkManager: Failed to create PCB\n");
         state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
         return false;
     }
 
@@ -71,31 +86,68 @@ bool NetworkManager::StartSend(const char *data) {
 
     err_t err = tcp_connect(ctx_.pcb, &server_addr, SERVER_PORT, onConnected);
     if (err != ERR_OK) {
-        printf("StartSend: tcp_connect failed: %d\n", err);
+        printf("NetworkManager: tcp_connect failed: %d\n", err);
         tcp_abort(ctx_.pcb);
         ctx_.pcb = nullptr;
         state_ = SendState::ERROR;
+        cyw43_arch_lwip_end();
         return false;
     }
 
     state_         = SendState::CONNECTING;
     send_start_ms_ = to_ms_since_boot(get_absolute_time());
+
+    cyw43_arch_lwip_end();
+
     return true;
 }
 
 void NetworkManager::Poll() {
+    if (halted_) return;
+
     cyw43_arch_poll();
 
-    if (!IsBusy()) return;
+    // Check Wi-Fi Link status
+    int status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
 
-    uint32_t now = to_ms_since_boot(get_absolute_time());
-    if (now - send_start_ms_ > SEND_TIMEOUT_MS) {
-        printf("NetworkManager: send timeout\n");
-        if (ctx_.pcb) {
-            tcp_abort(ctx_.pcb);
-            ctx_.pcb = nullptr;
+    if (state_ == SendState::CONNECTING_WIFI) {
+        if (status == CYW43_LINK_UP) {
+            printf("NetworkManager: Wi-Fi reconnected!\n");
+            wifi_retry_count_ = 0;
+            state_ = SendState::IDLE;
+        } else {
+            if (to_ms_since_boot(get_absolute_time()) - wifi_retry_start_ms_ > 5000) {
+                state_ = SendState::IDLE; // Timeout, will retry on next poll if still down
+            }
         }
-        state_ = SendState::ERROR;
+    } else if (status != CYW43_LINK_UP) {
+        if (wifi_retry_count_ >= 10) {
+            printf("NetworkManager: Wi-Fi failed 10 times. Halting completely.\n");
+            halted_ = true;
+            return;
+        }
+        printf("NetworkManager: Wi-Fi disconnected. Reconnecting in background (attempt %d/10)...\n", wifi_retry_count_ + 1);
+        cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
+        wifi_retry_start_ms_ = to_ms_since_boot(get_absolute_time());
+        wifi_retry_count_++;
+        state_ = SendState::CONNECTING_WIFI;
+    }
+
+    // Handle HTTP Timeouts
+    if (state_ == SendState::CONNECTING || state_ == SendState::WAITING_RESPONSE) {
+        uint32_t now = to_ms_since_boot(get_absolute_time());
+        if (now - send_start_ms_ > SEND_TIMEOUT_MS) {
+            printf("NetworkManager: send timeout\n");
+
+            cyw43_arch_lwip_begin();
+            if (ctx_.pcb) {
+                tcp_abort(ctx_.pcb);
+                ctx_.pcb = nullptr;
+            }
+            cyw43_arch_lwip_end();
+
+            state_ = SendState::ERROR;
+        }
     }
 }
 
@@ -104,18 +156,18 @@ err_t NetworkManager::onConnected(void *arg, struct tcp_pcb *pcb, err_t err) {
     NetworkManager *self = ctx->self;
 
     if (err != ERR_OK) {
-        printf("onConnected: connection failed: %d\n", err);
+        printf("NetworkManager: Connection failed: %d\n", err);
         self->state_ = SendState::ERROR;
         return err;
     }
 
-    printf("onConnected: sending HTTP POST...\n");
+    printf("NetworkManager: Connected to server, posting batch...\n");
 
     err_t write_err = tcp_write(pcb, ctx->request,
                                 strlen(ctx->request),
                                 TCP_WRITE_FLAG_COPY);
     if (write_err != ERR_OK) {
-        printf("onConnected: tcp_write failed: %d\n", write_err);
+        printf("NetworkManager: tcp_write failed: %d\n", write_err);
         self->state_ = SendState::ERROR;
         return write_err;
     }
@@ -131,14 +183,13 @@ err_t NetworkManager::onReceive(void *arg, struct tcp_pcb *pcb,
     NetworkManager *self = ctx->self;
 
     if (p == nullptr) {
-        printf("onReceive: connection closed by server, send complete\n");
+        printf("NetworkManager: Response received, connection closed.\n");
         tcp_close(pcb);
         ctx->pcb  = nullptr;
         self->state_ = SendState::DONE;
         return ERR_OK;
     }
 
-    printf("onReceive: got %u bytes\n", p->tot_len);
     tcp_recved(pcb, p->tot_len);
     pbuf_free(p);
     return ERR_OK;
@@ -148,7 +199,7 @@ void NetworkManager::onError(void *arg, err_t err) {
     TcpContext     *ctx  = static_cast<TcpContext *>(arg);
     NetworkManager *self = ctx->self;
 
-    printf("onError: TCP error %d\n", err);
+    printf("NetworkManager: Connection error %d\n", err);
     ctx->pcb     = nullptr;
     self->state_ = SendState::ERROR;
 }

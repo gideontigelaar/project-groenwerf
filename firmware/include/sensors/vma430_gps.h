@@ -15,7 +15,7 @@
 
 #define ACK_TIMEOUT_MS 1500
 #define UBX_TIMEOUT_MS 1100
-#define UBX_MAX_PAYLOAD 40
+#define UBX_MAX_PAYLOAD 128
 
 typedef struct {
     int      year;
