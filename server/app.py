@@ -29,11 +29,8 @@ def receive_data():
 
     data = request.get_json()
 
-    print("Received:", data)
-
     for item in data:
-
-        sql = """
+        sql_processed = """
         INSERT INTO sensor_readings
         (
             latitude,
@@ -45,16 +42,35 @@ def receive_data():
         )
         VALUES (%s, %s, %s, %s, %s, NOW())
         """
-
-        values = (
+        values_processed = (
             item.get("lat"),
             item.get("lon"),
             item.get("grassHeightTof"),
             item.get("grassHeightSonicMedian"),
             None
         )
+        cursor.execute(sql_processed, values_processed)
 
-        cursor.execute(sql, values)
+        sql_raw = """
+        INSERT INTO raw_sensor_readings
+        (
+            sonic_raw_mm,
+            tof_raw_mm,
+            accel_raw_x,
+            accel_raw_y,
+            accel_raw_z,
+            measured_at
+        )
+        VALUES (%s, %s, %s, %s, %s, NOW())
+        """
+        values_raw = (
+            item.get("sonic_raw_mm"),
+            item.get("tof_raw_mm"),
+            item.get("accel_raw_x"),
+            item.get("accel_raw_y"),
+            item.get("accel_raw_z")
+        )
+        cursor.execute(sql_raw, values_raw)
 
     db.commit()
 
@@ -62,16 +78,13 @@ def receive_data():
 
 @app.route('/sensor-data', methods=['GET'])
 def get_data():
-
     cursor.execute("""
         SELECT *
         FROM sensor_readings
         ORDER BY id DESC
         LIMIT 1
     """)
-
     latest = cursor.fetchone()
-
     return jsonify(latest)
 
 

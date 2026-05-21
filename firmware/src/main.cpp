@@ -5,10 +5,9 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include <cstdio>
+#include <string>
 #include "processing/sensor_processor.h"
 #include "networkmanager.h"
-#include "lwip/netif.h"
-#include <string>
 
 // for ToF & ADXL345
 constexpr uint I2C0_SDA = 12;
@@ -36,58 +35,49 @@ static void i2c_scan(i2c_inst_t* i2c, const char* label) {
     printf("\n");
 }
 
-// Returns a single JSON object string for one reading.
-// All uncalibrated / offline fields are emitted as null (valid JSON).
 static std::string build_json_reading(
     bool tof_ok, bool sonic_ok, bool accel_ok, bool gps_ok,
     const CalibrationData& cal,
     SensorProcessor& processor)
 {
     std::string obj = "{";
+    RawData raw = processor.raw();
 
-    // --- ToF ---
+    // --- Processed data ---
     if (tof_ok && cal.tof_calibrated) {
         obj += "\"grassHeightTof\":" + std::to_string(processor.grassHeightTof());
     } else {
         obj += "\"grassHeightTof\":null";
     }
 
-    // --- Sonic variants ---
     if (sonic_ok && cal.sonic_calibrated) {
-        obj += ",\"grassHeightSonicMedian\":"    + std::to_string(processor.grassHeightSonicMedian());
-        if (accel_ok) {
-            obj += ",\"grassHeightSonicAccel\":"      + std::to_string(processor.grassHeightSonicAccel());
-            obj += ",\"grassHeightSonicMedianAccel\":" + std::to_string(processor.grassHeightSonicMedianAccel());
-        } else {
-            obj += ",\"grassHeightSonicAccel\":null";
-            obj += ",\"grassHeightSonicMedianAccel\":null";
-        }
+        obj += ",\"grassHeightSonicMedian\":" + std::to_string(processor.grassHeightSonicMedian());
     } else {
         obj += ",\"grassHeightSonicMedian\":null";
-        obj += ",\"grassHeightSonicAccel\":null";
-        obj += ",\"grassHeightSonicMedianAccel\":null";
     }
 
-    // --- GPS ---
+    // --- Raw data ---
+    obj += ",\"sonic_raw_mm\":"  + (sonic_ok ? std::to_string(raw.sonic_mm) : "null");
+    obj += ",\"tof_raw_mm\":"    + (tof_ok ? std::to_string(raw.tof_mm) : "null");
+    obj += ",\"accel_raw_x\":"   + (accel_ok ? std::to_string(raw.accel_x) : "null");
+    obj += ",\"accel_raw_y\":"   + (accel_ok ? std::to_string(raw.accel_y) : "null");
+    obj += ",\"accel_raw_z\":"   + (accel_ok ? std::to_string(raw.accel_z) : "null");
+
+    // --- GPS data ---
     if (gps_ok && utc_time.valid) {
-        // ISO 8601 timestamp
         char ts[32];
         snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02dZ",
             utc_time.year, utc_time.month, utc_time.day,
             utc_time.hour, utc_time.minute, utc_time.second);
-        char coords[64];
-        snprintf(coords, sizeof(coords), "%.7f", location.latitude);
-        std::string lat_str(coords);
-        snprintf(coords, sizeof(coords), "%.7f", location.longitude);
-        std::string lon_str(coords);
+        char lat_str[32], lon_str[32];
+        snprintf(lat_str, sizeof(lat_str), "%.7f", location.latitude);
+        snprintf(lon_str, sizeof(lon_str), "%.7f", location.longitude);
 
         obj += ",\"gpsTime\":\"" + std::string(ts) + "\"";
-        obj += ",\"lat\":"  + lat_str;
-        obj += ",\"lon\":"  + lon_str;
+        obj += ",\"lat\":" + std::string(lat_str);
+        obj += ",\"lon\":" + std::string(lon_str);
     } else {
-        obj += ",\"gpsTime\":null";
-        obj += ",\"lat\":null";
-        obj += ",\"lon\":null";
+        obj += ",\"gpsTime\":null,\"lat\":null,\"lon\":null";
     }
 
     obj += "}";
@@ -102,30 +92,19 @@ int main() {
     }
     sleep_ms(100);
 
+    printf("=== Grass Monitor Pico ===\n\n");
+
+    // Wi-Fi connection loop
     NetworkManager nm;
-    nm.Init();
+    nm.ConnectInitial();
 
-    nm.Poll();
-
-    if (nm.IsDone()) {
-        printf("Send complete\n");
-        nm.ResetState();
-    }
-    if (nm.HasError()) {
-        printf("Send failed\n");
-        nm.ResetState();
-    }
-
-    int         readingCounter = 0;
-    std::string readings       = "";   // accumulates JSON objects
-
+    // Init sensors
     i2c_init(i2c0, I2C_FREQ);
     gpio_set_function(I2C0_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C0_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C0_SDA);
     gpio_pull_up(I2C0_SCL);
 
-    printf("=== Grass Monitor Pico ===\n\n");
     i2c_scan(i2c0, "i2c0 (GP12/GP13)");
 
     TofSensor tof(i2c0, TofSensor::DEFAULT_ADDR);
@@ -135,41 +114,40 @@ int main() {
     bool tof_ok   = tof.init();
     bool accel_ok = accel.init();
     bool sonic_ok = ultrasonic.init();
-    bool gps_ok   = gps_init();
 
-    if (!tof_ok) {
-        printf("WARNING: ToF init failed, continuing without it\n\n");
-    } else {
-        printf("ToF initialised OK\n\n");
-        tof.startContinuous(TOF_INTERVAL_MS);
-    }
+    if (tof_ok) tof.startContinuous(TOF_INTERVAL_MS);
 
-    if (!accel_ok) {
-        printf("WARNING: ADXL345 init failed, continuing without it\n\n");
-    } else {
-        printf("ADXL345 initialised OK\n\n");
-    }
+    // Calibration
+    SensorProcessor processor;
+    printf("\nCalibrating sensors based on ground height (keep the mower still)...\n");
 
-    if (!sonic_ok) {
-        printf("WARNING: RCWL1604 init failed, continuing without it\n\n");
-    } else {
-        printf("RCWL1604 initialised OK\n\n");
-    }
+    int cal_samples = 0;
+    while(cal_samples < 25) {
+        uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-    if (!gps_ok) {
-        printf("WARNING: GPS init failed, continuing without it\n\n");
-    } else {
-        printf("VMA430 GPS initialised OK\n\n");
+        if (tof_ok && tof.dataReady()) processor.parseTof(tof.readDistance());
+        if (sonic_ok && (now_ms % 50 == 0)) processor.parseSonic(ultrasonic.readDistance());
+
+        sleep_ms(20);
+        cal_samples++;
     }
+    processor.calibrate();
+    printf("Calibration complete.\n\n");
+
+    // Init GPS in background
+    bool gps_ok = gps_init();
+    if (!gps_ok) printf("GPS: Waiting for connection in background...\n\n");
 
     uint32_t last_tof_ms   = 0;
     uint32_t last_sonic_ms = 0;
     uint32_t last_accel_ms = 0;
     uint32_t last_print_ms = 0;
 
-    SensorProcessor processor;
+    int readingCounter = 0;
+    std::string readings = "";
 
     while (true) {
+        nm.Poll();
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
         // ToF
@@ -186,7 +164,7 @@ int main() {
             last_sonic_ms = now_ms;
         }
 
-        // Accelerometer
+        // Accel
         if (accel_ok && (now_ms - last_accel_ms) >= ACCEL_INTERVAL_MS) {
             AccelData accel_data = accel.read();
             processor.parseAccel(accel_data.x, accel_data.y, accel_data.z, now_ms);
@@ -195,103 +173,50 @@ int main() {
 
         // GPS
         if (gps_ok) {
-            if (gps_get_ubx_packet()) {
-                gps_parse_ubx_data();
-            }
+            if (gps_get_ubx_packet()) gps_parse_ubx_data();
         }
 
-        // Print + batch send
+        // Print + accumulate batch
         if ((now_ms - last_print_ms) >= PRINT_INTERVAL_MS) {
-
-            CalibrationData cal = processor.get_calibration();
-            printf("Calibrated (%.2f, %.2f)\n\n",
-                cal.tof_calibrated  ? cal.tof_offset_mm   : -1.0f,
-                cal.sonic_calibrated ? cal.sonic_offset_mm : -1.0f
-            );
-
-            // --- Raw ---
+            readingCounter++;
             RawData raw = processor.raw();
-            printf("Raw:\n");
 
-            if (tof_ok) {
-                printf("  ToF: %u mm\n", raw.tof_mm);
+            printf("--- Reading (%d/%d) ---\n", readingCounter, SEND_BATCH_SIZE);
+            printf("  Raw:  ToF:%4d mm | Sonic:%4d mm | Accel: X:%.2f Y:%.2f Z:%.2f\n",
+                raw.tof_mm, raw.sonic_mm, raw.accel_x, raw.accel_y, raw.accel_z);
+            printf("  Proc: ToF:%4d mm | SonicMed:%4d mm | SonicAcc:%4d mm\n",
+                processor.grassHeightTof(), processor.grassHeightSonicMedian(), processor.grassHeightSonicAccel());
+
+            if (gps_ok && utc_time.valid) {
+                printf("  GPS:  %04d-%02d-%02d %02d:%02d:%02d | Lat:%.6f Lon:%.6f\n",
+                    utc_time.year, utc_time.month, utc_time.day,
+                    utc_time.hour, utc_time.minute, utc_time.second,
+                    location.latitude, location.longitude);
             } else {
-                printf("  ToF: [offline]\n");
+                printf("  GPS:  Searching / No Fix\n");
             }
+            printf("\n");
 
-            if (sonic_ok) {
-                printf("  Sonic: %u mm\n", raw.sonic_mm);
-            } else {
-                printf("  Sonic: [offline]\n");
-            }
-
-            if (accel_ok) {
-                printf("  Accel: x(%.2f) y(%.2f) z(%.2f)\n\n",
-                    raw.accel_x, raw.accel_y, raw.accel_z);
-            } else {
-                printf("  Accel: [offline]\n\n");
-            }
-
-            // --- Processed ---
-            printf("Processed:\n");
-
-            if (tof_ok) {
-                printf("  ToF: %u mm\n", processor.grassHeightTof());
-            } else {
-                printf("  ToF: [offline]\n");
-            }
-
-            if (sonic_ok) {
-                printf("  Sonic (median): %u mm\n", processor.grassHeightSonicMedian());
-                if (accel_ok) {
-                    printf("  Sonic (accel): %u mm\n",         processor.grassHeightSonicAccel());
-                    printf("  Sonic (median+accel): %u mm\n",  processor.grassHeightSonicMedianAccel());
-                } else {
-                    printf("  Sonic (accel): [accel offline]\n");
-                    printf("  Sonic (median+accel): [accel offline]\n");
-                }
-            } else {
-                printf("  Sonic (median): [offline]\n");
-                printf("  Sonic (accel): [offline]\n");
-                printf("  Sonic (median+accel): [offline]\n");
-            }
-
-            if (gps_ok) {
-                if (utc_time.valid) {
-                    printf("  GPS time: %04d-%02d-%02d %02d:%02d:%02d UTC\n",
-                        utc_time.year, utc_time.month, utc_time.day,
-                        utc_time.hour, utc_time.minute, utc_time.second);
-                    printf("  GPS pos:  lat=%.7f lon=%.7f\n",
-                        location.latitude, location.longitude);
-                } else {
-                    printf("  GPS: waiting for fix...\n");
-                }
-            } else {
-                printf("  GPS: [offline]\n");
-            }
-
-            printf("------------------------------\n\n");
             last_print_ms = now_ms;
 
-            // Accumulate into the JSON array if at least one sensor is calibrated
-            if (cal.tof_calibrated || cal.sonic_calibrated) {
-                if (readingCounter > 0) readings += ",";
-                readings += build_json_reading(
-                    tof_ok, sonic_ok, accel_ok, gps_ok, cal, processor);
-                readingCounter++;
-            }
+            // Accumulate data
+            if (readingCounter > 1) readings += ",";
+            readings += build_json_reading(tof_ok, sonic_ok, accel_ok, gps_ok, processor.get_calibration(), processor);
 
-            // Send when the batch is full
+            // Transmit batch
             if (readingCounter >= SEND_BATCH_SIZE) {
-            std::string payload = "[" + readings + "]";
-            printf("Sending: %s\n\n", payload.c_str());
-            if (nm.StartSend(payload.c_str())) {
-                readings       = "";
-                readingCounter = 0;
-            } else {
-                printf("Failed to start send, will retry in next batch\n\n");
+                if (!nm.IsBusy()) {
+                    std::string payload = "[" + readings + "]";
+                    if (nm.StartSend(payload.c_str())) {
+                        readings = "";
+                        readingCounter = 0;
+                    }
+                } else {
+                    printf("NetworkManager is busy, buffering readings...\n\n");
+                    // Wait for next loop if still busy, keep counter at SEND_BATCH_SIZE
+                    readingCounter--;
+                }
             }
-        }
         }
 
         sleep_ms(1);
