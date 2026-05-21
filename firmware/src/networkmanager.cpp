@@ -4,16 +4,8 @@
 #include <cstdio>
 #include <cstring>
 
-// ---------------------------------------------------------------------------
-// Constructor / Destructor
-// ---------------------------------------------------------------------------
-
 NetworkManager::NetworkManager()  {}
 NetworkManager::~NetworkManager() {}
-
-// ---------------------------------------------------------------------------
-// Init — connect to Wi-Fi (blocking once at startup, that's fine)
-// ---------------------------------------------------------------------------
 
 int NetworkManager::Init() {
     sleep_ms(2000);
@@ -37,31 +29,27 @@ int NetworkManager::Init() {
     return 1;
 }
 
-// ---------------------------------------------------------------------------
-// StartSend — build request and kick off tcp_connect (non-blocking)
-// ---------------------------------------------------------------------------
-
 bool NetworkManager::StartSend(const char *data) {
     if (IsBusy()) {
         printf("NetworkManager: send already in progress, dropping batch\n");
         return false;
     }
 
-    // Reset context
     memset(&ctx_, 0, sizeof(ctx_));
     ctx_.self = this;
 
-    // Build the HTTP POST request
     snprintf(ctx_.request, sizeof(ctx_.request),
         "POST %s HTTP/1.1\r\n"
         "Host: %s:%d\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %d\r\n"
+        "X-API-Key: %s\r\n"
         "Connection: close\r\n"
         "\r\n"
         "%s",
         HTTP_PATH, SERVER_IP, SERVER_PORT,
         (int)strlen(data),
+        API_KEY,
         data
     );
 
@@ -95,12 +83,7 @@ bool NetworkManager::StartSend(const char *data) {
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// Poll — call every main-loop iteration; handles timeout and lwIP ticks
-// ---------------------------------------------------------------------------
-
 void NetworkManager::Poll() {
-    // Always let lwIP do its work
     cyw43_arch_poll();
 
     if (!IsBusy()) return;
@@ -115,10 +98,6 @@ void NetworkManager::Poll() {
         state_ = SendState::ERROR;
     }
 }
-
-// ---------------------------------------------------------------------------
-// lwIP callbacks
-// ---------------------------------------------------------------------------
 
 err_t NetworkManager::onConnected(void *arg, struct tcp_pcb *pcb, err_t err) {
     TcpContext     *ctx  = static_cast<TcpContext *>(arg);
@@ -152,7 +131,6 @@ err_t NetworkManager::onReceive(void *arg, struct tcp_pcb *pcb,
     NetworkManager *self = ctx->self;
 
     if (p == nullptr) {
-        // Server closed connection — we're done
         printf("onReceive: connection closed by server, send complete\n");
         tcp_close(pcb);
         ctx->pcb  = nullptr;
@@ -170,7 +148,6 @@ void NetworkManager::onError(void *arg, err_t err) {
     TcpContext     *ctx  = static_cast<TcpContext *>(arg);
     NetworkManager *self = ctx->self;
 
-    // lwIP has already freed the PCB when this fires
     printf("onError: TCP error %d\n", err);
     ctx->pcb     = nullptr;
     self->state_ = SendState::ERROR;

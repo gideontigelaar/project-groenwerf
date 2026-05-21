@@ -19,6 +19,11 @@ cp credentials.py.template credentials.py
 nano credentials.py
 ```
 
+The API key must match the one in `firmware/include/credentials.h`. Generate one with:
+```bash
+openssl rand -hex 32
+```
+
 ## Running manually
 
 In `server/`:
