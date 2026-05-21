@@ -162,9 +162,9 @@ int main() {
     // Init LEDs
     init_system_leds();
 
-    while (!stdio_usb_connected()) {
-        sleep_ms(100);
-    }
+    // while (!stdio_usb_connected()) {
+    //     sleep_ms(100);
+    // }
     sleep_ms(100);
 
     printf("=== Grass Monitor Pico ===\n\n");
