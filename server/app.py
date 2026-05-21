@@ -24,6 +24,9 @@ cursor = db.cursor(dictionary=True)
 @app.route('/sensor-data', methods=['POST'])
 def receive_data():
 
+    if request.headers.get('X-API-Key') != credentials.API_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+
     data = request.get_json()
 
     print("Received:", data)

@@ -17,10 +17,17 @@ export PICO_SDK_PATH=~/.pico-sdk/sdk/2.2.0
 
 ## Credentials
 
-Copy the template and fill in your WiFi and server details:
+Copy the template and fill in your WiFi, server details, and API key:
 ```bash
 cp include/credentials.h.template include/credentials.h
 ```
+
+Generate a key with:
+```bash
+openssl rand -hex 32
+```
+
+The same key goes in both `firmware/include/credentials.h` and `server/credentials.py`.
 
 ## Clean build
 
