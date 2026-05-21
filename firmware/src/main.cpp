@@ -145,11 +145,11 @@ static std::string build_json_reading(
         snprintf(lat_str, sizeof(lat_str), "%.7f", location.latitude);
         snprintf(lon_str, sizeof(lon_str), "%.7f", location.longitude);
 
-        obj += ",\"gpsTime\":\"" + std::string(ts) + "\"";
+        obj += ",\"measured_at\":\"" + std::string(ts) + "\"";
         obj += ",\"lat\":" + std::string(lat_str);
         obj += ",\"lon\":" + std::string(lon_str);
     } else {
-        obj += ",\"gpsTime\":null,\"lat\":null,\"lon\":null";
+        obj += ",\"measured_at\":null,\"lat\":null,\"lon\":null";
     }
 
     obj += "}";

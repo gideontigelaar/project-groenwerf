@@ -40,14 +40,15 @@ def receive_data():
             temperature,
             measured_at
         )
-        VALUES (%s, %s, %s, %s, %s, NOW())
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
         values_processed = (
             item.get("lat"),
             item.get("lon"),
             item.get("grassHeightTof"),
             item.get("grassHeightSonicMedian"),
-            None
+            None,
+            item.get("measured_at")
         )
         cursor.execute(sql_processed, values_processed)
 
@@ -61,14 +62,15 @@ def receive_data():
             accel_raw_z,
             measured_at
         )
-        VALUES (%s, %s, %s, %s, %s, NOW())
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
         values_raw = (
             item.get("sonic_raw_mm"),
             item.get("tof_raw_mm"),
             item.get("accel_raw_x"),
             item.get("accel_raw_y"),
-            item.get("accel_raw_z")
+            item.get("accel_raw_z"),
+            item.get("measured_at")
         )
         cursor.execute(sql_raw, values_raw)
 

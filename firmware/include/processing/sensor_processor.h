@@ -41,7 +41,7 @@ public:
     void reset();
 
 private:
-    static constexpr float  KNOWN_HEIGHT_MM     = 185.0f; // distance from sensor to ground
+    static constexpr float  KNOWN_HEIGHT_MM     = 750.0f; // distance from sensor to ground
     static constexpr int    CALIBRATION_SAMPLES = 10;
 
     static constexpr float  VIBRATION_LOW_G     = 0.05f; // idle threshold
