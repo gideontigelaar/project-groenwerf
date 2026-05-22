@@ -10,18 +10,22 @@
 #include "processing/sensor_processor.h"
 #include "networkmanager.h"
 
-// for ToF & ADXL345
-constexpr uint I2C0_SDA = 12;
-constexpr uint I2C0_SCL = 13;
+// for ToF (I2C0)
+constexpr uint I2C0_SDA = 20;
+constexpr uint I2C0_SCL = 21;
 constexpr uint I2C_FREQ = 400000;
 
+// for ADXL345 (I2C1)
+constexpr uint I2C1_SDA = 26;
+constexpr uint I2C1_SCL = 27;
+
 // for RCWL-1604
-constexpr uint RCWL_TRIG = 14;
-constexpr uint RCWL_ECHO = 15;
+constexpr uint RCWL_TRIG = 18;
+constexpr uint RCWL_ECHO = 19;
 
 // for Network LEDs
-constexpr uint LED_GREEN = 18;
-constexpr uint LED_YELLOW = 19;
+constexpr uint LED_GREEN  = 22;
+constexpr uint LED_YELLOW = 28;
 
 constexpr uint32_t TOF_INTERVAL_MS   = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
@@ -56,8 +60,8 @@ void init_system_leds() {
 void update_system_leds(SystemState state) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-    static SystemState last_state = SystemState::READING;
-    static uint32_t state_start_ms = 0;
+    static SystemState last_state    = SystemState::READING;
+    static uint32_t state_start_ms   = 0;
 
     if (state != last_state) {
         state_start_ms = now_ms;
@@ -183,10 +187,17 @@ int main() {
     gpio_pull_up(I2C0_SDA);
     gpio_pull_up(I2C0_SCL);
 
-    i2c_scan(i2c0, "i2c0 (GP12/GP13)");
+    i2c_init(i2c1, I2C_FREQ);
+    gpio_set_function(I2C1_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C1_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C1_SDA);
+    gpio_pull_up(I2C1_SCL);
+
+    i2c_scan(i2c0, "i2c0 ToF (GP20/GP21)");
+    i2c_scan(i2c1, "i2c1 ADXL345 (GP26/GP27)");
 
     TofSensor tof(i2c0, TofSensor::DEFAULT_ADDR);
-    ADXL345   accel(i2c0, ADXL345::DEFAULT_ADDR);
+    ADXL345   accel(i2c1, ADXL345::DEFAULT_ADDR);
     RCWL1604  ultrasonic(RCWL_TRIG, RCWL_ECHO);
 
     bool tof_ok   = tof.init();
@@ -263,6 +274,7 @@ int main() {
             continue;
         }
 
+        // ToF
         if (tof_ok && (now_ms - last_tof_ms) >= TOF_INTERVAL_MS) {
             if (tof.dataReady()) {
                 processor.parseTof(tof.readDistance());

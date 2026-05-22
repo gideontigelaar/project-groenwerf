@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define GPS_UART      uart1
-#define GPS_UART_TX   4
-#define GPS_UART_RX   5
+#define GPS_UART      uart0
+#define GPS_UART_TX   12
+#define GPS_UART_RX   13
 #define GPS_BAUD      9600
 
 #define UBX_SYNC_1    0xB5
