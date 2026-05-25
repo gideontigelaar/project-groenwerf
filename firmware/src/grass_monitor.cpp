@@ -121,7 +121,10 @@ void GrassMonitor::pollNetwork() {
 void GrassMonitor::pollSensors(uint32_t now_ms) {
     if (_tof_ok && (now_ms - _last_tof_ms) >= Config::Timing::TOF_INTERVAL_MS) {
         if (_tof.dataReady()) {
-            _processor.parseTof(_tof.readDistance());
+            // ensure valid bounce before parsing
+            if (_tof.rangeStatus() == 0) {
+                _processor.parseTof(_tof.readDistance());
+            }
             _last_tof_ms = now_ms;
         }
     }
@@ -182,8 +185,8 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
     LOG_RAW("--- reading (%d/%d) ---\n", _reading_counter, Config::Network::SEND_BATCH_SIZE);
     LOG_RAW("  raw:  tof:%4d mm | sonic:%4d mm | accel: x:%.2f y:%.2f z:%.2f\n",
         raw.tof_mm, raw.sonic_mm, raw.accel_x, raw.accel_y, raw.accel_z);
-    LOG_RAW("  proc: tof:%4d mm | sonicmed:%4d mm | sonicacc:%4d mm | temp:%.1f C (%s)\n",
-        _processor.grassHeightTof(), _processor.grassHeightSonicMedian(), _processor.grassHeightSonicAccel(), raw.temperature_c,
+    LOG_RAW("  proc: tof:%4d mm | sonicfinal:%4d mm | temp:%.1f C (%s)\n",
+        _processor.grassHeightTof(), _processor.grassHeightSonicMedianAccel(), raw.temperature_c,
         _using_tmp36 ? "tmp36" : "internal");
 
     if (_gps_ok && utc_time.valid) {
@@ -290,7 +293,9 @@ void GrassMonitor::calibrateSensors() {
         updateSystemLeds(SystemState::CALIBRATING);
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-        if (_tof_ok && _tof.dataReady()) _processor.parseTof(_tof.readDistance());
+        if (_tof_ok && _tof.dataReady()) {
+            if (_tof.rangeStatus() == 0) _processor.parseTof(_tof.readDistance());
+        }
         if (_sonic_ok && (now_ms % 50 == 0)) _processor.parseSonic(_ultrasonic.readDistance());
 
         sleep_ms(20);
@@ -319,11 +324,9 @@ std::string GrassMonitor::buildJsonReading() {
     }
 
     if (_sonic_ok && cal.sonic_calibrated) {
-        obj += ",\"grassHeightSonicMedian\":" + std::to_string(_processor.grassHeightSonicMedian());
-        obj += ",\"grassHeightSonicAccel\":"  + std::to_string(_processor.grassHeightSonicAccel());
+        obj += ",\"grassHeightSonicFinal\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
     } else {
-        obj += ",\"grassHeightSonicMedian\":null";
-        obj += ",\"grassHeightSonicAccel\":null";
+        obj += ",\"grassHeightSonicFinal\":null";
     }
 
     obj += ",\"sonic_raw_mm\":"  + (_sonic_ok ? std::to_string(raw.sonic_mm) : "null");
@@ -332,6 +335,7 @@ std::string GrassMonitor::buildJsonReading() {
     obj += ",\"accel_raw_y\":"   + (_accel_ok ? std::to_string(raw.accel_y) : "null");
     obj += ",\"accel_raw_z\":"   + (_accel_ok ? std::to_string(raw.accel_z) : "null");
     obj += ",\"temperature\":"   + std::to_string(raw.temperature_c);
+    obj += ",\"spike_detected\":" + std::string(_processor.lastWasSpike() ? "true" : "false");
 
     if (_gps_ok && utc_time.valid) {
         char ts[32];

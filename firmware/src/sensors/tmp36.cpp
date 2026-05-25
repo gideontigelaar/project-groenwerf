@@ -16,7 +16,7 @@ bool TMP36::init() {
 float TMP36::readTemperature() {
     adc_select_input(_adc_channel);
 
-    // oversampling to kill adc noise
+    // oversample to kill adc noise
     uint32_t raw_sum = 0;
     const int num_samples = 50;
 
@@ -37,7 +37,6 @@ float TMP36::readTemperature() {
 
 bool TMP36::isConnected() {
     float temp = readTemperature();
-    // allow wider range so offset doesn't trigger disconnect
     if (temp < -40.0f || temp > 125.0f) {
         return false;
     }

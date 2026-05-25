@@ -41,6 +41,8 @@ public:
     // vibration intensity in g rms
     float vibrationIntensity() const { return _vibration.intensity(); }
 
+    bool lastWasSpike() const { return _vibration.lastWasSpike(); }
+
     void reset();
 
 private:

@@ -58,9 +58,7 @@ def receive_data():
             measured_at = item.get("measured_at")
 
             if measured_at is not None:
-
                 try:
-
                     # Parse ISO 8601 UTC timestamp
                     measured_at = datetime.strptime(
                         measured_at,
@@ -68,17 +66,17 @@ def receive_data():
                     ).strftime("%Y-%m-%d %H:%M:%S")
 
                 except (ValueError, TypeError):
-
                     print("Invalid timestamp:", measured_at)
-
                     measured_at = None
 
-            tof_val          = item.get("grassHeightTof")
-            sonic_median_val = item.get("grassHeightSonicMedian")
-            sonic_accel_val  = item.get("grassHeightSonicAccel")
+            tof_val         = item.get("grassHeightTof")
+            sonic_final_val = item.get("grassHeightSonicFinal")
 
-            raw_sonic  = item.get("sonic_raw_mm")
-            raw_tof    = item.get("tof_raw_mm")
+            spike_str       = item.get("spike_detected")
+            spike_detected  = 1 if spike_str == "true" else 0
+
+            raw_sonic   = item.get("sonic_raw_mm")
+            raw_tof     = item.get("tof_raw_mm")
             raw_accel_x = item.get("accel_raw_x")
             raw_accel_y = item.get("accel_raw_y")
             raw_accel_z = item.get("accel_raw_z")
@@ -86,16 +84,16 @@ def receive_data():
             processed_id = None
             raw_id       = None
 
-            if any([tof_val, sonic_median_val, sonic_accel_val]):
+            if any([tof_val, sonic_final_val]):
                 sql_processed = """
                 INSERT INTO sensor_readings
                 (
                     latitude,
                     longitude,
                     tof_mm,
-                    sonic_median_mm,
-                    sonic_accel_mm,
+                    sonic_final_mm,
                     temperature,
+                    spike_detected,
                     measured_at
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -104,9 +102,9 @@ def receive_data():
                     item.get("lat"),
                     item.get("lon"),
                     tof_val,
-                    sonic_median_val,
-                    sonic_accel_val,
+                    sonic_final_val,
                     item.get("temperature"),
+                    spike_detected,
                     measured_at
                 )
                 cursor.execute(sql_processed, values_processed)
@@ -147,7 +145,6 @@ def receive_data():
         return jsonify({"status": "ok"}), 200
 
     except Error as e:
-
         if db:
             db.rollback()
 
@@ -157,7 +154,6 @@ def receive_data():
         }), 500
 
     except Exception as e:
-
         if db:
             db.rollback()
 
@@ -167,10 +163,8 @@ def receive_data():
         }), 500
 
     finally:
-
         if cursor:
             cursor.close()
-
         if db and db.is_connected():
             db.close()
 
@@ -200,17 +194,14 @@ def get_data():
         return jsonify(latest)
 
     except Error as e:
-
         return jsonify({
             "error": "database error",
             "details": str(e)
         }), 500
 
     finally:
-
         if cursor:
             cursor.close()
-
         if db and db.is_connected():
             db.close()
 
@@ -243,6 +234,12 @@ HTML = """
             border-radius: 12px;
             width: 320px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: background-color 0.3s;
+        }
+
+        .card.spike {
+            background-color: #ffebee;
+            border-left: 5px solid #f44336;
         }
 
         .label {
@@ -272,14 +269,20 @@ HTML = """
     <div class="label">ToF (mm)</div>
 </div>
 
-<div class="card">
+<div class="card" id="sonic_card">
     <div class="value" id="sonic">--</div>
-    <div class="label">Sonic Median / Accel (mm)</div>
+    <div class="label">Sonic Final (mm)</div>
+    <div class="label" id="spike_label" style="display:none; color:#f44336; font-weight:bold; font-size:0.8em; margin-top:5px;">SPIKE DETECTED</div>
 </div>
 
 <div class="card">
     <div class="value" id="latlon">--</div>
     <div class="label">Location</div>
+</div>
+
+<div class="card">
+    <div class="value" id="temperature">--</div>
+    <div class="label">Temperature (°C)</div>
 </div>
 
 <div class="card">
@@ -292,7 +295,6 @@ HTML = """
 async function updateData() {
 
     try {
-
         const res = await fetch('/sensor-data');
 
         if (!res.ok) {
@@ -310,23 +312,33 @@ async function updateData() {
             data.tof_mm ?? '--';
 
         document.getElementById('sonic').textContent =
-            (data.sonic_median_mm ?? '--') + ' / ' + (data.sonic_accel_mm ?? '--');
+            data.sonic_final_mm ?? '--';
 
         document.getElementById('latlon').textContent =
             `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
 
+        document.getElementById('temperature').textContent =
+            data.temperature ?? '--';
+
         document.getElementById('timestamp').textContent =
             data.measured_at ?? '--';
 
+        const sonicCard = document.getElementById('sonic_card');
+        const spikeLabel = document.getElementById('spike_label');
+        if (data.spike_detected === 1) {
+            sonicCard.classList.add('spike');
+            spikeLabel.style.display = 'block';
+        } else {
+            sonicCard.classList.remove('spike');
+            spikeLabel.style.display = 'none';
+        }
+
     } catch (err) {
-
         console.error('Error updating data:', err);
-
     }
 }
 
 updateData();
-
 setInterval(updateData, 2000);
 
 </script>
@@ -336,7 +348,6 @@ setInterval(updateData, 2000);
 """
 
 if __name__ == '__main__':
-
     app.run(
         host=credentials.FLASK_HOST,
         port=credentials.FLASK_PORT,

@@ -33,9 +33,9 @@ CREATE TABLE sensor_readings (
     latitude        DECIMAL(10, 7)  DEFAULT NULL,
     longitude       DECIMAL(10, 7)  DEFAULT NULL,
     tof_mm          SMALLINT UNSIGNED DEFAULT NULL,
-    sonic_median_mm SMALLINT UNSIGNED DEFAULT NULL,
-    sonic_accel_mm  SMALLINT UNSIGNED DEFAULT NULL,
+    sonic_final_mm  SMALLINT UNSIGNED DEFAULT NULL,
     temperature     DECIMAL(5, 2)   DEFAULT NULL,
+    spike_detected  BOOLEAN         DEFAULT FALSE,
     measured_at     DATETIME        DEFAULT NULL,
     PRIMARY KEY (id)
 );

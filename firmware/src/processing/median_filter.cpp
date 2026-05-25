@@ -13,7 +13,7 @@ float MedianFilter::get() const {
     std::vector<float> sorted(_buf.begin(), _buf.begin() + _size);
     std::sort(sorted.begin(), sorted.end());
 
-    // correct mathematical median for even-sized arrays
+    // mathematical median for even-sized arrays
     if (_size % 2 == 0) {
         return (sorted[(_size / 2) - 1] + sorted[_size / 2]) / 2.0f;
     } else {
