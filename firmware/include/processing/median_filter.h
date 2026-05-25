@@ -11,6 +11,9 @@ public:
     void push(float value);
     float get() const;
 
+    // check signal stability
+    float variance() const;
+
     size_t count() const { return _count; }
     void reset() {
         _head = 0;

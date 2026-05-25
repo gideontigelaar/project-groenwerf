@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "config.h"
 
 class VibrationProcessor {
 public:
@@ -19,10 +20,6 @@ public:
     void reset();
 
 private:
-    static constexpr float HPF_ALPHA            = 0.95f; // high-pass filter
-    static constexpr float RMS_ALPHA            = 0.995f;
-    static constexpr float SPIKE_THRESHOLD_G    = 0.3f; // spike rejection threshold
-
     // filter state
     float _prev_raw         = 0.0f;
     float _prev_hpf         = 0.0f;
@@ -35,4 +32,5 @@ private:
     // spike rejection state
     mutable uint16_t _last_good_mm      = 0;
     mutable bool     _last_was_spike    = false;
+    mutable int      _spike_hold_count  = 0;
 };
