@@ -2,9 +2,11 @@
 #include "sensors/adxl345.h"
 #include "sensors/rcwl1604.h"
 #include "sensors/vma430_gps.h"
+#include "sensors/tmp36.h"
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "hardware/gpio.h"
+#include "hardware/adc.h"
 #include <cstdio>
 #include <string>
 #include "processing/sensor_processor.h"
@@ -16,22 +18,26 @@ constexpr uint I2C0_SCL = 21;
 constexpr uint I2C_FREQ = 400000;
 
 // for ADXL345 (I2C1)
-constexpr uint I2C1_SDA = 26;
-constexpr uint I2C1_SCL = 27;
+constexpr uint I2C1_SDA = 14;
+constexpr uint I2C1_SCL = 15;
 
 // for RCWL-1604
 constexpr uint RCWL_TRIG = 18;
 constexpr uint RCWL_ECHO = 19;
 
+// for TMP36
+constexpr uint TMP36_PIN = 28;
+
 // for Network LEDs
-constexpr uint LED_GREEN  = 22;
-constexpr uint LED_YELLOW = 28;
+constexpr uint LED_GREEN  = 26;
+constexpr uint LED_YELLOW = 22;
 
 constexpr uint32_t TOF_INTERVAL_MS   = 20;
 constexpr uint32_t SONIC_INTERVAL_MS = 50;
 constexpr uint32_t ACCEL_INTERVAL_MS = 10;
 constexpr uint32_t PRINT_INTERVAL_MS = 500;
 constexpr uint32_t LOOP_TICK_MS      = 5;
+
 constexpr int      SEND_BATCH_SIZE   = 10;
 
 // Network & System LED States
@@ -69,7 +75,6 @@ void update_system_leds(SystemState state) {
     }
 
     uint32_t elapsed = now_ms - state_start_ms;
-
     bool led_blink_start_off = (elapsed / 125) % 2 != 0;
 
     switch (state) {
@@ -141,6 +146,7 @@ static std::string build_json_reading(
     obj += ",\"accel_raw_x\":"   + (accel_ok ? std::to_string(raw.accel_x) : "null");
     obj += ",\"accel_raw_y\":"   + (accel_ok ? std::to_string(raw.accel_y) : "null");
     obj += ",\"accel_raw_z\":"   + (accel_ok ? std::to_string(raw.accel_z) : "null");
+    obj += ",\"temperature\":"   + std::to_string(raw.temperature_c);
 
     // --- GPS data ---
     if (gps_ok && utc_time.valid) {
@@ -169,9 +175,10 @@ int main() {
     // Init LEDs
     init_system_leds();
 
-    // while (!stdio_usb_connected()) {
-    //     sleep_ms(100);
-    // }
+    // Init ADC and internal temp sensor
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+
     sleep_ms(100);
 
     printf("=== Grass Monitor Pico ===\n\n");
@@ -194,15 +201,17 @@ int main() {
     gpio_pull_up(I2C1_SCL);
 
     i2c_scan(i2c0, "i2c0 ToF (GP20/GP21)");
-    i2c_scan(i2c1, "i2c1 ADXL345 (GP26/GP27)");
+    i2c_scan(i2c1, "i2c1 ADXL345 (GP14/GP15)");
 
     TofSensor tof(i2c0, TofSensor::DEFAULT_ADDR);
     ADXL345   accel(i2c1, ADXL345::DEFAULT_ADDR);
     RCWL1604  ultrasonic(RCWL_TRIG, RCWL_ECHO);
+    TMP36     tmp36(TMP36_PIN);
 
     bool tof_ok   = tof.init();
     bool accel_ok = accel.init();
     bool sonic_ok = ultrasonic.init();
+    bool tmp36_ok = tmp36.init();
 
     if (!tof_ok && !sonic_ok) {
         printf("FATAL: Neither ToF nor Sonic sensor found — cannot measure grass height. Halting.\n");
@@ -214,6 +223,14 @@ int main() {
     if (!tof_ok)   printf("WARNING: ToF sensor not found — ToF grass height unavailable.\n");
     if (!sonic_ok) printf("WARNING: Sonic sensor not found — Sonic grass height unavailable.\n");
     if (!accel_ok) printf("WARNING: Accelerometer not found — vibration compensation unavailable.\n");
+
+    // Disable if missing at boot
+    if (tmp36_ok && tmp36.isConnected()) {
+        printf("  [TMP36] Sensor found and reading valid temperature.\n");
+    } else {
+        printf("WARNING: TMP36 not found or disconnected — falling back to internal sensor.\n");
+        tmp36_ok = false;
+    }
 
     if (tof_ok) tof.startContinuous(TOF_INTERVAL_MS);
 
@@ -247,6 +264,7 @@ int main() {
 
     int readingCounter = 0;
     std::string readings = "";
+    bool using_tmp36 = false;
 
     while (true) {
         nm.Poll();
@@ -282,9 +300,35 @@ int main() {
             }
         }
 
-        // Sonic
+        // Sonic & Temp
         if ((now_ms - last_sonic_ms) >= SONIC_INTERVAL_MS) {
-            if (sonic_ok) processor.parseSonic(ultrasonic.readDistance());
+            float current_temp_c = 20.0f;
+            using_tmp36 = false;
+
+            if (tmp36_ok) {
+                float t = tmp36.readTemperature();
+
+                // If temp sensor disconnects, lock out to prevent bad readings
+                if (t >= -10.0f && t <= 60.0f) {
+                    current_temp_c = t;
+                    using_tmp36 = true;
+                } else {
+                    tmp36_ok = false;
+                }
+            }
+
+            if (!using_tmp36) {
+                // Fallback to internal temp sensor
+                adc_select_input(4);
+                const float conversion_factor = 3.3f / (1 << 12);
+                float adc_voltage = (float)adc_read() * conversion_factor;
+                // Subtract 5.0f for chip heat offset
+                current_temp_c = 27.0f - (adc_voltage - 0.706f) / 0.001721f - 5.0f;
+            }
+
+            processor.setTemperature(current_temp_c);
+
+            if (sonic_ok) processor.parseSonic(ultrasonic.readDistance(current_temp_c));
             last_sonic_ms = now_ms;
         }
 
@@ -308,8 +352,9 @@ int main() {
             printf("--- Reading (%d/%d) ---\n", readingCounter, SEND_BATCH_SIZE);
             printf("  Raw:  ToF:%4d mm | Sonic:%4d mm | Accel: X:%.2f Y:%.2f Z:%.2f\n",
                 raw.tof_mm, raw.sonic_mm, raw.accel_x, raw.accel_y, raw.accel_z);
-            printf("  Proc: ToF:%4d mm | SonicMed:%4d mm | SonicAcc:%4d mm\n",
-                processor.grassHeightTof(), processor.grassHeightSonicMedian(), processor.grassHeightSonicAccel());
+            printf("  Proc: ToF:%4d mm | SonicMed:%4d mm | SonicAcc:%4d mm | Temp:%.1f C (%s)\n",
+                processor.grassHeightTof(), processor.grassHeightSonicMedian(), processor.grassHeightSonicAccel(), raw.temperature_c,
+                using_tmp36 ? "TMP36" : "Internal");
 
             if (gps_ok && utc_time.valid) {
                 printf("  GPS:  %04d-%02d-%02d %02d:%02d:%02d | Lat:%.6f Lon:%.6f\n",
@@ -339,6 +384,12 @@ int main() {
                     printf("NetworkManager is busy, buffering readings...\n\n");
                     // Wait for next loop if still busy, keep counter at SEND_BATCH_SIZE
                     readingCounter--;
+                }
+
+                if (readingCounter > 25) {
+                    printf("Network offline too long! Dropping oldest readings to prevent memory overflow.\n");
+                    readings = "";
+                    readingCounter = 0;
                 }
             }
         }

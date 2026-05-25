@@ -21,7 +21,6 @@ endif()
 
 set(PICO_BOARD pico2_w CACHE STRING "Board type")
 
-# The extension manages the path now, so we just use the filename
 include(pico_sdk_import.cmake)
 
 project(grass_monitor_pico C CXX ASM)
@@ -38,6 +37,7 @@ add_executable(grass_monitor_pico
     src/sensors/adxl345.cpp
     src/sensors/rcwl1604.cpp
     src/sensors/vma430_gps.cpp
+    src/sensors/tmp36.cpp
     src/processing/sensor_processor.cpp
     src/processing/median_filter.cpp
     src/processing/vibration_processor.cpp
@@ -53,6 +53,7 @@ target_link_libraries(grass_monitor_pico
     pico_stdlib
     hardware_i2c
     hardware_uart
+    hardware_adc
     pico_cyw43_arch_lwip_threadsafe_background
 )
 

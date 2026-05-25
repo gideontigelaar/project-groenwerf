@@ -4,11 +4,12 @@
 #include "processing/vibration_processor.h"
 
 struct RawData {
-    uint16_t tof_mm    = 0;
-    uint16_t sonic_mm  = 0;
-    float    accel_x   = 0.0f;
-    float    accel_y   = 0.0f;
-    float    accel_z   = 0.0f;
+    uint16_t tof_mm         = 0;
+    uint16_t sonic_mm       = 0;
+    float    accel_x        = 0.0f;
+    float    accel_y        = 0.0f;
+    float    accel_z        = 0.0f;
+    float    temperature_c  = 0.0f;
 };
 
 struct CalibrationData {
@@ -29,6 +30,7 @@ public:
     CalibrationData get_calibration() const { return _cal; }
 
     const RawData& raw() const { return _raw; }
+    void setTemperature(float temp_c) { _raw.temperature_c = temp_c; }
 
     uint16_t grassHeightTof()               const;
     uint16_t grassHeightSonicMedian()       const; // sonic with median filter

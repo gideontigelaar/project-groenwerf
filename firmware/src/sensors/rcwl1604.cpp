@@ -20,7 +20,7 @@ bool RCWL1604::init() {
     return true;
 }
 
-uint16_t RCWL1604::readDistance() {
+uint16_t RCWL1604::readDistance(float temp_c) {
     // pulse trig high for 10us to start a measurement
     gpio_put(_trig, 1);
     sleep_us(10);
@@ -39,6 +39,8 @@ uint16_t RCWL1604::readDistance() {
     }
     uint32_t duration_us = time_us_32() - start;
 
-    // duration_us / 5.8 converts to mm
-    return (uint16_t)(duration_us / 5.8f);
+    float speed_of_sound_m_s = 331.3f + (0.606f * temp_c);
+    float speed_mm_us = speed_of_sound_m_s / 1000.0f;
+
+    return (uint16_t)((duration_us / 2.0f) * speed_mm_us);
 }
