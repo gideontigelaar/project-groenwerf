@@ -15,7 +15,7 @@ void SensorProcessor::parseSonic(uint16_t distance_mm) {
 
     // continuous drift correction adapts to temp changes
     if (_cal.sonic_calibrated && _vibration.intensity() < Config::Sensor::VIBRATION_LOW_G) {
-        if (_sonic_narrow.variance() < Config::Sensor::VARIANCE_THRESHOLD) {
+        if (_sonic_narrow.variance() < Config::Sensor::SONIC_VARIANCE_THRESHOLD) {
             float new_baseline = Config::Sensor::KNOWN_HEIGHT_MM - _sonic_narrow.get();
             // nudge baseline by 0.5% per idle sample
             _cal.sonic_offset_mm = (0.995f * _cal.sonic_offset_mm) + (0.005f * new_baseline);
@@ -42,21 +42,16 @@ void SensorProcessor::parseAccel(float x, float y, float z, uint32_t now_ms) {
 void SensorProcessor::calibrate() {
     // wait for enough samples to establish baseline
     if(!_cal.tof_calibrated && _tof_median.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
-        if (_tof_median.variance() < Config::Sensor::VARIANCE_THRESHOLD) {
+        if (_tof_median.variance() < Config::Sensor::TOF_VARIANCE_THRESHOLD) {
             _cal.tof_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - _tof_median.get();
             _cal.tof_calibrated = true;
-        } else {
-            _tof_median.reset();
         }
     }
 
     if(!_cal.sonic_calibrated && _sonic_narrow.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
-        if (_sonic_narrow.variance() < Config::Sensor::VARIANCE_THRESHOLD) {
+        if (_sonic_narrow.variance() < Config::Sensor::SONIC_VARIANCE_THRESHOLD) {
             _cal.sonic_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - _sonic_narrow.get();
             _cal.sonic_calibrated = true;
-        } else {
-            _sonic_narrow.reset();
-            _sonic_wide.reset();
         }
     }
 }

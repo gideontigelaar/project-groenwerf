@@ -29,7 +29,9 @@ namespace Config {
     namespace Sensor {
         const float KNOWN_HEIGHT_MM     = 750.0f; // distance from sensor to ground
         const int   CALIBRATION_SAMPLES = 15;
-        const float VARIANCE_THRESHOLD  = 25.0f; // max variance for stable calibration (stddev < 5mm)
+
+        const float SONIC_VARIANCE_THRESHOLD = 25.0f;  // stddev < 5mm
+        const float TOF_VARIANCE_THRESHOLD   = 150.0f; // stddev < 12mm
 
         const float VIBRATION_LOW_G     = 0.05f; // idle threshold
         const float VIBRATION_HIGH_G    = 0.15f;
