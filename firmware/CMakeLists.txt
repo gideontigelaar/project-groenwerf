@@ -33,6 +33,7 @@ endif()
 
 add_executable(grass_monitor_pico
     src/main.cpp
+    src/grass_monitor.cpp
     src/sensors/tof_sensor.cpp
     src/sensors/adxl345.cpp
     src/sensors/rcwl1604.cpp
