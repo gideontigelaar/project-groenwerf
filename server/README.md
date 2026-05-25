@@ -1,11 +1,9 @@
 # Running the server (Ubuntu)
 
 ## Prerequisites
-
-Python 3 and pip. The server runs Flask via Gunicorn and connects to a local MySQL database.
+Python 3 and pip. The server runs Flask via Gunicorn and connects to a MySQL database.
 
 ## First-time setup
-
 In `server/`:
 ```bash
 python3 -m venv .venv
@@ -19,19 +17,17 @@ cp credentials.py.template credentials.py
 nano credentials.py
 ```
 
-The API key must match the one in `firmware/include/credentials.h`. Generate one with:
+The API key must match the one in `firmware/include/credentials.h`. Generate a new one with:
 ```bash
 openssl rand -hex 32
 ```
 
 ## Database setup
-
 Create the database and tables:
 ```sql
 CREATE DATABASE groenwerf;
 USE groenwerf;
 
--- Processed (calibrated) grass height readings
 CREATE TABLE sensor_readings (
     id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     latitude        DECIMAL(10, 7)  DEFAULT NULL,
@@ -44,7 +40,6 @@ CREATE TABLE sensor_readings (
     PRIMARY KEY (id)
 );
 
--- Raw (uncalibrated) sensor readings
 CREATE TABLE raw_sensor_readings (
     id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     sonic_raw_mm SMALLINT UNSIGNED DEFAULT NULL,
@@ -56,7 +51,6 @@ CREATE TABLE raw_sensor_readings (
     PRIMARY KEY (id)
 );
 
--- Links each raw reading to its corresponding processed reading
 CREATE TABLE reading_pairs (
     raw_id       INT UNSIGNED NOT NULL,
     processed_id INT UNSIGNED NOT NULL,
@@ -66,35 +60,21 @@ CREATE TABLE reading_pairs (
 );
 ```
 
-### Schema notes
-
-| Table | Purpose |
-|---|---|
-| `sensor_readings` | Calibrated grass height values sent to the dashboard. `tof_mm` and `sonic_*_mm` are height above ground after offset correction. |
-| `raw_sensor_readings` | Raw sensor output as received from the Pico before any processing. Useful for debugging and reprocessing. |
-| `reading_pairs` | Join table linking each raw reading to its processed counterpart. Composite primary key prevents duplicates. |
-
-`sonic_median_mm` — grass height from the ultrasonic sensor with adaptive median filtering (window size scales with vibration intensity).
-`sonic_accel_mm` — same sensor but processed with accelerometer-based spike rejection instead.
-
 ## Running manually
-
 In `server/`:
 ```bash
 source .venv/bin/activate
 gunicorn --bind 0.0.0.0:5002 app:app
 ```
-
 Runs as long as the terminal stays open. Use the systemd setup below for production.
 
 ## Running as a service
-
 Create the service file:
 ```bash
 sudo nano /etc/systemd/system/groenwerf.service
 ```
 
-Paste the following, adjusting the path to where you cloned the repo:
+Paste the following, adjusting path to where you cloned the repo:
 ```ini
 [Unit]
 Description=Groenwerf Flask Server
@@ -118,13 +98,12 @@ sudo systemctl enable groenwerf
 sudo systemctl start groenwerf
 ```
 
-Check that it's running:
+Check if it's running:
 ```bash
 sudo systemctl status groenwerf
 ```
 
 ## Viewing logs
-
 ```bash
 journalctl -u groenwerf -f
 ```
