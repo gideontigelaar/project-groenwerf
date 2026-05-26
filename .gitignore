@@ -1,8 +1,13 @@
 build/
+firmware/build/
 
 .vscode/
 .idea/
 
 .DS_Store
 
+firmware/include/credentials.h
+server/credentials.py
 server/.venv/
+
+server/__pycache__
