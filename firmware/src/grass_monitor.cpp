@@ -25,9 +25,7 @@ void GrassMonitor::init() {
     adc_set_temp_sensor_enabled(true);
 
     sleep_ms(100);
-
-    LOG_INFO("=== Grass Monitor Pico ===");
-    LOG_INFO("");
+    LOG_INFO("=== Grass Monitor Pico ===\n");
 
     // wi-fi connection
     _nm.ConnectInitial();
@@ -56,21 +54,21 @@ void GrassMonitor::init() {
     _tmp36_ok = _tmp36.init();
 
     if (!_tof_ok && !_sonic_ok) {
-        LOG_ERROR("fatal: neither tof nor sonic sensor found. halting.");
+        LOG_ERROR("FATAL: Neither ToF nor Sonic sensor found. Halting.");
         while (true) {
             updateSystemLeds(SystemState::ERROR_WARNING);
             sleep_ms(100);
         }
     }
 
-    if (!_tof_ok)   LOG_WARN("tof sensor not found.");
-    if (!_sonic_ok) LOG_WARN("sonic sensor not found.");
-    if (!_accel_ok) LOG_WARN("accelerometer not found.");
+    if (!_tof_ok)   LOG_WARN("ToF sensor not found.");
+    if (!_sonic_ok) LOG_WARN("Sonic sensor not found.");
+    if (!_accel_ok) LOG_WARN("Accelerometer not found.");
 
     if (_tmp36_ok && _tmp36.isConnected()) {
-        LOG_INFO("tmp36 sensor found and reading valid temperature.");
+        LOG_INFO("TMP36 sensor found and reading valid temperature.");
     } else {
-        LOG_WARN("tmp36 not found or disconnected - falling back to internal.");
+        LOG_WARN("TMP36 not found or disconnected, falling back to internal.");
         _tmp36_ok = false;
     }
 
@@ -81,7 +79,7 @@ void GrassMonitor::init() {
 
     // init gps in background
     _gps_ok = gps_init();
-    if (!_gps_ok) LOG_INFO("gps: waiting for connection in background...");
+    if (!_gps_ok) LOG_INFO("GPS: Waiting for connection in background...\n");
 }
 
 void GrassMonitor::run() {
@@ -121,10 +119,7 @@ void GrassMonitor::pollNetwork() {
 void GrassMonitor::pollSensors(uint32_t now_ms) {
     if (_tof_ok && (now_ms - _last_tof_ms) >= Config::Timing::TOF_INTERVAL_MS) {
         if (_tof.dataReady()) {
-            // ensure valid bounce before parsing
-            if (_tof.rangeStatus() == 0) {
-                _processor.parseTof(_tof.readDistance());
-            }
+            _processor.parseTof(_tof.readDistance());
             _last_tof_ms = now_ms;
         }
     }
@@ -214,12 +209,13 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
                 _reading_counter = 0;
             }
         } else {
-            LOG_WARN("networkmanager is busy, buffering readings...");
+            LOG_WARN("NetworkManager is busy, buffering readings...");
             _reading_counter--;
         }
 
+        // Drop batch if too large
         if (_reading_counter > 25) {
-            LOG_ERROR("network offline too long! dropping oldest readings.");
+            LOG_ERROR("Network offline too long! dropping oldest readings.");
             _readings = "";
             _reading_counter = 0;
         }
@@ -276,40 +272,32 @@ void GrassMonitor::updateSystemLeds(SystemState state) {
 }
 
 void GrassMonitor::scanI2c(i2c_inst_t* i2c, const char* label) {
-    LOG_INFO("scanning %s...", label);
+    LOG_INFO("Scanning %s...", label);
     for (uint8_t addr = 0x08; addr < 0x78; addr++) {
         uint8_t dummy;
         if (i2c_read_blocking(i2c, addr, &dummy, 1, false) >= 0) {
-            LOG_INFO("  device found at 0x%02X", addr);
+            LOG_INFO("  Device found at 0x%02X", addr);
         }
     }
 }
 
 void GrassMonitor::calibrateSensors() {
-    LOG_INFO("calibrating sensors based on ground height...");
+    LOG_INFO("\nCalibrating sensors based on ground height (keep the mower still)...");
     int cal_samples = 0;
 
-    while(cal_samples < 30) {
+    while(cal_samples < 25) {
         updateSystemLeds(SystemState::CALIBRATING);
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-        if (_tof_ok && _tof.dataReady()) {
-            if (_tof.rangeStatus() == 0) _processor.parseTof(_tof.readDistance());
-        }
+        if (_tof_ok && _tof.dataReady()) _processor.parseTof(_tof.readDistance());
         if (_sonic_ok && (now_ms % 50 == 0)) _processor.parseSonic(_ultrasonic.readDistance());
 
         sleep_ms(20);
         cal_samples++;
     }
 
-    // call variance-checked calibration
     _processor.calibrate();
-
-    if (_processor.is_calibrated()) {
-        LOG_INFO("calibration complete.");
-    } else {
-        LOG_WARN("calibration unstable! move mower to flat ground and restart.");
-    }
+    LOG_INFO("Calibration complete.\n");
 }
 
 std::string GrassMonitor::buildJsonReading() {
@@ -335,7 +323,6 @@ std::string GrassMonitor::buildJsonReading() {
     obj += ",\"accel_raw_y\":"   + (_accel_ok ? std::to_string(raw.accel_y) : "null");
     obj += ",\"accel_raw_z\":"   + (_accel_ok ? std::to_string(raw.accel_z) : "null");
     obj += ",\"temperature\":"   + std::to_string(raw.temperature_c);
-    obj += ",\"spike_detected\":" + std::string(_processor.lastWasSpike() ? "true" : "false");
 
     if (_gps_ok && utc_time.valid) {
         char ts[32];

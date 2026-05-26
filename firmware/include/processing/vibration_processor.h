@@ -15,8 +15,6 @@ public:
     // vibration intensity in g rms
     float intensity() const { return _rms_g; }
 
-    bool lastWasSpike() const { return _last_was_spike; }
-
     void reset();
 
 private:
@@ -30,7 +28,6 @@ private:
     float _rms_g     = 0.0f;
 
     // spike rejection state
-    mutable uint16_t _last_good_mm      = 0;
-    mutable bool     _last_was_spike    = false;
-    mutable int      _spike_hold_count  = 0;
+    mutable uint16_t _last_good_mm   = 0;
+    mutable bool     _last_was_spike = false;
 };

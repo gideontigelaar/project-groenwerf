@@ -28,10 +28,7 @@ namespace Config {
 
     namespace Sensor {
         const float KNOWN_HEIGHT_MM     = 750.0f; // distance from sensor to ground
-        const int   CALIBRATION_SAMPLES = 15;
-
-        const float SONIC_VARIANCE_THRESHOLD = 25.0f;
-        const float TOF_VARIANCE_THRESHOLD   = 150.0f;
+        const int   CALIBRATION_SAMPLES = 10;
 
         // hardware calibration offset
         const float TMP36_OFFSET_C      = 0.0f;
@@ -39,12 +36,12 @@ namespace Config {
         const float VIBRATION_LOW_G     = 0.05f; // idle threshold
         const float VIBRATION_HIGH_G    = 0.15f;
         const size_t WINDOW_NARROW      = 10; // fastest (500ms)
+        const size_t WINDOW_MEDIUM      = 18;
         const size_t WINDOW_WIDE        = 25; // max smoothing has 1.25s latency
 
         const float HPF_ALPHA           = 0.95f; // high-pass filter
         const float RMS_ALPHA           = 0.995f;
         const float SPIKE_THRESHOLD_G   = 0.3f; // spike rejection threshold
-        const int   MAX_SPIKE_HOLD      = 10; // max consecutive rejected samples
     }
 
     const uint I2C_FREQ = 400000;

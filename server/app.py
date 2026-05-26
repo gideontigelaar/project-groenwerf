@@ -23,13 +23,11 @@ db_pool = pooling.MySQLConnectionPool(
     database=credentials.DB_NAME
 )
 
-
 def get_db_connection():
     return db_pool.get_connection()
 
 @app.route('/sensor-data', methods=['POST'])
 def receive_data():
-
     # API Key Authentication
     if request.headers.get('X-API-Key') != credentials.API_KEY:
         return jsonify({"error": "unauthorized"}), 401
@@ -37,11 +35,8 @@ def receive_data():
     # Validate JSON
     data = request.get_json()
 
-    if not data:
-        return jsonify({"error": "invalid json"}), 400
-
-    if not isinstance(data, list):
-        return jsonify({"error": "expected a list"}), 400
+    if not data or not isinstance(data, list):
+        return jsonify({"error": "invalid json or expected a list"}), 400
 
     db = None
     cursor = None
@@ -51,29 +46,21 @@ def receive_data():
         cursor = db.cursor(dictionary=True)
 
         for item in data:
-
             if not isinstance(item, dict):
                 continue
 
             measured_at = item.get("measured_at")
-
             if measured_at is not None:
                 try:
-                    # Parse ISO 8601 UTC timestamp
                     measured_at = datetime.strptime(
                         measured_at,
                         "%Y-%m-%dT%H:%M:%SZ"
                     ).strftime("%Y-%m-%d %H:%M:%S")
-
                 except (ValueError, TypeError):
-                    print("Invalid timestamp:", measured_at)
                     measured_at = None
 
             tof_val         = item.get("grassHeightTof")
             sonic_final_val = item.get("grassHeightSonicFinal")
-
-            spike_str       = item.get("spike_detected")
-            spike_detected  = 1 if spike_str == "true" else 0
 
             raw_sonic   = item.get("sonic_raw_mm")
             raw_tof     = item.get("tof_raw_mm")
@@ -93,10 +80,9 @@ def receive_data():
                     tof_mm,
                     sonic_final_mm,
                     temperature,
-                    spike_detected,
                     measured_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """
                 values_processed = (
                     item.get("lat"),
@@ -104,7 +90,6 @@ def receive_data():
                     tof_val,
                     sonic_final_val,
                     item.get("temperature"),
-                    spike_detected,
                     measured_at
                 )
                 cursor.execute(sql_processed, values_processed)
@@ -141,27 +126,16 @@ def receive_data():
                 )
 
         db.commit()
-
         return jsonify({"status": "ok"}), 200
 
     except Error as e:
         if db:
             db.rollback()
-
-        return jsonify({
-            "error": "database error",
-            "details": str(e)
-        }), 500
-
+        return jsonify({"error": "database error", "details": str(e)}), 500
     except Exception as e:
         if db:
             db.rollback()
-
-        return jsonify({
-            "error": "server error",
-            "details": str(e)
-        }), 500
-
+        return jsonify({"error": "server error", "details": str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -171,10 +145,8 @@ def receive_data():
 
 @app.route('/sensor-data', methods=['GET'])
 def get_data():
-
     db = None
     cursor = None
-
     try:
         db = get_db_connection()
         cursor = db.cursor(dictionary=True)
@@ -194,11 +166,7 @@ def get_data():
         return jsonify(latest)
 
     except Error as e:
-        return jsonify({
-            "error": "database error",
-            "details": str(e)
-        }), 500
-
+        return jsonify({"error": "database error", "details": str(e)}), 500
     finally:
         if cursor:
             cursor.close()
@@ -234,12 +202,6 @@ HTML = """
             border-radius: 12px;
             width: 320px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            transition: background-color 0.3s;
-        }
-
-        .card.spike {
-            background-color: #ffebee;
-            border-left: 5px solid #f44336;
         }
 
         .label {
@@ -269,10 +231,9 @@ HTML = """
     <div class="label">ToF (mm)</div>
 </div>
 
-<div class="card" id="sonic_card">
+<div class="card">
     <div class="value" id="sonic">--</div>
     <div class="label">Sonic Final (mm)</div>
-    <div class="label" id="spike_label" style="display:none; color:#f44336; font-weight:bold; font-size:0.8em; margin-top:5px;">SPIKE DETECTED</div>
 </div>
 
 <div class="card">
@@ -293,45 +254,21 @@ HTML = """
 <script>
 
 async function updateData() {
-
     try {
         const res = await fetch('/sensor-data');
-
         if (!res.ok) {
             console.error('Failed to fetch data');
             return;
         }
 
         const data = await res.json();
+        if (!data || Object.keys(data).length === 0) return;
 
-        if (!data || Object.keys(data).length === 0) {
-            return;
-        }
-
-        document.getElementById('tof').textContent =
-            data.tof_mm ?? '--';
-
-        document.getElementById('sonic').textContent =
-            data.sonic_final_mm ?? '--';
-
-        document.getElementById('latlon').textContent =
-            `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
-
-        document.getElementById('temperature').textContent =
-            data.temperature ?? '--';
-
-        document.getElementById('timestamp').textContent =
-            data.measured_at ?? '--';
-
-        const sonicCard = document.getElementById('sonic_card');
-        const spikeLabel = document.getElementById('spike_label');
-        if (data.spike_detected === 1) {
-            sonicCard.classList.add('spike');
-            spikeLabel.style.display = 'block';
-        } else {
-            sonicCard.classList.remove('spike');
-            spikeLabel.style.display = 'none';
-        }
+        document.getElementById('tof').textContent = data.tof_mm ?? '--';
+        document.getElementById('sonic').textContent = data.sonic_final_mm ?? '--';
+        document.getElementById('latlon').textContent = `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
+        document.getElementById('temperature').textContent = data.temperature ?? '--';
+        document.getElementById('timestamp').textContent = data.measured_at ?? '--';
 
     } catch (err) {
         console.error('Error updating data:', err);

@@ -35,7 +35,6 @@ CREATE TABLE sensor_readings (
     tof_mm          SMALLINT UNSIGNED DEFAULT NULL,
     sonic_final_mm  SMALLINT UNSIGNED DEFAULT NULL,
     temperature     DECIMAL(5, 2)   DEFAULT NULL,
-    spike_detected  BOOLEAN         DEFAULT FALSE,
     measured_at     DATETIME        DEFAULT NULL,
     PRIMARY KEY (id)
 );

@@ -41,8 +41,6 @@ public:
     // vibration intensity in g rms
     float vibrationIntensity() const { return _vibration.intensity(); }
 
-    bool lastWasSpike() const { return _vibration.lastWasSpike(); }
-
     void reset();
 
 private:
@@ -51,6 +49,7 @@ private:
 
     MedianFilter        _tof_median{5};
     MedianFilter        _sonic_narrow{Config::Sensor::WINDOW_NARROW};
+    MedianFilter        _sonic_medium{Config::Sensor::WINDOW_MEDIUM};
     MedianFilter        _sonic_wide{Config::Sensor::WINDOW_WIDE};
     VibrationProcessor  _vibration;
 
@@ -58,6 +57,6 @@ private:
 
     uint16_t applyOffset(float median, float offset) const;
 
-    // blended filter size based on vibration
-    float activeSonicFilterValue() const;
+    // returns reference to which median filter is appropriate for current vibration level
+    const MedianFilter& activeSonicFilter() const;
 };
