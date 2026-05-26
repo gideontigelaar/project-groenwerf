@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <algorithm>
 #include "processing/median_filter.h"
 #include "processing/vibration_processor.h"
 #include "config.h"
@@ -48,7 +49,7 @@ private:
     RawData         _raw;
 
     MedianFilter        _tof_median{Config::Sensor::CALIBRATION_SAMPLES};
-    MedianFilter        _sonic_narrow{Config::Sensor::WINDOW_NARROW};
+    MedianFilter        _sonic_narrow{std::max(static_cast<size_t>(Config::Sensor::WINDOW_NARROW), static_cast<size_t>(Config::Sensor::CALIBRATION_SAMPLES))};
     MedianFilter        _sonic_medium{Config::Sensor::WINDOW_MEDIUM};
     MedianFilter        _sonic_wide{Config::Sensor::WINDOW_WIDE};
     VibrationProcessor  _vibration;
