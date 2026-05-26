@@ -25,12 +25,14 @@ void GrassMonitor::init() {
     adc_set_temp_sensor_enabled(true);
 
     sleep_ms(100);
-    LOG_INFO("=== Grass Monitor Pico ===\n");
+    LOG_INFO("=== Grass Monitor Pico ===");
 
     // wi-fi connection
+    LOG_INFO("Init: Connecting to Wi-Fi...");
     _nm.ConnectInitial();
 
     // init i2c0 for tof
+    LOG_INFO("Init: Configuring I2C buses...");
     i2c_init(i2c0, Config::I2C_FREQ);
     gpio_set_function(Config::Pins::TOF_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(Config::Pins::TOF_I2C_SCL, GPIO_FUNC_I2C);
@@ -44,14 +46,24 @@ void GrassMonitor::init() {
     gpio_pull_up(Config::Pins::ACCEL_I2C_SDA);
     gpio_pull_up(Config::Pins::ACCEL_I2C_SCL);
 
-    scanI2c(i2c0, "i2c0 ToF");
-    scanI2c(i2c1, "i2c1 ADXL345");
+    scanI2c(i2c0, "I2C0 (ToF)");
+    scanI2c(i2c1, "I2C1 (Accel)");
 
     // initialize sensors
+    LOG_INFO("Init: Initializing sensors...");
     _tof_ok   = _tof.init();
     _accel_ok = _accel.init();
     _sonic_ok = _ultrasonic.init();
     _tmp36_ok = _tmp36.init();
+
+    LOG_INFO("  - ToF Sensor   : %s", _tof_ok ? "OK" : "FAIL");
+    LOG_INFO("  - Sonic (RCWL) : %s", _sonic_ok ? "OK" : "FAIL");
+    LOG_INFO("  - Accelerometer: %s", _accel_ok ? "OK" : "FAIL");
+    LOG_INFO("  - TMP36 Temp   : %s", (_tmp36_ok && _tmp36.isConnected()) ? "OK" : "FAIL (using internal fallback)");
+
+    if (!_tmp36_ok || !_tmp36.isConnected()) {
+        _tmp36_ok = false;
+    }
 
     if (!_tof_ok && !_sonic_ok) {
         LOG_ERROR("FATAL: Neither ToF nor Sonic sensor found. Halting.");
@@ -61,25 +73,18 @@ void GrassMonitor::init() {
         }
     }
 
-    if (!_tof_ok)   LOG_WARN("ToF sensor not found.");
-    if (!_sonic_ok) LOG_WARN("Sonic sensor not found.");
-    if (!_accel_ok) LOG_WARN("Accelerometer not found.");
-
-    if (_tmp36_ok && _tmp36.isConnected()) {
-        LOG_INFO("TMP36 sensor found and reading valid temperature.");
-    } else {
-        LOG_WARN("TMP36 not found or disconnected, falling back to internal.");
-        _tmp36_ok = false;
-    }
-
     if (_tof_ok) _tof.startContinuous(Config::Timing::TOF_INTERVAL_MS);
 
     // calibration phase
+    LOG_INFO("Init: Starting sensor calibration...");
     calibrateSensors();
 
     // init gps in background
+    LOG_INFO("Init: Initializing GPS...");
     _gps_ok = gps_init();
-    if (!_gps_ok) LOG_INFO("GPS: Waiting for connection in background...\n");
+    LOG_INFO("  - GPS Module   : %s", _gps_ok ? "OK (Waiting for fix)" : "FAIL");
+
+    LOG_INFO("Init: System ready. Starting monitor loop...\n");
 }
 
 void GrassMonitor::run() {
@@ -161,7 +166,7 @@ void GrassMonitor::updateTemperature() {
 
     if (!_using_tmp36) {
         // fallback to internal temp sensor
-        adc_select_input(4);
+        adc_select_input(Config::Pins::INTERNAL_TEMP_ADC);
         const float conversion_factor = 3.3f / (1 << 12);
         float adc_voltage = (float)adc_read() * conversion_factor;
         // subtract 5.0f for chip heat offset
@@ -177,20 +182,30 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
     _reading_counter++;
     RawData raw = _processor.raw();
 
-    LOG_RAW("--- reading (%d/%d) ---\n", _reading_counter, Config::Network::SEND_BATCH_SIZE);
-    LOG_RAW("  raw:  tof:%4d mm | sonic:%4d mm | accel: x:%.2f y:%.2f z:%.2f\n",
+    // calculate temp correction (speed of sound diff)
+    float base_speed = 331.3f;
+    float current_speed = 331.3f + (0.606f * raw.temperature_c);
+    float temp_correction_perc = ((current_speed / base_speed) - 1.0f) * 100.0f;
+
+    LOG_RAW("--- Reading (%d/%d) ---\n", _reading_counter, Config::Network::SEND_BATCH_SIZE);
+    LOG_RAW("   Raw:  ToF:        %4d mm |  Sonic:      %4d mm |  Accel:       x(%5.2f) y(%5.2f) z(%5.2f)\n",
         raw.tof_mm, raw.sonic_mm, raw.accel_x, raw.accel_y, raw.accel_z);
-    LOG_RAW("  proc: tof:%4d mm | sonicfinal:%4d mm | temp:%.1f C (%s)\n",
-        _processor.grassHeightTof(), _processor.grassHeightSonicMedianAccel(), raw.temperature_c,
-        _using_tmp36 ? "tmp36" : "internal");
+
+    LOG_RAW("   Proc: ToF:        %4d mm |  Sonic:      %4d mm |  Temp:        %4.1f C (%s)\n",
+        _processor.grassHeightTof(), _processor.grassHeightSonicMedianAccel(),
+        raw.temperature_c, _using_tmp36 ? "TMP36" : "Internal");
+
+    LOG_RAW("   SDbg: SonicMed:   %4d mm |  SonicAccel: %4d mm |  TempShft:    %+.1f%%\n",
+        _processor.grassHeightSonicMedian(), _processor.grassHeightSonicAccel(),
+        temp_correction_perc);
 
     if (_gps_ok && utc_time.valid) {
-        LOG_RAW("  gps:  %04d-%02d-%02d %02d:%02d:%02d | lat:%.6f lon:%.6f\n",
+        LOG_RAW("   GPS:  %04d-%02d-%02d %02d:%02d:%02d |  Lat: %.6f  Lon: %.6f\n",
             utc_time.year, utc_time.month, utc_time.day,
             utc_time.hour, utc_time.minute, utc_time.second,
             location.latitude, location.longitude);
     } else {
-        LOG_RAW("  gps:  searching / no fix\n");
+        LOG_RAW("   GPS:  Searching / No Fix\n");
     }
     LOG_RAW("\n");
 
@@ -209,13 +224,13 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
                 _reading_counter = 0;
             }
         } else {
-            LOG_WARN("NetworkManager is busy, buffering readings...");
+            LOG_WARN("Network: Busy, buffering readings...");
             _reading_counter--;
         }
 
         // Drop batch if too large
         if (_reading_counter > 25) {
-            LOG_ERROR("Network offline too long! dropping oldest readings.");
+            LOG_ERROR("Network: Offline too long! Dropping oldest readings.");
             _readings = "";
             _reading_counter = 0;
         }
@@ -272,17 +287,17 @@ void GrassMonitor::updateSystemLeds(SystemState state) {
 }
 
 void GrassMonitor::scanI2c(i2c_inst_t* i2c, const char* label) {
-    LOG_INFO("Scanning %s...", label);
+    LOG_INFO("  Scanning %s...", label);
     for (uint8_t addr = 0x08; addr < 0x78; addr++) {
         uint8_t dummy;
         if (i2c_read_blocking(i2c, addr, &dummy, 1, false) >= 0) {
-            LOG_INFO("  Device found at 0x%02X", addr);
+            LOG_INFO("    - Device found at 0x%02X", addr);
         }
     }
 }
 
 void GrassMonitor::calibrateSensors() {
-    LOG_INFO("\nCalibrating sensors based on ground height (keep the mower still)...");
+    LOG_INFO("  Calibrating sensors from ground height...");
 
     uint32_t start_ms = to_ms_since_boot(get_absolute_time());
     uint32_t last_tof_ms = 0;
@@ -302,28 +317,37 @@ void GrassMonitor::calibrateSensors() {
 
         if (_tof_ok && (now_ms - last_tof_ms >= Config::Timing::TOF_INTERVAL_MS)) {
             uint16_t d = _tof.readDistance();
-            LOG_RAW("  [cal] tof sample %d: %d mm\n", ++tof_samples, d);
-            if (d > 0) _processor.parseTof(d); // skip zero readings
+            if (d > 0) {
+                _processor.parseTof(d);
+                tof_samples++;
+            }
             last_tof_ms = now_ms;
         }
 
         if (_sonic_ok && (now_ms - last_sonic_ms >= Config::Timing::SONIC_INTERVAL_MS)) {
             uint16_t d = _ultrasonic.readDistance();
-            LOG_RAW("  [cal] sonic sample %d: %d mm\n", ++sonic_samples, d);
-            if (d > 0) _processor.parseSonic(d); // skip zero readings
+            if (d > 0) {
+                _processor.parseSonic(d);
+                sonic_samples++;
+            }
             last_sonic_ms = now_ms;
         }
 
         sleep_ms(10);
     }
 
-    LOG_RAW("  [cal] finished — tof: %d samples, sonic: %d samples\n", tof_samples, sonic_samples);
-
     CalibrationData cal = _processor.get_calibration();
-    if (_tof_ok && !cal.tof_calibrated)  LOG_WARN("ToF calibration FAILED!");
-    if (_sonic_ok && !cal.sonic_calibrated) LOG_WARN("Sonic calibration FAILED!");
-    if (done()) LOG_INFO("Calibration complete.");
-    else LOG_WARN("Calibration timed out — not enough valid samples.");
+    if (done()) {
+        LOG_INFO("  Calibration complete (ToF: %d samples, Sonic: %d samples)", tof_samples, sonic_samples);
+        LOG_INFO("  Offsets applied -> ToF: %+.1f mm | Sonic: %+.1f mm",
+            cal.tof_offset_mm, cal.sonic_offset_mm);
+    } else {
+        LOG_WARN("  Calibration timed out! ToF: %s, Sonic: %s",
+            (_tof_ok && !cal.tof_calibrated) ? "FAIL" : "OK",
+            (_sonic_ok && !cal.sonic_calibrated) ? "FAIL" : "OK");
+        LOG_WARN("  Partial offsets -> ToF: %+.1f mm | Sonic: %+.1f mm",
+            cal.tof_offset_mm, cal.sonic_offset_mm);
+    }
 }
 
 std::string GrassMonitor::buildJsonReading() {

@@ -1,17 +1,24 @@
 #pragma once
 #include "pico/stdlib.h"
+#include "hardware/uart.h"
+
+#define GPS_UART uart0
 
 namespace Config {
     namespace Pins {
-        const uint TOF_I2C_SDA   = 20;
-        const uint TOF_I2C_SCL   = 21;
-        const uint ACCEL_I2C_SDA = 14;
-        const uint ACCEL_I2C_SCL = 15;
-        const uint RCWL_TRIG     = 18;
-        const uint RCWL_ECHO     = 19;
-        const uint TMP36_PIN     = 28;
-        const uint LED_GREEN     = 26;
-        const uint LED_YELLOW    = 22;
+        const uint TOF_I2C_SDA       = 20;
+        const uint TOF_I2C_SCL       = 21;
+        const uint ACCEL_I2C_SDA     = 14;
+        const uint ACCEL_I2C_SCL     = 15;
+        const uint RCWL_TRIG         = 18;
+        const uint RCWL_ECHO         = 19;
+        const uint TMP36_PIN         = 28;
+        const uint LED_GREEN         = 26;
+        const uint LED_YELLOW        = 22;
+        const uint GPS_UART_TX       = 12;
+        const uint GPS_UART_RX       = 13;
+
+        const uint INTERNAL_TEMP_ADC = 4;
     }
 
     namespace Timing {
@@ -42,6 +49,16 @@ namespace Config {
         const float HPF_ALPHA           = 0.95f; // high-pass filter
         const float RMS_ALPHA           = 0.995f;
         const float SPIKE_THRESHOLD_G   = 0.3f; // spike rejection threshold
+    }
+
+    namespace Gps {
+        const uint BAUD_RATE       = 9600;
+        const uint ACK_TIMEOUT_MS  = 1500;
+        const uint UBX_TIMEOUT_MS  = 1100;
+        const uint UBX_MAX_PAYLOAD = 128;
+        const uint8_t UBX_SYNC_1   = 0xB5;
+        const uint8_t UBX_SYNC_2   = 0x62;
+        const uint8_t NAV_CLASS    = 0x01;
     }
 
     const uint I2C_FREQ = 400000;
