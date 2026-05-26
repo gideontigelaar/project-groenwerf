@@ -47,7 +47,7 @@ private:
     CalibrationData _cal;
     RawData         _raw;
 
-    MedianFilter        _tof_median{5};
+    MedianFilter        _tof_median{Config::Sensor::CALIBRATION_SAMPLES};
     MedianFilter        _sonic_narrow{Config::Sensor::WINDOW_NARROW};
     MedianFilter        _sonic_medium{Config::Sensor::WINDOW_MEDIUM};
     MedianFilter        _sonic_wide{Config::Sensor::WINDOW_WIDE};

@@ -33,13 +33,19 @@ void SensorProcessor::parseAccel(float x, float y, float z, uint32_t now_ms) {
 void SensorProcessor::calibrate() {
     // wait for enough samples to establish baseline
     if(!_cal.tof_calibrated && _tof_median.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
-        _cal.tof_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - _tof_median.get();
-        _cal.tof_calibrated = true;
+        float median = _tof_median.get();
+        if (median > 0.0f) {
+            _cal.tof_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - median;
+            _cal.tof_calibrated = true;
+        }
     }
 
     if(!_cal.sonic_calibrated && _sonic_narrow.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
-        _cal.sonic_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - _sonic_narrow.get();
-        _cal.sonic_calibrated = true;
+        float median = _sonic_narrow.get();
+        if (median > 0.0f) {
+            _cal.sonic_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - median;
+            _cal.sonic_calibrated = true;
+        }
     }
 }
 

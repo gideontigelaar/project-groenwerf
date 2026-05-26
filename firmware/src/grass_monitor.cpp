@@ -283,21 +283,47 @@ void GrassMonitor::scanI2c(i2c_inst_t* i2c, const char* label) {
 
 void GrassMonitor::calibrateSensors() {
     LOG_INFO("\nCalibrating sensors based on ground height (keep the mower still)...");
-    int cal_samples = 0;
 
-    while(cal_samples < 25) {
+    uint32_t start_ms = to_ms_since_boot(get_absolute_time());
+    uint32_t last_tof_ms = 0;
+    uint32_t last_sonic_ms = 0;
+    int tof_samples = 0;
+    int sonic_samples = 0;
+
+    auto done = [&]() {
+        bool tof_ready = !_tof_ok || _processor.get_calibration().tof_calibrated;
+        bool sonic_ready = !_sonic_ok || _processor.get_calibration().sonic_calibrated;
+        return tof_ready && sonic_ready;
+    };
+
+    while (!done() && (to_ms_since_boot(get_absolute_time()) - start_ms < 5000)) {
         updateSystemLeds(SystemState::CALIBRATING);
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
-        if (_tof_ok && _tof.dataReady()) _processor.parseTof(_tof.readDistance());
-        if (_sonic_ok && (now_ms % 50 == 0)) _processor.parseSonic(_ultrasonic.readDistance());
+        if (_tof_ok && (now_ms - last_tof_ms >= Config::Timing::TOF_INTERVAL_MS)) {
+            uint16_t d = _tof.readDistance();
+            LOG_RAW("  [cal] tof sample %d: %d mm\n", ++tof_samples, d);
+            if (d > 0) _processor.parseTof(d); // skip zero readings
+            last_tof_ms = now_ms;
+        }
 
-        sleep_ms(20);
-        cal_samples++;
+        if (_sonic_ok && (now_ms - last_sonic_ms >= Config::Timing::SONIC_INTERVAL_MS)) {
+            uint16_t d = _ultrasonic.readDistance();
+            LOG_RAW("  [cal] sonic sample %d: %d mm\n", ++sonic_samples, d);
+            if (d > 0) _processor.parseSonic(d); // skip zero readings
+            last_sonic_ms = now_ms;
+        }
+
+        sleep_ms(10);
     }
 
-    _processor.calibrate();
-    LOG_INFO("Calibration complete.\n");
+    LOG_RAW("  [cal] finished — tof: %d samples, sonic: %d samples\n", tof_samples, sonic_samples);
+
+    CalibrationData cal = _processor.get_calibration();
+    if (_tof_ok && !cal.tof_calibrated)  LOG_WARN("ToF calibration FAILED!");
+    if (_sonic_ok && !cal.sonic_calibrated) LOG_WARN("Sonic calibration FAILED!");
+    if (done()) LOG_INFO("Calibration complete.");
+    else LOG_WARN("Calibration timed out — not enough valid samples.");
 }
 
 std::string GrassMonitor::buildJsonReading() {
