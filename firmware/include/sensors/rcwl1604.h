@@ -7,7 +7,7 @@ public:
     explicit RCWL1604(uint trig_pin, uint echo_pin);
 
     bool init();
-    uint16_t readDistance(); // returns distance in mm
+    uint16_t readDistance(float temp_c = 20.0f); // returns distance in mm
 
 private:
     uint _trig;
