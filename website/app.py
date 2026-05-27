@@ -66,12 +66,15 @@ def api_geocode():
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', active_page="index")
  
- 
+@app.route('/rawdata')
+def rawdata():
+    return render_template('rawdata.html', active_page="rawdata")
+
 @app.route('/rapport')
 def rapport():
-    return render_template('rapport.html')
+    return render_template('rapport.html', active_page="rapport")
  
  
 if __name__ == '__main__':
