@@ -362,9 +362,9 @@ std::string GrassMonitor::buildJsonReading() {
     }
 
     if (_sonic_ok && cal.sonic_calibrated) {
-        obj += ",\"grassHeightSonicFinal\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
+        obj += ",\"grassHeightSonic\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
     } else {
-        obj += ",\"grassHeightSonicFinal\":null";
+        obj += ",\"grassHeightSonic\":null";
     }
 
     obj += ",\"sonic_raw_mm\":"  + (_sonic_ok ? std::to_string(raw.sonic_mm) : "null");

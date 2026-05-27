@@ -29,13 +29,13 @@ CREATE DATABASE groenwerf;
 USE groenwerf;
 
 CREATE TABLE sensor_readings (
-    id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
-    latitude        DECIMAL(10, 7)  DEFAULT NULL,
-    longitude       DECIMAL(10, 7)  DEFAULT NULL,
-    tof_mm          SMALLINT UNSIGNED DEFAULT NULL,
-    sonic_final_mm  SMALLINT UNSIGNED DEFAULT NULL,
-    temperature     DECIMAL(5, 2)   DEFAULT NULL,
-    measured_at     DATETIME        DEFAULT NULL,
+    id          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    latitude    DECIMAL(10, 7)  DEFAULT NULL,
+    longitude   DECIMAL(10, 7)  DEFAULT NULL,
+    tof_mm      SMALLINT UNSIGNED DEFAULT NULL,
+    sonic_mm    SMALLINT UNSIGNED DEFAULT NULL,
+    temperature DECIMAL(5, 2)   DEFAULT NULL,
+    measured_at DATETIME        DEFAULT NULL,
     PRIMARY KEY (id)
 );
 

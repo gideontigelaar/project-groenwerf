@@ -60,7 +60,7 @@ def receive_data():
                     measured_at = None
 
             tof_val         = item.get("grassHeightTof")
-            sonic_final_val = item.get("grassHeightSonicFinal")
+            sonic_val = item.get("grassHeightSonic")
 
             raw_sonic   = item.get("sonic_raw_mm")
             raw_tof     = item.get("tof_raw_mm")
@@ -71,14 +71,14 @@ def receive_data():
             processed_id = None
             raw_id       = None
 
-            if any([tof_val, sonic_final_val]):
+            if any([tof_val, sonic_val]):
                 sql_processed = """
                 INSERT INTO sensor_readings
                 (
                     latitude,
                     longitude,
                     tof_mm,
-                    sonic_final_mm,
+                    sonic_mm,
                     temperature,
                     measured_at
                 )
@@ -88,7 +88,7 @@ def receive_data():
                     item.get("lat"),
                     item.get("lon"),
                     tof_val,
-                    sonic_final_val,
+                    sonic_val,
                     item.get("temperature"),
                     measured_at
                 )
@@ -233,7 +233,7 @@ HTML = """
 
 <div class="card">
     <div class="value" id="sonic">--</div>
-    <div class="label">Sonic Final (mm)</div>
+    <div class="label">Sonic (mm)</div>
 </div>
 
 <div class="card">
@@ -265,7 +265,7 @@ async function updateData() {
         if (!data || Object.keys(data).length === 0) return;
 
         document.getElementById('tof').textContent = data.tof_mm ?? '--';
-        document.getElementById('sonic').textContent = data.sonic_final_mm ?? '--';
+        document.getElementById('sonic').textContent = data.sonic_mm ?? '--';
         document.getElementById('latlon').textContent = `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
         document.getElementById('temperature').textContent = data.temperature ?? '--';
         document.getElementById('timestamp').textContent = data.measured_at ?? '--';
