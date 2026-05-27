@@ -9,5 +9,6 @@ firmware/build/
 firmware/include/credentials.h
 server/credentials.py
 server/.venv/
+website/.venv/
 
 server/__pycache__
