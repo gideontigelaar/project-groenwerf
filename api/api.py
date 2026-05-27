@@ -14,7 +14,6 @@ db_pool = pooling.MySQLConnectionPool(
     pool_name="sensor_pool",
     pool_size=5,
     host=credentials.DB_HOST,
-    port=credentials.DB_PORT,
     user=credentials.DB_USER,
     password=credentials.DB_PASSWORD,
     database=credentials.DB_NAME
