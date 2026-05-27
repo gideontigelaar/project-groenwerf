@@ -59,71 +59,29 @@ def receive_data():
                 except (ValueError, TypeError):
                     measured_at = None
 
-            tof_val         = item.get("grassHeightTof")
-            sonic_val = item.get("grassHeightSonic")
-
-            raw_sonic   = item.get("sonic_raw_mm")
-            raw_tof     = item.get("tof_raw_mm")
-            raw_accel_x = item.get("accel_raw_x")
-            raw_accel_y = item.get("accel_raw_y")
-            raw_accel_z = item.get("accel_raw_z")
-
-            processed_id = None
-            raw_id       = None
-
-            if any([tof_val, sonic_val]):
-                sql_processed = """
-                INSERT INTO sensor_readings
-                (
-                    latitude,
-                    longitude,
-                    tof_mm,
-                    sonic_mm,
-                    temperature,
-                    measured_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """
-                values_processed = (
-                    item.get("lat"),
-                    item.get("lon"),
-                    tof_val,
-                    sonic_val,
-                    item.get("temperature"),
-                    measured_at
-                )
-                cursor.execute(sql_processed, values_processed)
-                processed_id = cursor.lastrowid
-
-            if any([raw_sonic, raw_tof, raw_accel_x, raw_accel_y, raw_accel_z]):
-                sql_raw = """
-                INSERT INTO raw_sensor_readings
-                (
-                    sonic_raw_mm,
-                    tof_raw_mm,
-                    accel_raw_x,
-                    accel_raw_y,
-                    accel_raw_z,
-                    measured_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """
-                values_raw = (
-                    raw_sonic,
-                    raw_tof,
-                    raw_accel_x,
-                    raw_accel_y,
-                    raw_accel_z,
-                    measured_at
-                )
-                cursor.execute(sql_raw, values_raw)
-                raw_id = cursor.lastrowid
-
-            if raw_id is not None and processed_id is not None:
-                cursor.execute(
-                    "INSERT INTO reading_pairs (raw_id, processed_id) VALUES (%s, %s)",
-                    (raw_id, processed_id)
-                )
+            sql = """
+            INSERT INTO sensor_readings
+            (
+                latitude, longitude, tof_mm, sonic_mm, temperature,
+                sonic_raw_mm, tof_raw_mm, accel_raw_x, accel_raw_y, accel_raw_z,
+                measured_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            values = (
+                item.get("lat"),
+                item.get("lon"),
+                item.get("grassHeightTof"),
+                item.get("grassHeightSonic"),
+                item.get("temperature"),
+                item.get("sonic_raw_mm"),
+                item.get("tof_raw_mm"),
+                item.get("accel_raw_x"),
+                item.get("accel_raw_y"),
+                item.get("accel_raw_z"),
+                measured_at
+            )
+            cursor.execute(sql, values)
 
         db.commit()
         return jsonify({"status": "ok"}), 200

@@ -17,30 +17,33 @@ cp credentials.py.template credentials.py
 nano credentials.py
 ```
 
+*Note: If this Flask server is hosted on a different machine than your MySQL database, ensure `DB_HOST` in `credentials.py` is set to the database server's public IP address, not `localhost`.*
+
 The API key must match the one in `firmware/include/credentials.h`. Generate a new one with:
 ```bash
 openssl rand -hex 32
 ```
 
 ## Database setup
-Create the database and tables:
+First, log into your MySQL server as `root` and create the database and a dedicated user with remote access permissions:
 ```sql
 CREATE DATABASE groenwerf;
+CREATE USER 'groenwerf_admin'@'%' IDENTIFIED BY 'YOUR_SECURE_PASSWORD';
+GRANT ALL PRIVILEGES ON groenwerf.* TO 'groenwerf_admin'@'%';
+FLUSH PRIVILEGES;
+```
+
+Then, switch to the database and create the unified sensor readings table:
+```sql
 USE groenwerf;
 
 CREATE TABLE sensor_readings (
-    id          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
-    latitude    DECIMAL(10, 7)  DEFAULT NULL,
-    longitude   DECIMAL(10, 7)  DEFAULT NULL,
-    tof_mm      SMALLINT UNSIGNED DEFAULT NULL,
-    sonic_mm    SMALLINT UNSIGNED DEFAULT NULL,
-    temperature DECIMAL(5, 2)   DEFAULT NULL,
-    measured_at DATETIME        DEFAULT NULL,
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE raw_sensor_readings (
     id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    latitude     DECIMAL(10, 7)  DEFAULT NULL,
+    longitude    DECIMAL(10, 7)  DEFAULT NULL,
+    tof_mm       SMALLINT UNSIGNED DEFAULT NULL,
+    sonic_mm     SMALLINT UNSIGNED DEFAULT NULL,
+    temperature  DECIMAL(5, 2)   DEFAULT NULL,
     sonic_raw_mm SMALLINT UNSIGNED DEFAULT NULL,
     tof_raw_mm   SMALLINT UNSIGNED DEFAULT NULL,
     accel_raw_x  FLOAT           DEFAULT NULL,
@@ -48,14 +51,6 @@ CREATE TABLE raw_sensor_readings (
     accel_raw_z  FLOAT           DEFAULT NULL,
     measured_at  DATETIME        DEFAULT NULL,
     PRIMARY KEY (id)
-);
-
-CREATE TABLE reading_pairs (
-    raw_id       INT UNSIGNED NOT NULL,
-    processed_id INT UNSIGNED NOT NULL,
-    PRIMARY KEY (raw_id, processed_id),
-    FOREIGN KEY (raw_id)       REFERENCES raw_sensor_readings(id),
-    FOREIGN KEY (processed_id) REFERENCES sensor_readings(id)
 );
 ```
 
