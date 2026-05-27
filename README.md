@@ -1,8 +1,12 @@
 # Project Groenwerf
-A grass height measurement system for ride-on mowers using a Raspberry Pi Pico 2W to send sensor data to a remote server.
 
-- `firmware/` - Firmware code for the Pico, handles sensors and data processing
-- `server/` - Flask server, receives data and stores it in a MySQL database
-- `docs/` - Project research and documentation
+A grass height measurement system for ride-on mowers, utilizing a Raspberry Pi Pico 2W to process sensor data and transmit it to a remote server.
 
-The Pico reads sensor data and posts batches to the server over WiFi. The server stores readings in a database.
+## Project Structure
+- **`firmware/`**: Embedded C++ source code for the Raspberry Pi Pico 2W (Mac/Dev). Handles sensor polling, data processing, and network transmission.
+- **`api/`**: Flask-based REST API designed for production deployment (Ubuntu). Receives JSON payloads from the firmware and manages database persistence.
+- **`docs/`**: Technical research, sensor suitability analysis, and installation guides.
+
+## Getting Started
+1. **Firmware**: Refer to `firmware/README.md` to build and deploy the sensor firmware.
+2. **API**: Refer to `api/README.md` to deploy the backend service and database.
