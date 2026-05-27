@@ -7,10 +7,7 @@ import sys
 try:
     import credentials
 except ModuleNotFoundError:
-    sys.exit(
-        "ERROR: credentials.py not found.\n"
-        "Copy server/credentials.py.template to server/credentials.py and fill in your values."
-    )
+    sys.exit("ERROR: credentials.py not found.")
 
 app = Flask(__name__)
 
@@ -18,57 +15,50 @@ db_pool = pooling.MySQLConnectionPool(
     pool_name="sensor_pool",
     pool_size=5,
     host=credentials.DB_HOST,
+    port=credentials.DB_PORT,
     user=credentials.DB_USER,
     password=credentials.DB_PASSWORD,
     database=credentials.DB_NAME
 )
 
-def get_db_connection():
+def get_db():
     return db_pool.get_connection()
 
+# POST /sensor-data
 @app.route('/sensor-data', methods=['POST'])
 def receive_data():
-    # API Key Authentication
     if request.headers.get('X-API-Key') != credentials.API_KEY:
         return jsonify({"error": "unauthorized"}), 401
 
-    # Validate JSON
     data = request.get_json()
-
     if not data or not isinstance(data, list):
-        return jsonify({"error": "invalid json or expected a list"}), 400
+        return jsonify({"error": "expected a JSON array"}), 400
 
-    db = None
-    cursor = None
-
+    db = cursor = None
     try:
-        db = get_db_connection()
-        cursor = db.cursor(dictionary=True)
+        db = get_db()
+        cursor = db.cursor()
 
         for item in data:
             if not isinstance(item, dict):
                 continue
 
             measured_at = item.get("measured_at")
-            if measured_at is not None:
+            if measured_at:
                 try:
-                    measured_at = datetime.strptime(
-                        measured_at,
-                        "%Y-%m-%dT%H:%M:%SZ"
-                    ).strftime("%Y-%m-%d %H:%M:%S")
+                    measured_at = datetime.strptime(measured_at, "%Y-%m-%dT%H:%M:%SZ") \
+                                          .strftime("%Y-%m-%d %H:%M:%S")
                 except (ValueError, TypeError):
                     measured_at = None
 
-            sql = """
-            INSERT INTO sensor_readings
-            (
-                latitude, longitude, tof_mm, sonic_mm, temperature,
-                sonic_raw_mm, tof_raw_mm, accel_raw_x, accel_raw_y, accel_raw_z,
-                measured_at
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            values = (
+            if measured_at is None:
+                measured_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+            cursor.execute("""
+                INSERT INTO sensor_readings
+                    (latitude, longitude, tof_mm, sonic_mm, temperature, sonic_raw_mm, tof_raw_mm, accel_raw_x, accel_raw_y, accel_raw_z, measured_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
                 item.get("lat"),
                 item.get("lon"),
                 item.get("grassHeightTof"),
@@ -79,59 +69,36 @@ def receive_data():
                 item.get("accel_raw_x"),
                 item.get("accel_raw_y"),
                 item.get("accel_raw_z"),
-                measured_at
-            )
-            cursor.execute(sql, values)
+                measured_at,
+            ))
 
         db.commit()
         return jsonify({"status": "ok"}), 200
 
     except Error as e:
-        if db:
-            db.rollback()
-        return jsonify({"error": "database error", "details": str(e)}), 500
-    except Exception as e:
-        if db:
-            db.rollback()
-        return jsonify({"error": "server error", "details": str(e)}), 500
+        if db: db.rollback()
+        return jsonify({"error": "db error", "details": str(e)}), 500
     finally:
-        if cursor:
-            cursor.close()
-        if db and db.is_connected():
-            db.close()
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
 
-
+# GET /sensor-data
 @app.route('/sensor-data', methods=['GET'])
 def get_data():
-    db = None
-    cursor = None
+    db = cursor = None
     try:
-        db = get_db_connection()
+        db = get_db()
         cursor = db.cursor(dictionary=True)
-
-        cursor.execute("""
-            SELECT *
-            FROM sensor_readings
-            ORDER BY id DESC
-            LIMIT 1
-        """)
-
-        latest = cursor.fetchone()
-
-        if latest is None:
-            return jsonify({})
-
-        return jsonify(latest)
-
+        cursor.execute("SELECT * FROM sensor_readings ORDER BY id DESC LIMIT 1")
+        row = cursor.fetchone()
+        return jsonify(row or {})
     except Error as e:
-        return jsonify({"error": "database error", "details": str(e)}), 500
+        return jsonify({"error": "db error", "details": str(e)}), 500
     finally:
-        if cursor:
-            cursor.close()
-        if db and db.is_connected():
-            db.close()
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
 
-
+# dashboard
 @app.route('/')
 def index():
     return render_template_string(HTML)
@@ -140,111 +107,52 @@ HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pico Dashboard</title>
-
+    <meta charset="utf-8">
+    <title>groenwerf</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-            background: #fafafa;
-        }
-
-        h1 {
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            width: 320px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }
-
-        .label {
-            color: #666;
-            margin-top: 10px;
-        }
-
-        .value {
-            font-size: 2em;
-            font-weight: bold;
-        }
-
-        .timestamp {
-            color: #888;
-            font-size: 0.9em;
-            margin-top: 15px;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: monospace; background: #0e0e0e; color: #e0e0e0; padding: 32px; }
+        h1 { font-size: 13px; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+        table { border-collapse: collapse; width: 100%; max-width: 520px; }
+        td { padding: 8px 0; border-bottom: 1px solid #1e1e1e; font-size: 14px; }
+        td:first-child { color: #555; width: 180px; }
+        td:last-child { color: #e0e0e0; }
+        #status { font-size: 11px; color: #333; margin-top: 20px; }
     </style>
 </head>
-
 <body>
-
-<h1>Grass Height Monitor</h1>
-
-<div class="card">
-    <div class="value" id="tof">--</div>
-    <div class="label">ToF (mm)</div>
-</div>
-
-<div class="card">
-    <div class="value" id="sonic">--</div>
-    <div class="label">Sonic (mm)</div>
-</div>
-
-<div class="card">
-    <div class="value" id="latlon">--</div>
-    <div class="label">Location</div>
-</div>
-
-<div class="card">
-    <div class="value" id="temperature">--</div>
-    <div class="label">Temperature (°C)</div>
-</div>
-
-<div class="card">
-    <div class="value" id="timestamp">--</div>
-    <div class="label">Measured At</div>
-</div>
-
-<script>
-
-async function updateData() {
-    try {
-        const res = await fetch('/sensor-data');
-        if (!res.ok) {
-            console.error('Failed to fetch data');
-            return;
+    <h1>grass monitor · live</h1>
+    <table>
+        <tr><td>tof</td><td><span id="tof">--</span> mm</td></tr>
+        <tr><td>sonic</td><td><span id="sonic">--</span> mm</td></tr>
+        <tr><td>temperature</td><td><span id="temp">--</span> °C</td></tr>
+        <tr><td>location</td><td><span id="loc">--</span></td></tr>
+        <tr><td>measured at</td><td><span id="ts">--</span></td></tr>
+    </table>
+    <p id="status">connecting...</p>
+    <script>
+        async function poll() {
+            try {
+                const r = await fetch('/sensor-data');
+                const d = await r.json();
+                if (!d || !d.id) return;
+                document.getElementById('tof').textContent   = d.tof_mm   ?? '--';
+                document.getElementById('sonic').textContent = d.sonic_mm ?? '--';
+                document.getElementById('temp').textContent  = d.temperature ?? '--';
+                document.getElementById('loc').textContent   =
+                    (d.latitude && d.longitude) ? d.latitude + ', ' + d.longitude : '--';
+                document.getElementById('ts').textContent    = d.measured_at ?? '--';
+                document.getElementById('status').textContent = 'last update: ' + new Date().toLocaleTimeString();
+            } catch(e) {
+                document.getElementById('status').textContent = 'error: ' + e.message;
+            }
         }
-
-        const data = await res.json();
-        if (!data || Object.keys(data).length === 0) return;
-
-        document.getElementById('tof').textContent = data.tof_mm ?? '--';
-        document.getElementById('sonic').textContent = data.sonic_mm ?? '--';
-        document.getElementById('latlon').textContent = `${data.latitude ?? '--'}, ${data.longitude ?? '--'}`;
-        document.getElementById('temperature').textContent = data.temperature ?? '--';
-        document.getElementById('timestamp').textContent = data.measured_at ?? '--';
-
-    } catch (err) {
-        console.error('Error updating data:', err);
-    }
-}
-
-updateData();
-setInterval(updateData, 2000);
-
-</script>
-
+        poll();
+        setInterval(poll, 2000);
+    </script>
 </body>
 </html>
 """
 
 if __name__ == '__main__':
-    app.run(
-        host=credentials.FLASK_HOST,
-        port=credentials.FLASK_PORT,
-        debug=True
-    )
+    app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT, debug=True)
