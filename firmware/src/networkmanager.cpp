@@ -41,16 +41,19 @@ bool NetworkManager::StartSend(const char *data) {
     memset(&ctx_, 0, sizeof(ctx_));
     ctx_.self = this;
 
+    const char* active_host = (strlen(SERVER_HOST) > 0) ? SERVER_HOST : SERVER_IP;
+
     snprintf(ctx_.request, sizeof(ctx_.request),
-        "POST %s HTTP/1.1\r\n"
-        "Host: %s:%d\r\n"
+        "POST %s HTTP/1.0\r\n"
+        "Host: %s\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %d\r\n"
         "X-API-Key: %s\r\n"
         "Connection: close\r\n"
         "\r\n"
         "%s",
-        HTTP_PATH, SERVER_IP, SERVER_PORT,
+        HTTP_PATH,
+        active_host,
         (int)strlen(data),
         API_KEY,
         data
