@@ -356,23 +356,23 @@ std::string GrassMonitor::buildJsonReading() {
     CalibrationData cal = _processor.get_calibration();
 
     if (_tof_ok && cal.tof_calibrated) {
-        obj += "\"grassHeightTof\":" + std::to_string(_processor.grassHeightTof());
+        obj += "\"ght\":" + std::to_string(_processor.grassHeightTof());
     } else {
-        obj += "\"grassHeightTof\":null";
+        obj += "\"ght\":null";
     }
 
     if (_sonic_ok && cal.sonic_calibrated) {
-        obj += ",\"grassHeightSonic\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
+        obj += ",\"ghs\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
     } else {
-        obj += ",\"grassHeightSonic\":null";
+        obj += ",\"ghs\":null";
     }
 
-    obj += ",\"sonic_raw_mm\":"  + (_sonic_ok ? std::to_string(raw.sonic_mm) : "null");
-    obj += ",\"tof_raw_mm\":"    + (_tof_ok ? std::to_string(raw.tof_mm) : "null");
-    obj += ",\"accel_raw_x\":"   + (_accel_ok ? std::to_string(raw.accel_x) : "null");
-    obj += ",\"accel_raw_y\":"   + (_accel_ok ? std::to_string(raw.accel_y) : "null");
-    obj += ",\"accel_raw_z\":"   + (_accel_ok ? std::to_string(raw.accel_z) : "null");
-    obj += ",\"temperature\":"   + std::to_string(raw.temperature_c);
+    obj += ",\"sr\":"  + (_sonic_ok ? std::to_string(raw.sonic_mm) : "null");
+    obj += ",\"tr\":"    + (_tof_ok ? std::to_string(raw.tof_mm) : "null");
+    obj += ",\"ax\":"   + (_accel_ok ? std::to_string(raw.accel_x) : "null");
+    obj += ",\"ay\":"   + (_accel_ok ? std::to_string(raw.accel_y) : "null");
+    obj += ",\"az\":"   + (_accel_ok ? std::to_string(raw.accel_z) : "null");
+    obj += ",\"t\":"   + std::to_string(raw.temperature_c);
 
     if (_gps_ok && utc_time.valid) {
         char ts[32];
@@ -383,11 +383,11 @@ std::string GrassMonitor::buildJsonReading() {
         snprintf(lat_str, sizeof(lat_str), "%.7f", location.latitude);
         snprintf(lon_str, sizeof(lon_str), "%.7f", location.longitude);
 
-        obj += ",\"measured_at\":\"" + std::string(ts) + "\"";
-        obj += ",\"lat\":" + std::string(lat_str);
-        obj += ",\"lon\":" + std::string(lon_str);
+        obj += ",\"m_at\":\"" + std::string(ts) + "\"";
+        obj += ",\"lt\":" + std::string(lat_str);
+        obj += ",\"ln\":" + std::string(lon_str);
     } else {
-        obj += ",\"measured_at\":null,\"lat\":null,\"lon\":null";
+        obj += ",\"m_at\":null,\"lt\":null,\"ln\":null";
     }
 
     obj += "}";

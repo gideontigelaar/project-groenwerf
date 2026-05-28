@@ -38,7 +38,7 @@ private:
     SendState    state_  = SendState::IDLE;
 
     uint32_t     send_start_ms_ = 0;
-    static constexpr uint32_t SEND_TIMEOUT_MS = 5000;
+    static constexpr uint32_t SEND_TIMEOUT_MS = 15000;
 
     int          wifi_retry_count_ = 0;
     uint32_t     wifi_retry_start_ms_ = 0;
