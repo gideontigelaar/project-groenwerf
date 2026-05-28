@@ -31,39 +31,53 @@ void NetworkManager::ConnectInitial() {
     LOG_INFO("Network: Connected. IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 }
 
-bool NetworkManager::StartSend(const char *data) {
+bool NetworkManager::StartSend(const uint8_t *data, size_t length) {
     if (IsBusy() || halted_) {
         return false;
     }
 
     cyw43_arch_lwip_begin();
 
-    memset(&ctx_, 0, sizeof(ctx_));
-    ctx_.self = this;
+    if (state_ != SendState::CONNECTED_IDLE) {
+        memset(&ctx_, 0, sizeof(ctx_));
+        ctx_.self = this;
+    }
 
     const char* active_host = (SERVER_HOST[0] != '\0') ? SERVER_HOST : SERVER_IP;
 
-    int written = snprintf(ctx_.request, sizeof(ctx_.request),
-        "POST %s HTTP/1.0\r\n"
+    int header_len = snprintf(ctx_.request, sizeof(ctx_.request),
+        "POST %s HTTP/1.1\r\n"
         "Host: %s\r\n"
-        "Content-Type: application/json\r\n"
+        "Content-Type: application/octet-stream\r\n"
         "Content-Length: %d\r\n"
         "X-API-Key: %s\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "%s",
-        HTTP_PATH,
-        active_host,
-        (int)strlen(data),
-        API_KEY,
-        data
-    );
+        "Connection: keep-alive\r\n"
+        "\r\n",
+        HTTP_PATH, active_host, (int)length, API_KEY);
 
-    if (written < 0 || written >= (int)sizeof(ctx_.request)) {
+    if (header_len < 0 || header_len + length >= sizeof(ctx_.request)) {
         LOG_ERROR("Network: WARNING - request truncated!");
         state_ = SendState::ERROR;
         cyw43_arch_lwip_end();
         return false;
+    }
+
+    memcpy(ctx_.request + header_len, data, length);
+    ctx_.pending_write_len = header_len + length;
+
+    if (state_ == SendState::CONNECTED_IDLE && ctx_.pcb != nullptr) {
+        err_t write_err = tcp_write(ctx_.pcb, ctx_.request, ctx_.pending_write_len, 0);
+        if (write_err == ERR_OK) {
+            tcp_output(ctx_.pcb);
+            state_ = SendState::WAITING_RESPONSE;
+            send_start_ms_ = to_ms_since_boot(get_absolute_time());
+            cyw43_arch_lwip_end();
+            return true;
+        } else {
+            tcp_close(ctx_.pcb);
+            ctx_.pcb = nullptr;
+            state_ = SendState::IDLE;
+        }
     }
 
     ctx_.pcb = tcp_new_ip_type(IPADDR_TYPE_V4);
@@ -156,7 +170,7 @@ err_t NetworkManager::onConnected(void *arg, struct tcp_pcb *pcb, err_t err) {
         return err;
     }
 
-    err_t write_err = tcp_write(pcb, ctx->request, strlen(ctx->request), 0);
+    err_t write_err = tcp_write(pcb, ctx->request, ctx->pending_write_len, 0);
     if (write_err != ERR_OK) {
         LOG_ERROR("Network: tcp_write failed (%d)", write_err);
         self->state_ = SendState::ERROR;
@@ -175,12 +189,14 @@ err_t NetworkManager::onReceive(void *arg, struct tcp_pcb *pcb, struct pbuf *p, 
     if (p == nullptr) {
         tcp_close(pcb);
         ctx->pcb  = nullptr;
-        self->state_ = SendState::DONE;
+        self->state_ = SendState::IDLE;
         return ERR_OK;
     }
 
     tcp_recved(pcb, p->tot_len);
     pbuf_free(p);
+
+    self->state_ = SendState::CONNECTED_IDLE;
     return ERR_OK;
 }
 

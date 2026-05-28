@@ -4,6 +4,8 @@ from flask_limiter.util import get_remote_address
 from mysql.connector import pooling, Error
 from datetime import datetime, timezone
 import sys
+import struct
+import math
 
 try:
     import credentials
@@ -58,49 +60,82 @@ def receive_data():
     if request.headers.get("X-API-Key") != credentials.API_KEY:
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json(silent=True)
-    if not data or not isinstance(data, list):
-        return jsonify({"error": "expected a JSON array"}), 400
-
-    if len(data) > 100:
-        return jsonify({"error": "batch too large, maximum 100 items per request"}), 400
-
     db = cursor = None
     inserted = 0
+    fallback_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    values_to_insert = []
 
     try:
         db = get_db()
         cursor = db.cursor()
 
-        values_to_insert = []
-        fallback_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        if request.content_type == "application/octet-stream":
+            raw_data = request.get_data(as_text=False)
+            item_size = 40
 
-        for item in data:
-            if not isinstance(item, dict):
-                continue
+            if len(raw_data) % item_size != 0 or len(raw_data) == 0:
+                return jsonify({"error": "invalid binary payload length"}), 400
 
-            measured_at = item.get("measured_at", item.get("m_at"))
-            if measured_at:
-                try:
-                    measured_at = measured_at.replace("T", " ").replace("Z", "")
-                except (ValueError, TypeError):
+            if (len(raw_data) // item_size) > 100:
+                return jsonify({"error": "batch too large, maximum 100 items per request"}), 400
+
+            for i in range(0, len(raw_data), item_size):
+                chunk = raw_data[i:i+item_size]
+                unpacked = struct.unpack("<ffHHfHHfffHBBBBBB", chunk)
+
+                lat = unpacked[0] if not math.isnan(unpacked[0]) else None
+                lon = unpacked[1] if not math.isnan(unpacked[1]) else None
+                ght = unpacked[2] if unpacked[2] != 0xFFFF else None
+                ghs = unpacked[3] if unpacked[3] != 0xFFFF else None
+                t   = unpacked[4] if not math.isnan(unpacked[4]) else None
+                sr  = unpacked[5] if unpacked[5] != 0xFFFF else None
+                tr  = unpacked[6] if unpacked[6] != 0xFFFF else None
+                ax  = unpacked[7] if not math.isnan(unpacked[7]) else None
+                ay  = unpacked[8] if not math.isnan(unpacked[8]) else None
+                az  = unpacked[9] if not math.isnan(unpacked[9]) else None
+                year, month, day, hour, minute, second, valid_time = unpacked[10:17]
+
+                if valid_time == 1:
+                    measured_at = f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
+                else:
                     measured_at = fallback_time
-            else:
-                measured_at = fallback_time
 
-            values_to_insert.append((
-                item.get("lat", item.get("lt")),
-                item.get("lon", item.get("ln")),
-                item.get("grassHeightTof", item.get("ght")),
-                item.get("grassHeightSonic", item.get("ghs")),
-                item.get("temperature", item.get("t")),
-                item.get("sonic_raw_mm", item.get("sr")),
-                item.get("tof_raw_mm", item.get("tr")),
-                item.get("accel_raw_x", item.get("ax")),
-                item.get("accel_raw_y", item.get("ay")),
-                item.get("accel_raw_z", item.get("az")),
-                measured_at,
-            ))
+                values_to_insert.append((lat, lon, ght, ghs, t, sr, tr, ax, ay, az, measured_at))
+
+        else:
+            data = request.get_json(silent=True)
+            if not data or not isinstance(data, list):
+                return jsonify({"error": "expected a JSON array"}), 400
+
+            if len(data) > 100:
+                return jsonify({"error": "batch too large, maximum 100 items per request"}), 400
+
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+
+                measured_at = item.get("measured_at", item.get("m_at"))
+                if measured_at:
+                    try:
+                        measured_at = measured_at.replace("T", " ").replace("Z", "")
+                    except (ValueError, TypeError):
+                        measured_at = fallback_time
+                else:
+                    measured_at = fallback_time
+
+                values_to_insert.append((
+                    item.get("lat", item.get("lt")),
+                    item.get("lon", item.get("ln")),
+                    item.get("grassHeightTof", item.get("ght")),
+                    item.get("grassHeightSonic", item.get("ghs")),
+                    item.get("temperature", item.get("t")),
+                    item.get("sonic_raw_mm", item.get("sr")),
+                    item.get("tof_raw_mm", item.get("tr")),
+                    item.get("accel_raw_x", item.get("ax")),
+                    item.get("accel_raw_y", item.get("ay")),
+                    item.get("accel_raw_z", item.get("az")),
+                    measured_at,
+                ))
 
         if values_to_insert:
             insert_query = """

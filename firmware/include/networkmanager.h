@@ -2,7 +2,7 @@
 
 #include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
-#include <string>
+#include <cstdint>
 
 class NetworkManager {
 public:
@@ -10,6 +10,7 @@ public:
         IDLE,
         CONNECTING_WIFI,
         CONNECTING,
+        CONNECTED_IDLE,
         WAITING_RESPONSE,
         DONE,
         ERROR
@@ -19,9 +20,14 @@ public:
     ~NetworkManager();
 
     void ConnectInitial();
-    bool StartSend(const char *data);
+    bool StartSend(const uint8_t *data, size_t length);
     void Poll();
-    bool IsBusy()  const { return state_ == SendState::CONNECTING || state_ == SendState::WAITING_RESPONSE || state_ == SendState::CONNECTING_WIFI; }
+
+    bool IsBusy() const {
+        return state_ == SendState::CONNECTING ||
+               state_ == SendState::WAITING_RESPONSE ||
+               state_ == SendState::CONNECTING_WIFI;
+    }
     bool HasError() const { return state_ == SendState::ERROR; }
     bool IsDone()   const { return state_ == SendState::DONE; }
     bool IsHalted() const { return halted_; }
@@ -32,6 +38,7 @@ private:
         struct tcp_pcb *pcb   = nullptr;
         NetworkManager *self  = nullptr;
         char request[8192]    = {};
+        size_t pending_write_len = 0;
     };
 
     TcpContext   ctx_;
