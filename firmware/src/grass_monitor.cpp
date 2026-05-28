@@ -5,6 +5,8 @@
 #include "hardware/adc.h"
 #include "pico/cyw43_arch.h"
 #include "logger.h"
+#include <cmath>
+#include <limits>
 
 GrassMonitor::GrassMonitor()
     : _tof(i2c0, TofSensor::DEFAULT_ADDR),
@@ -212,15 +214,13 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
     _last_print_ms = now_ms;
 
     // accumulate data
-    if (_reading_counter > 1) _readings += ",";
-    _readings += buildJsonReading();
+    appendBinaryReading();
 
     // transmit batch
     if (_reading_counter >= Config::Network::SEND_BATCH_SIZE) {
         if (!_nm.IsBusy()) {
-            std::string payload = "[" + _readings + "]";
-            if (_nm.StartSend(payload.c_str())) {
-                _readings = "";
+            if (_nm.StartSend((const uint8_t*)_readings.data(), _readings.size() * sizeof(BinaryReading))) {
+                _readings.clear();
                 _reading_counter = 0;
             }
         } else {
@@ -229,9 +229,9 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
         }
 
         // Drop batch if too large
-        if (_reading_counter > 25) {
+        if (_readings.size() > 25) {
             LOG_ERROR("Network: Offline too long! Dropping oldest readings.");
-            _readings = "";
+            _readings.clear();
             _reading_counter = 0;
         }
     }
@@ -350,46 +350,43 @@ void GrassMonitor::calibrateSensors() {
     }
 }
 
-std::string GrassMonitor::buildJsonReading() {
-    std::string obj = "{";
+void GrassMonitor::appendBinaryReading() {
+    BinaryReading r;
     RawData raw = _processor.raw();
     CalibrationData cal = _processor.get_calibration();
 
-    if (_tof_ok && cal.tof_calibrated) {
-        obj += "\"grassHeightTof\":" + std::to_string(_processor.grassHeightTof());
-    } else {
-        obj += "\"grassHeightTof\":null";
-    }
+    r.lat = (_gps_ok && utc_time.valid) ? location.latitude : std::numeric_limits<float>::quiet_NaN();
+    r.lon = (_gps_ok && utc_time.valid) ? location.longitude : std::numeric_limits<float>::quiet_NaN();
 
-    if (_sonic_ok && cal.sonic_calibrated) {
-        obj += ",\"grassHeightSonic\":" + std::to_string(_processor.grassHeightSonicMedianAccel());
-    } else {
-        obj += ",\"grassHeightSonic\":null";
-    }
+    r.ght = (_tof_ok && cal.tof_calibrated) ? _processor.grassHeightTof() : 0xFFFF;
+    r.ghs = (_sonic_ok && cal.sonic_calibrated) ? _processor.grassHeightSonicMedianAccel() : 0xFFFF;
 
-    obj += ",\"sonic_raw_mm\":"  + (_sonic_ok ? std::to_string(raw.sonic_mm) : "null");
-    obj += ",\"tof_raw_mm\":"    + (_tof_ok ? std::to_string(raw.tof_mm) : "null");
-    obj += ",\"accel_raw_x\":"   + (_accel_ok ? std::to_string(raw.accel_x) : "null");
-    obj += ",\"accel_raw_y\":"   + (_accel_ok ? std::to_string(raw.accel_y) : "null");
-    obj += ",\"accel_raw_z\":"   + (_accel_ok ? std::to_string(raw.accel_z) : "null");
-    obj += ",\"temperature\":"   + std::to_string(raw.temperature_c);
+    r.t = raw.temperature_c;
+
+    r.sr = _sonic_ok ? raw.sonic_mm : 0xFFFF;
+    r.tr = _tof_ok ? raw.tof_mm : 0xFFFF;
+
+    r.ax = _accel_ok ? raw.accel_x : std::numeric_limits<float>::quiet_NaN();
+    r.ay = _accel_ok ? raw.accel_y : std::numeric_limits<float>::quiet_NaN();
+    r.az = _accel_ok ? raw.accel_z : std::numeric_limits<float>::quiet_NaN();
 
     if (_gps_ok && utc_time.valid) {
-        char ts[32];
-        snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            utc_time.year, utc_time.month, utc_time.day,
-            utc_time.hour, utc_time.minute, utc_time.second);
-        char lat_str[32], lon_str[32];
-        snprintf(lat_str, sizeof(lat_str), "%.7f", location.latitude);
-        snprintf(lon_str, sizeof(lon_str), "%.7f", location.longitude);
-
-        obj += ",\"measured_at\":\"" + std::string(ts) + "\"";
-        obj += ",\"lat\":" + std::string(lat_str);
-        obj += ",\"lon\":" + std::string(lon_str);
+        r.year = utc_time.year;
+        r.month = utc_time.month;
+        r.day = utc_time.day;
+        r.hour = utc_time.hour;
+        r.minute = utc_time.minute;
+        r.second = utc_time.second;
+        r.valid_time = 1;
     } else {
-        obj += ",\"measured_at\":null,\"lat\":null,\"lon\":null";
+        r.year = 0;
+        r.month = 0;
+        r.day = 0;
+        r.hour = 0;
+        r.minute = 0;
+        r.second = 0;
+        r.valid_time = 0;
     }
 
-    obj += "}";
-    return obj;
+    _readings.push_back(r);
 }
