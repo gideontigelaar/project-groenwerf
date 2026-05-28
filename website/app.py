@@ -1,53 +1,56 @@
 from flask import Flask, jsonify, render_template, request
-import mysql.connector
 import urllib.request
 import urllib.parse
 import json
- 
+import csv
+import os
+
 app = Flask(__name__)
- 
-DB_CONFIG = {
-    'host': '167.99.39.255',
-    'user': 'dashboard',
-    'password': 'frikandel67',
-    'database': 'groenwerf'
-}
- 
-def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG, connection_timeout=5)
- 
- 
-# --- API: replaces data.php ---
+
+CSV_PATH = os.path.join(os.path.dirname(__file__), 'sensor_readings.csv')
+
+def load_csv_data():
+    rows = []
+    with open(CSV_PATH, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append({
+                'tof_mm':          None if row['tof_mm'] in ('', 'NULL') else row['tof_mm'],
+                'sonic_median_mm': None if row['sonic_mm'] in ('', 'NULL') else row['sonic_mm'],
+                'longitude':       None if row['longitude'] in ('', 'NULL') else row['longitude'],
+                'latitude':        None if row['latitude'] in ('', 'NULL') else row['latitude'],
+                'measured_at':     row['measured_at'],
+            })
+    return rows
+
+
+# --- API: data ---
 @app.route('/api/data')
 def api_data():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            "SELECT tof_mm, sonic_median_mm, longitude, latitude, measured_at "
-            "FROM sensor_readings ORDER BY measured_at DESC LIMIT 100"
-        )
-        rows = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        for row in rows:
-            if row.get('measured_at'):
-                row['measured_at'] = str(row['measured_at'])
-        return jsonify(rows)
-    except Exception:
-        # DB offline or unreachable — return empty array so the frontend keeps working
-        return jsonify([]), 200
- 
- 
-# --- API: replaces geocode.php ---
+    sort = request.args.get('sort', 'measured_at')
+    allowed = {'measured_at', 'tof_mm', 'sonic_mm', 'longitude', 'latitude'}
+    if sort not in allowed:
+        sort = 'measured_at'
+
+    rows = load_csv_data()
+
+    def sort_key(r):
+        v = r.get(sort) or r.get('sonic_median_mm') or r.get('measured_at')
+        return v or ''
+
+    rows.sort(key=sort_key, reverse=True)
+    return jsonify(rows[:100])
+
+
+# --- API: geocode ---
 @app.route('/api/geocode')
 def api_geocode():
     lat = request.args.get('lat', '')
     lng = request.args.get('lng', '')
- 
+
     if lat in ('', 'null') or lng in ('', 'null'):
         return jsonify({'address': 'Unknown'})
- 
+
     url = (
         f"https://nominatim.openstreetmap.org/reverse"
         f"?lat={urllib.parse.quote(lat)}&lon={urllib.parse.quote(lng)}&format=json"
@@ -60,14 +63,14 @@ def api_geocode():
         return jsonify({'address': address})
     except Exception:
         return jsonify({'address': 'Unknown'})
- 
- 
-# --- Pages: replace index.php and rapport.php ---
+
+
+# --- Pages ---
 @app.route('/')
 @app.route('/index')
 def index():
     return render_template('index.html', active_page="index")
- 
+
 @app.route('/rawdata')
 def rawdata():
     return render_template('rawdata.html', active_page="rawdata")
@@ -75,7 +78,7 @@ def rawdata():
 @app.route('/rapport')
 def rapport():
     return render_template('rapport.html', active_page="rapport")
- 
- 
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=3000, debug=True)

@@ -1,50 +1,78 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+<div
+  id="carouselExampleIndicators"
+  class="carousel slide"
+  data-bs-ride="carousel"
+>
+  <!-- Indicators -->
+  <div class="carousel-indicators">
+    <button
+      type="button"
+      data-bs-target="#carouselExampleIndicators"
+      data-bs-slide-to="0"
+      class="active"
+    ></button>
+    <button
+      type="button"
+      data-bs-target="#carouselExampleIndicators"
+      data-bs-slide-to="1"
+    ></button>
+    <button
+      type="button"
+      data-bs-target="#carouselExampleIndicators"
+      data-bs-slide-to="2"
+    ></button>
+  </div>
 
-{% block title %}Dashboard{% endblock %}
-
-{% block content %}
-
-    <div id="carouselExampleIndicators" class="carousel slide" data-bs-ride="carousel">
-        <!-- Indicators -->
-        <div class="carousel-indicators">
-            <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active"></button>
-            <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1"></button>
-            <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2"></button>
-        </div>
-        <!-- Slides -->
-        <div class="carousel-inner">
-            <div id="ChartContainer" class="carousel-item active">
-                <div class="col-span-3 object-contain">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-            <div class="carousel-item">
-                <img
-                    src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
-                    class="d-block w-100"
-                    alt="Nature 2"
-                >
-            </div>
-            <div class="carousel-item">
-                <img
-                    src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e"
-                    class="d-block w-100"
-                    alt="Nature 3"
-                >
-            </div>
-        </div>
-        <!-- Controls -->
-        <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon"></span>
-        </button>
-
-        <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
-            <span class="carousel-control-next-icon"></span>
-        </button>
+  <div class="carousel-inner">
+    <!-- Slide 1: Pie chart -->
+    <div
+      id="ChartContainer"
+      class="carousel-item active flex items-center justify-center bg-white"
+      style="height: 500px"
+    >
+      <canvas id="pieChart"></canvas>
     </div>
 
+    <!-- Slide 2 -->
+    <div class="carousel-item">
+      <img
+        src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee"
+        class="d-block w-100 object-cover rounded-xl"
+        style="height: 500px"
+        alt="Nature 2"
+      />
     </div>
-{% endblock %}
-{% block scripts %}
-    <script src="{{ url_for('static', filename='PieChart.js') }}"></script>
+
+    <!-- Slide 3 -->
+    <div class="carousel-item">
+      <img
+        src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e"
+        class="d-block w-100 object-cover rounded-xl"
+        style="height: 500px"
+        alt="Nature 3"
+      />
+    </div>
+  </div>
+
+  <button
+    class="carousel-control-prev"
+    type="button"
+    data-bs-target="#carouselExampleIndicators"
+    data-bs-slide="prev"
+  >
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button
+    class="carousel-control-next"
+    type="button"
+    data-bs-target="#carouselExampleIndicators"
+    data-bs-slide="next"
+  >
+    <span class="carousel-control-next-icon"></span>
+  </button>
+</div>
+{% endblock %} {% block scripts %}
+<script src="{{ url_for('static', filename='PieChart.js') }}"></script>
 {% endblock %}

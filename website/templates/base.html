@@ -1,46 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Groenwerf{% endblock %}</title>
 
-    <!-- Bootstrap -->
+    <!-- Bootstrap CSS -->
     <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Tailwind -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
 
-    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+  <body class="flex min-h-screen bg-gray-100">
+    <!-- Sidebar -->
+    <aside class="w-72 bg-[#1f3d2b] text-white flex flex-col p-5 shrink-0">
+      <h2 class="text-center text-xl font-bold mb-8">Groenvoorziening</h2>
+      <ul class="space-y-2 list-none p-0">
+        <a href="{{ url_for('index') }}" class="no-underline">
+          <li
+            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'index' }}"
+          >
+            Dashboard
+          </li>
+        </a>
+        <a href="{{ url_for('rawdata') }}" class="no-underline">
+          <li
+            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'rawdata' }}"
+          >
+            Rauwe data
+          </li>
+        </a>
+        <a href="{{ url_for('rapport') }}" class="no-underline">
+          <li
+            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'rapport' }}"
+          >
+            Rapport
+          </li>
+        </a>
+      </ul>
+    </aside>
 
-<body>
-    <div class="sidebar">
-        <h2>Groenvoorziening</h2>
-
-        <ul>
-            <a href="{{ url_for('index') }}">
-                <li class="{{ 'active' if active_page == 'index' }}">Dashboard</li>
-            </a>
-
-            <a href="{{ url_for('rawdata') }}">
-                <li class="{{ 'active' if active_page == 'rawdata' }}">Rauwe data</li>
-            </a>
-
-            <a href="{{ url_for('rapport') }}">
-                <li class="{{ 'active' if active_page == 'rapport' }}">Rapport</li>
-            </a>    
-        </ul>
-    </div>
-
-    <div class="main-content">
-        {% block content %}{% endblock %}
-    </div>
+    <!-- Main -->
+    <div class="flex-1">{% block content %}{% endblock %}</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
-</body>
+  </body>
+</html>
