@@ -158,7 +158,7 @@ err_t NetworkManager::onConnected(void *arg, struct tcp_pcb *pcb, err_t err) {
         return err;
     }
 
-    err_t write_err = tcp_write(pcb, ctx->request, strlen(ctx->request), TCP_WRITE_FLAG_COPY);
+    err_t write_err = tcp_write(pcb, ctx->request, strlen(ctx->request), 0);
     if (write_err != ERR_OK) {
         LOG_ERROR("Network: tcp_write failed (%d)", write_err);
         self->state_ = SendState::ERROR;

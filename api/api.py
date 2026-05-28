@@ -72,6 +72,8 @@ def receive_data():
         db = get_db()
         cursor = db.cursor()
 
+        values_to_insert = []
+
         for item in data:
             if not isinstance(item, dict):
                 continue
@@ -79,41 +81,39 @@ def receive_data():
             measured_at = item.get("measured_at")
             if measured_at:
                 try:
-                    measured_at = (
-                        datetime.strptime(measured_at, "%Y-%m-%dT%H:%M:%SZ")
-                        .strftime("%Y-%m-%d %H:%M:%S")
-                    )
+                    measured_at = measured_at.replace("T", " ").replace("Z", "")
                 except (ValueError, TypeError):
                     measured_at = None
 
             if measured_at is None:
                 measured_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-            cursor.execute(
-                """
+            values_to_insert.append((
+                item.get("lat"),
+                item.get("lon"),
+                item.get("grassHeightTof"),
+                item.get("grassHeightSonic"),
+                item.get("temperature"),
+                item.get("sonic_raw_mm"),
+                item.get("tof_raw_mm"),
+                item.get("accel_raw_x"),
+                item.get("accel_raw_y"),
+                item.get("accel_raw_z"),
+                measured_at,
+            ))
+
+        if values_to_insert:
+            insert_query = """
                 INSERT INTO sensor_readings
                     (latitude, longitude, tof_mm, sonic_mm, temperature,
                      sonic_raw_mm, tof_raw_mm,
                      accel_raw_x, accel_raw_y, accel_raw_z, measured_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    item.get("lat"),
-                    item.get("lon"),
-                    item.get("grassHeightTof"),
-                    item.get("grassHeightSonic"),
-                    item.get("temperature"),
-                    item.get("sonic_raw_mm"),
-                    item.get("tof_raw_mm"),
-                    item.get("accel_raw_x"),
-                    item.get("accel_raw_y"),
-                    item.get("accel_raw_z"),
-                    measured_at,
-                ),
-            )
-            inserted += 1
+            """
+            cursor.executemany(insert_query, values_to_insert)
+            db.commit()
+            inserted = len(values_to_insert)
 
-        db.commit()
         return jsonify({"status": "ok", "inserted": inserted}), 200
 
     except Error as e:
