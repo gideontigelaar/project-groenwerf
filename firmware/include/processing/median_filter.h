@@ -6,22 +6,21 @@
 class MedianFilter {
 public:
     explicit MedianFilter(size_t window = 5)
-        : _window(window), _buf(window), _head(0), _size(0), _count(0) {}
+        : _window(window), _buf(window), _sort_buf(window), _head(0), _size(0) {}
 
     void push(float value);
     float get() const;
 
-    size_t count() const { return _count; }
+    size_t count() const { return _size; }
     void reset() {
         _head = 0;
         _size = 0;
-        _count = 0;
     }
 
 private:
     std::vector<float> _buf;
+    mutable std::vector<float> _sort_buf;
     size_t _window;
     size_t _head;
     size_t _size;
-    size_t _count;
 };

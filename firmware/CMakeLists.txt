@@ -28,7 +28,7 @@ project(grass_monitor_pico C CXX ASM)
 pico_sdk_init()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/credentials.h")
-    message(FATAL_ERROR "Missing credentials.h — copy include/credentials.h.template and fill in details.")
+    message(FATAL_ERROR "Missing credentials.h")
 endif()
 
 add_executable(grass_monitor_pico

@@ -1,6 +1,5 @@
 #include "sensors/adxl345.h"
 #include "pico/stdlib.h"
-#include <cstdio>
 
 // registers from datasheet
 static constexpr uint8_t REG_DEVID = 0x00; // always reads 0xE5
@@ -30,7 +29,6 @@ void ADXL345::readRegs(uint8_t reg, uint8_t* buf, uint8_t len) {
 
 bool ADXL345::init() {
     uint8_t id = readReg(REG_DEVID);
-    printf("  [ADXL345] device ID: 0x%02X (expect 0xE5)\n", id);
     if(id != 0xE5) return false;
 
     // +/-2g range, full resolution

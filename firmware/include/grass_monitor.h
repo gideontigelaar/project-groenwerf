@@ -7,16 +7,17 @@
 #include "sensors/tmp36.h"
 #include "processing/sensor_processor.h"
 #include "networkmanager.h"
+#include "config.h"
 #include <string>
 
-// System LED states
+// system led states
 enum class SystemState {
-    CALIBRATING,         // Green and Yellow Solid
-    READING,             // Green Solid
-    TRANSMITTING,        // Flashing Green
-    ERROR_WARNING,       // Yellow Solid
-    WIFI_RECONNECTING,   // Flashing Yellow
-    HALTED               // Green and Yellow Solid
+    CALIBRATING,         // green and yellow solid
+    READING,             // green solid
+    TRANSMITTING,        // flashing green
+    ERROR_WARNING,       // yellow solid
+    WIFI_RECONNECTING,   // flashing yellow
+    HALTED               // green and yellow solid
 };
 
 class GrassMonitor {
@@ -27,36 +28,7 @@ public:
     void run();
 
 private:
-    // for ToF (I2C0)
-    static constexpr uint I2C0_SDA = 20;
-    static constexpr uint I2C0_SCL = 21;
-    static constexpr uint I2C_FREQ = 400000;
-
-    // for ADXL345 (I2C1)
-    static constexpr uint I2C1_SDA = 14;
-    static constexpr uint I2C1_SCL = 15;
-
-    // for RCWL-1604
-    static constexpr uint RCWL_TRIG = 18;
-    static constexpr uint RCWL_ECHO = 19;
-
-    // for TMP36
-    static constexpr uint TMP36_PIN = 28;
-
-    // for Network LEDs
-    static constexpr uint LED_GREEN  = 26;
-    static constexpr uint LED_YELLOW = 22;
-
-    // Timing constants
-    static constexpr uint32_t TOF_INTERVAL_MS   = 20;
-    static constexpr uint32_t SONIC_INTERVAL_MS = 50;
-    static constexpr uint32_t ACCEL_INTERVAL_MS = 10;
-    static constexpr uint32_t PRINT_INTERVAL_MS = 500;
-    static constexpr uint32_t LOOP_TICK_MS      = 5;
-
-    static constexpr int SEND_BATCH_SIZE = 10;
-
-    // Core components
+    // core components
     TofSensor       _tof;
     ADXL345         _accel;
     RCWL1604        _ultrasonic;
@@ -64,7 +36,7 @@ private:
     SensorProcessor _processor;
     NetworkManager  _nm;
 
-    // Status flags
+    // status flags
     bool _tof_ok   = false;
     bool _accel_ok = false;
     bool _sonic_ok = false;
@@ -72,17 +44,17 @@ private:
     bool _gps_ok   = false;
     bool _using_tmp36 = false;
 
-    // Timing state
+    // timing state
     uint32_t _last_tof_ms   = 0;
     uint32_t _last_sonic_ms = 0;
     uint32_t _last_accel_ms = 0;
     uint32_t _last_print_ms = 0;
 
-    // Data batch state
+    // data batch state
     int _reading_counter = 0;
     std::string _readings = "";
 
-    // Internal methods
+    // internal methods
     void initSystemLeds();
     void updateSystemLeds(SystemState state);
     void scanI2c(i2c_inst_t* i2c, const char* label);

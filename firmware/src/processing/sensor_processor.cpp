@@ -32,29 +32,35 @@ void SensorProcessor::parseAccel(float x, float y, float z, uint32_t now_ms) {
 
 void SensorProcessor::calibrate() {
     // wait for enough samples to establish baseline
-    if(!_cal.tof_calibrated && _tof_median.count() >= CALIBRATION_SAMPLES) {
-        _cal.tof_offset_mm = KNOWN_HEIGHT_MM - _tof_median.get();
-        _cal.tof_calibrated = true;
+    if(!_cal.tof_calibrated && _tof_median.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
+        float median = _tof_median.get();
+        if (median > 0.0f) {
+            _cal.tof_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - median;
+            _cal.tof_calibrated = true;
+        }
     }
 
-    if(!_cal.sonic_calibrated && _sonic_narrow.count() >= CALIBRATION_SAMPLES) {
-        _cal.sonic_offset_mm = KNOWN_HEIGHT_MM - _sonic_narrow.get();
-        _cal.sonic_calibrated = true;
+    if(!_cal.sonic_calibrated && _sonic_narrow.count() >= Config::Sensor::CALIBRATION_SAMPLES) {
+        float median = _sonic_narrow.get();
+        if (median > 0.0f) {
+            _cal.sonic_offset_mm = Config::Sensor::KNOWN_HEIGHT_MM - median;
+            _cal.sonic_calibrated = true;
+        }
     }
 }
 
 uint16_t SensorProcessor::applyOffset(float median, float offset) const {
     float corrected = median + offset;
     // clamp result between 0 and ground height
-    float grass = std::max(0.0f, std::min(KNOWN_HEIGHT_MM, KNOWN_HEIGHT_MM - corrected));
+    float grass = std::max(0.0f, std::min(Config::Sensor::KNOWN_HEIGHT_MM, Config::Sensor::KNOWN_HEIGHT_MM - corrected));
     return static_cast<uint16_t>(grass);
 }
 
 const MedianFilter& SensorProcessor::activeSonicFilter() const {
     float g = _vibration.intensity();
     // select window size based on vibration intensity
-    if(g >= VIBRATION_HIGH_G) return _sonic_wide;
-    if(g >= VIBRATION_LOW_G)  return _sonic_medium;
+    if(g >= Config::Sensor::VIBRATION_HIGH_G) return _sonic_wide;
+    if(g >= Config::Sensor::VIBRATION_LOW_G)  return _sonic_medium;
     return _sonic_narrow;
 }
 
