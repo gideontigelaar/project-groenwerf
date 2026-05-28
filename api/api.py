@@ -73,32 +73,32 @@ def receive_data():
         cursor = db.cursor()
 
         values_to_insert = []
+        fallback_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         for item in data:
             if not isinstance(item, dict):
                 continue
 
-            measured_at = item.get("measured_at")
+            measured_at = item.get("measured_at", item.get("m_at"))
             if measured_at:
                 try:
                     measured_at = measured_at.replace("T", " ").replace("Z", "")
                 except (ValueError, TypeError):
-                    measured_at = None
-
-            if measured_at is None:
-                measured_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                    measured_at = fallback_time
+            else:
+                measured_at = fallback_time
 
             values_to_insert.append((
-                item.get("lat"),
-                item.get("lon"),
-                item.get("grassHeightTof"),
-                item.get("grassHeightSonic"),
-                item.get("temperature"),
-                item.get("sonic_raw_mm"),
-                item.get("tof_raw_mm"),
-                item.get("accel_raw_x"),
-                item.get("accel_raw_y"),
-                item.get("accel_raw_z"),
+                item.get("lat", item.get("lt")),
+                item.get("lon", item.get("ln")),
+                item.get("grassHeightTof", item.get("ght")),
+                item.get("grassHeightSonic", item.get("ghs")),
+                item.get("temperature", item.get("t")),
+                item.get("sonic_raw_mm", item.get("sr")),
+                item.get("tof_raw_mm", item.get("tr")),
+                item.get("accel_raw_x", item.get("ax")),
+                item.get("accel_raw_y", item.get("ay")),
+                item.get("accel_raw_z", item.get("az")),
                 measured_at,
             ))
 

@@ -41,9 +41,9 @@ bool NetworkManager::StartSend(const char *data) {
     memset(&ctx_, 0, sizeof(ctx_));
     ctx_.self = this;
 
-    const char* active_host = (strlen(SERVER_HOST) > 0) ? SERVER_HOST : SERVER_IP;
+    const char* active_host = (SERVER_HOST[0] != '\0') ? SERVER_HOST : SERVER_IP;
 
-    snprintf(ctx_.request, sizeof(ctx_.request),
+    int written = snprintf(ctx_.request, sizeof(ctx_.request),
         "POST %s HTTP/1.0\r\n"
         "Host: %s\r\n"
         "Content-Type: application/json\r\n"
@@ -59,9 +59,7 @@ bool NetworkManager::StartSend(const char *data) {
         data
     );
 
-    size_t total_len  = strlen(ctx_.request);
-    size_t buf_size   = sizeof(ctx_.request);
-    if (total_len >= buf_size - 1) {
+    if (written < 0 || written >= (int)sizeof(ctx_.request)) {
         LOG_ERROR("Network: WARNING - request truncated!");
         state_ = SendState::ERROR;
         cyw43_arch_lwip_end();
