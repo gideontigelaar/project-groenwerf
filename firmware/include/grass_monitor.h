@@ -34,12 +34,12 @@ struct BinaryReading {
 
 // system led states
 enum class SystemState {
-    CALIBRATING,         // green and yellow solid
-    READING,             // green solid
-    TRANSMITTING,        // flashing green
-    WIFI_RECONNECTING,   // flashing yellow
-    ERROR_WARNING,       // yellow solid
-    HALTED               // green and yellow solid
+    CALIBRATING,        // green and yellow solid
+    READING,            // green solid
+    TRANSMITTING,       // flashing green
+    WIFI_RECONNECTING,  // flashing yellow
+    ERROR_WARNING,      // yellow solid
+    HALTED              // green and yellow solid
 };
 
 class GrassMonitor {
@@ -59,10 +59,10 @@ private:
     NetworkManager  _nm;
 
     // status flags
-    bool _tof_ok    = false;
-    bool _accel_ok  = false;
-    bool _sonic_ok  = false;
-    bool _tmp36_ok  = false;
+    bool _tof_ok        = false;
+    bool _accel_ok      = false;
+    bool _sonic_ok      = false;
+    bool _tmp36_ok      = false;
     bool _using_tmp36   = false;
     bool _gps_ok        = false;
 

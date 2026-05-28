@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 
-// ------------------------------------------------------------------ globals --
+// globals
 
 utc_time_t utc_time = {0, 0, 0, 0, 0, 0, false};
 location_t location = {0.0, 0.0};
 
 static ubx_msg_t latest_msg;
 
-// --------------------------------------------------------------- helpers -----
+// helpers
 
 static void calc_checksum(const uint8_t *payload, int len,
                           uint8_t *ck_a, uint8_t *ck_b)
@@ -92,7 +92,7 @@ static bool send_ubx_cfg(const uint8_t *msg, size_t len)
     return false;
 }
 
-// ------------------------------------------------------------------- init ----
+// init
 
 bool gps_init(void)
 {
@@ -148,30 +148,23 @@ bool gps_init(void)
     return ok;
 }
 
-// --------------------------------------------------------- packet reception --
+// packet reception
 
 bool gps_get_ubx_packet(void)
 {
-    int      i              = 0;
-    uint8_t  class_byte     = 0;
-    uint8_t  id_byte        = 0;
-    uint8_t  len_bytes[2]   = {0, 0};
-    uint16_t payload_length = 0;
-    uint8_t  buf[Config::Gps::UBX_MAX_PAYLOAD] = {0};
-    int      checksum_idx   = 0;
-    uint8_t  CK_A = 0, CK_B = 0;
+    static int      i              = 0;
+    static uint8_t  class_byte     = 0;
+    static uint8_t  id_byte        = 0;
+    static uint8_t  len_bytes[2]   = {0, 0};
+    static uint16_t payload_length = 0;
+    static uint8_t  buf[Config::Gps::UBX_MAX_PAYLOAD] = {0};
+    static int      checksum_idx   = 0;
+    static uint8_t  CK_A = 0, CK_B = 0;
 
-    absolute_time_t deadline = make_timeout_time_ms(Config::Gps::UBX_TIMEOUT_MS);
-
-    while (true) {
-        if (absolute_time_diff_us(get_absolute_time(), deadline) < 0) {
-            return false;
-        }
-        if (!uart_is_readable(GPS_UART)) continue;
-
+    while (uart_is_readable(GPS_UART)) {
         uint8_t c = uart_getc(GPS_UART);
 
-        // --- sync detection: must see 0xB5 then 0x62 consecutively ---
+        // sync detection: must see 0xB5 then 0x62 consecutively
         if (i == 0) {
             if (c == Config::Gps::UBX_SYNC_1) i++;
             continue;
@@ -182,14 +175,14 @@ bool gps_get_ubx_packet(void)
             continue;
         }
 
-        // --- class byte: only accept NAV (0x01) ---
+        // class byte: only accept NAV (0x01)
         if (i == 2) {
             if (c == Config::Gps::NAV_CLASS) { class_byte = c; i++; }
             else                { i = 0; } // not a packet we care about, resync
             continue;
         }
 
-        // --- id byte ---
+        // id byte
         if (i == 3) {
             // Only accept ids we know: 0x21 (TIMEUTC) or 0x02 (POSLLH)
             if (c == 0x21 || c == 0x02) { id_byte = c; i++; }
@@ -197,7 +190,7 @@ bool gps_get_ubx_packet(void)
             continue;
         }
 
-        // --- length bytes ---
+        // length bytes
         if (i == 4) { len_bytes[0] = c; i++; continue; }
         if (i == 5) {
             len_bytes[1]   = c;
@@ -214,7 +207,7 @@ bool gps_get_ubx_packet(void)
             continue;
         }
 
-        // --- payload + checksum ---
+        // payload + checksum
         int idx = i - 6;
         if (idx < (int)payload_length) {
             buf[idx] = c;
@@ -232,12 +225,15 @@ bool gps_get_ubx_packet(void)
             latest_msg.CK_A           = CK_A;
             latest_msg.CK_B           = CK_B;
             memcpy(latest_msg.msg, buf, payload_length);
+            i = 0; // reset for next packet
             return true;
         }
     }
+
+    return false;
 }
 
-// --------------------------------------------------------------- parsing -----
+// parsing
 
 static int32_t extract_signed_long(int offset, const uint8_t *data)
 {

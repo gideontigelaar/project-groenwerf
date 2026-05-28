@@ -36,6 +36,26 @@ float TMP36::readTemperature() {
 }
 
 bool TMP36::isConnected() {
+    // temporarily pull up and down to detect floating state
+    gpio_pull_up(_adc_pin);
+    sleep_ms(2);
+    float temp_up = readTemperature();
+
+    gpio_pull_down(_adc_pin);
+    sleep_ms(2);
+    float temp_down = readTemperature();
+
+    gpio_disable_pulls(_adc_pin);
+    sleep_ms(2);
+
+    float diff = temp_up - temp_down;
+    if (diff < 0) diff = -diff;
+
+    // if floating diff is huge, if connected diff is minimal
+    if (diff > 10.0f) {
+        return false;
+    }
+
     float temp = readTemperature();
     if (temp < -40.0f || temp > 125.0f) {
         return false;
