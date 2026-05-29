@@ -1,7 +1,9 @@
 #pragma once
 #include <cstdio>
 
+#ifndef ENABLE_LOGGING
 #define ENABLE_LOGGING 1
+#endif
 
 #if ENABLE_LOGGING
     #define LOG_INFO(fmt, ...)  printf("[INFO] " fmt "\n", ##__VA_ARGS__)

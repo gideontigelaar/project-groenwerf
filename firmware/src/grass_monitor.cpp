@@ -3,6 +3,7 @@
 #include "hardware/i2c.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
+#include "hardware/watchdog.h"
 #include "pico/cyw43_arch.h"
 #include "logger.h"
 #include <cmath>
@@ -18,6 +19,9 @@ GrassMonitor::GrassMonitor()
 
 void GrassMonitor::init() {
     stdio_init_all();
+
+    // init hardware watchdog with 8s timeout
+    watchdog_enable(8000, 1);
 
     // init leds
     initSystemLeds();
@@ -68,11 +72,15 @@ void GrassMonitor::init() {
     }
 
     if (!_tof_ok && !_sonic_ok) {
-        LOG_ERROR("FATAL: Neither ToF nor Sonic sensor found. Halting.");
-        while (true) {
+        LOG_ERROR("FATAL: Neither ToF nor Sonic sensor found. Rebooting in 5s...");
+        uint32_t start = to_ms_since_boot(get_absolute_time());
+        while (to_ms_since_boot(get_absolute_time()) - start < 5000) {
             updateSystemLeds(SystemState::ERROR_WARNING);
             sleep_ms(100);
+            watchdog_update();
         }
+        watchdog_reboot(0, 0, 0);
+        while (true) {} // wait for reboot
     }
 
     if (_tof_ok) _tof.startContinuous(Config::Timing::TOF_INTERVAL_MS);
@@ -91,13 +99,16 @@ void GrassMonitor::init() {
 
 void GrassMonitor::run() {
     while (true) {
+        watchdog_update();
+
         uint32_t now_ms = to_ms_since_boot(get_absolute_time());
 
         pollNetwork();
 
         if (_nm.IsHalted()) {
-            sleep_ms(100);
-            continue;
+            LOG_ERROR("System halted due to persistent network failure. Rebooting...");
+            watchdog_reboot(0, 0, 0);
+            while(true) {}
         }
 
         pollSensors(now_ms);
@@ -230,7 +241,7 @@ void GrassMonitor::processAndSendBatch(uint32_t now_ms) {
             _reading_counter--;
         }
 
-        // Drop batch if too large
+        // drop batch if too large
         if (_readings.size() > 25) {
             LOG_ERROR("Network: Offline too long! Dropping oldest readings.");
             _readings.clear();
@@ -336,6 +347,7 @@ void GrassMonitor::calibrateSensors() {
         }
 
         sleep_ms(10);
+        watchdog_update(); // ensure watchdog doesn't trigger during long calibration
     }
 
     CalibrationData cal = _processor.get_calibration();

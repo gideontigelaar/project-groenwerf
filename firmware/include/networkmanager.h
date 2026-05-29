@@ -2,6 +2,7 @@
 
 #include "pico/cyw43_arch.h"
 #include "lwip/tcp.h"
+#include "lwip/dns.h"
 #include <cstdint>
 
 class NetworkManager {
@@ -37,7 +38,7 @@ private:
     struct TcpContext {
         struct tcp_pcb *pcb   = nullptr;
         NetworkManager *self  = nullptr;
-        char request[8192]    = {};
+        char request[1024]    = {};
         size_t pending_write_len = 0;
     };
 
@@ -54,4 +55,7 @@ private:
     static err_t onConnected(void *arg, struct tcp_pcb *pcb, err_t err);
     static err_t onReceive  (void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err);
     static void  onError    (void *arg, err_t err);
+
+    static void  onDnsFound (const char *name, const ip_addr_t *ipaddr, void *callback_arg);
+    bool ConnectTcp(const ip_addr_t *addr);
 };
