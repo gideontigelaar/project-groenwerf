@@ -154,7 +154,7 @@ void NetworkManager::Poll() {
             halted_ = true;
             return;
         }
-        LOG_WARN("Network: Wi-Fi disconnected. Reconnecting (%d/10)...", wifi_retry_count_ + 1);
+        LOG_WARN("Network: Wi-Fi disconnected. Reconnecting (%d/30)...", wifi_retry_count_ + 1);
         cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
         wifi_retry_start_ms_ = to_ms_since_boot(get_absolute_time());
         wifi_retry_count_++;
