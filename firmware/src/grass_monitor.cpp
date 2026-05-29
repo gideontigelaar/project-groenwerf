@@ -147,7 +147,9 @@ void GrassMonitor::pollSensors(uint32_t now_ms) {
     }
 
     if (_gps_ok) {
-        if (gps_get_ubx_packet()) gps_parse_ubx_data();
+        while (gps_get_ubx_packet()) {
+            gps_parse_ubx_data();
+        }
     }
 }
 

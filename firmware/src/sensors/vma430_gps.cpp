@@ -1,5 +1,6 @@
 #include "sensors/vma430_gps.h"
 #include "logger.h"
+#include "hardware/irq.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -9,6 +10,28 @@ utc_time_t utc_time = {0, 0, 0, 0, 0, 0, false};
 location_t location = {0.0, 0.0};
 
 static ubx_msg_t latest_msg;
+
+#define GPS_RING_SIZE 1024
+static volatile uint8_t rx_ring[GPS_RING_SIZE];
+static volatile uint16_t rx_head = 0;
+static volatile uint16_t rx_tail = 0;
+
+static void on_uart_rx() {
+    while (uart_is_readable(GPS_UART)) {
+        rx_ring[rx_head] = uart_getc(GPS_UART);
+        rx_head = (rx_head + 1) % GPS_RING_SIZE;
+    }
+}
+
+static bool has_rx_byte() {
+    return rx_head != rx_tail;
+}
+
+static uint8_t get_rx_byte() {
+    uint8_t c = rx_ring[rx_tail];
+    rx_tail = (rx_tail + 1) % GPS_RING_SIZE;
+    return c;
+}
 
 // helpers
 
@@ -39,9 +62,9 @@ static uint8_t get_ubx_ack(uint8_t class_id, uint8_t msg_id)
             LOG_WARN("GPS: ACK timeout");
             return 5;
         }
-        if (!uart_is_readable(GPS_UART)) continue;
+        if (!has_rx_byte()) continue;
 
-        uint8_t c = uart_getc(GPS_UART);
+        uint8_t c = get_rx_byte();
 
         switch (i) {
             case 0:
@@ -99,14 +122,20 @@ bool gps_init(void)
     uart_init(GPS_UART, Config::Gps::BAUD_RATE);
     gpio_set_function(Config::Pins::GPS_UART_TX, GPIO_FUNC_UART);
     gpio_set_function(Config::Pins::GPS_UART_RX, GPIO_FUNC_UART);
+
+    int irq_num = (GPS_UART == uart0) ? UART0_IRQ : UART1_IRQ;
+    irq_set_exclusive_handler(irq_num, on_uart_rx);
+    irq_set_enabled(irq_num, true);
+    uart_set_irq_enables(GPS_UART, true, false);
+
     sleep_ms(1000);
 
     // Drain NMEA boot output
     absolute_time_t drain = make_timeout_time_ms(2000);
     int byte_count = 0;
     while (absolute_time_diff_us(get_absolute_time(), drain) > 0) {
-        if (uart_is_readable(GPS_UART)) {
-            uart_getc(GPS_UART);
+        if (has_rx_byte()) {
+            get_rx_byte();
             byte_count++;
         }
     }
@@ -117,6 +146,22 @@ bool gps_init(void)
     }
 
     bool ok = true;
+
+    uint8_t nmea_ids[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+    for (int k = 0; k < 6; k++) {
+        uint8_t setNmea[11] = {
+            Config::Gps::UBX_SYNC_1, Config::Gps::UBX_SYNC_2,
+            0x06, 0x01,
+            0x03, 0x00,
+            0xF0, nmea_ids[k], 0x00,
+            0x00, 0x00
+        };
+        uint8_t ck_a, ck_b;
+        calc_checksum(&setNmea[2], 7, &ck_a, &ck_b);
+        setNmea[9]  = ck_a;
+        setNmea[10] = ck_b;
+        send_ubx_cfg(setNmea, sizeof(setNmea));
+    }
 
     // Enable NAV-TIMEUTC (CFG-MSG: class 0x01, id 0x21, rate 1)
     uint8_t setNavTime[11] = {
@@ -161,8 +206,8 @@ bool gps_get_ubx_packet(void)
     static int      checksum_idx   = 0;
     static uint8_t  CK_A = 0, CK_B = 0;
 
-    while (uart_is_readable(GPS_UART)) {
-        uint8_t c = uart_getc(GPS_UART);
+    while (has_rx_byte()) {
+        uint8_t c = get_rx_byte();
 
         // sync detection: must see 0xB5 then 0x62 consecutively
         if (i == 0) {
@@ -219,14 +264,30 @@ bool gps_get_ubx_packet(void)
         } else {
             // Second checksum byte — packet complete
             CK_B = c;
-            latest_msg.class_byte     = class_byte;
-            latest_msg.id_byte        = id_byte;
-            latest_msg.payload_length = payload_length;
-            latest_msg.CK_A           = CK_A;
-            latest_msg.CK_B           = CK_B;
-            memcpy(latest_msg.msg, buf, payload_length);
-            i = 0; // reset for next packet
-            return true;
+
+            uint8_t ck_buf[4 + Config::Gps::UBX_MAX_PAYLOAD];
+            ck_buf[0] = class_byte;
+            ck_buf[1] = id_byte;
+            ck_buf[2] = len_bytes[0];
+            ck_buf[3] = len_bytes[1];
+            memcpy(&ck_buf[4], buf, payload_length);
+
+            uint8_t expected_ck_a, expected_ck_b;
+            calc_checksum(ck_buf, 4 + payload_length, &expected_ck_a, &expected_ck_b);
+
+            if (CK_A == expected_ck_a && CK_B == expected_ck_b) {
+                latest_msg.class_byte     = class_byte;
+                latest_msg.id_byte        = id_byte;
+                latest_msg.payload_length = payload_length;
+                latest_msg.CK_A           = CK_A;
+                latest_msg.CK_B           = CK_B;
+                memcpy(latest_msg.msg, buf, payload_length);
+                i = 0;
+                return true;
+            } else {
+                LOG_WARN("GPS: UBX Checksum mismatch, packet dropped");
+                i = 0;
+            }
         }
     }
 
