@@ -165,6 +165,9 @@ def receive_data():
 @app.route("/sensor-data", methods=["GET"])
 @limiter.limit("60 per minute")
 def get_data():
+    if request.headers.get("X-API-Key") != credentials.API_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+
     try:
         limit = int(request.args.get("limit", DEFAULT_LIMIT))
         offset = int(request.args.get("offset", 0))
