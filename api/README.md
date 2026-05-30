@@ -69,3 +69,14 @@ To run the API as a service on Ubuntu:
    WantedBy=multi-user.target
    ```
 3. Enable and start: `sudo systemctl daemon-reload && sudo systemctl enable api-groenwerf && sudo systemctl start api-groenwerf`
+
+## API Usage & Authentication
+All requests to the `/sensor-data` endpoints (both `GET` and `POST`) must include your secure API key in the headers.
+
+**Header Format:**
+`X-API-Key: YOUR_SECRET_API_KEY`
+
+**Example GET Request:**
+```bash
+curl -H "X-API-Key: YOUR_SECRET_API_KEY" "[http://127.0.0.1:5002/sensor-data?limit=10](http://127.0.0.1:5002/sensor-data?limit=10)"
+```
