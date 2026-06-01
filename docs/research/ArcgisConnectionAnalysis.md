@@ -1,13 +1,13 @@
 # MySQL database importeren naar ArcGIS
 
-## 1: setup arcgis
+## 1: Setup arcgis
 - Point layer aanmaken in arcgis, met fields grass_height en timestamp, lat en longitude zijn
 niet nodig omdat deze al in de point layer ingebouwd zitten.
 
 ## 2: MySQL data importeren
-- python script om de data uit arcgis te importeren
-- dit script maakt verbinding met de MySQL database om vervolgens de data te versturen naar de ArcGIS point layer
-- voorbeeld python script om MySQL data naar ArcGIS te versturen
+- Python script om de data uit arcgis te importeren
+- Dit script maakt verbinding met de MySQL database om vervolgens de data te versturen naar de ArcGIS point layer
+- Voorbeeld python script om MySQL data naar ArcGIS te versturen
 
 ```py
 import mysql.connector
