@@ -1,51 +1,108 @@
 <!doctype html>
-<html lang="en">
+<html lang="nl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}Groenwerf{% endblock %}</title>
 
-    <!-- Bootstrap CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
 
-    <!-- Tailwind -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style>
+      * { font-family: "Manrope", sans-serif; }
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+      }
+      .sensor-dot { animation: pulse-dot 2s ease-in-out infinite; }
+    </style>
   </head>
 
-  <body class="flex min-h-screen bg-gray-100">
+  <body class="m-0 flex min-h-screen bg-[#f4f4f0]">
+
     <!-- Sidebar -->
-    <aside class="w-72 bg-[#1f3d2b] text-white flex flex-col p-5 shrink-0">
-      <h2 class="text-center text-xl font-bold mb-8">Groenvoorziening</h2>
-      <ul class="space-y-2 list-none p-0">
-        <a href="{{ url_for('index') }}" class="no-underline">
-          <li
-            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'index' }}"
-          >
-            Dashboard
-          </li>
+    <aside class="w-[220px] bg-[#1f3d2b] text-white flex flex-col shrink-0">
+
+      <!-- Logo -->
+      <div class="px-5 py-[22px] border-b border-white/[0.08]">
+        <div class="w-[30px] h-[30px] bg-[#6aa84f] rounded-lg inline-flex items-center justify-center mb-2.5">
+          <svg viewBox="0 0 24 24" class="w-4 h-4 fill-white">
+            <path d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"/>
+          </svg>
+        </div>
+        <span class="block text-[13px] font-bold text-white">Groenwerf</span>
+        <span class="block text-[10px] font-medium text-white/40 tracking-[0.06em] uppercase mt-px">Sensor Dashboard</span>
+      </div>
+
+      <!-- Nav -->
+      <nav class="px-2.5 py-3.5 flex-1">
+        <span class="block text-[9px] font-bold text-white/30 tracking-[0.12em] uppercase px-2 mt-3.5 mb-1.5">Overzicht</span>
+
+        <a href="{{ url_for('index') }}"
+           class="flex items-center gap-[9px] px-2.5 py-[9px] rounded-lg text-[13px] text-white font-medium no-underline! mb-0.5 transition-all duration-150
+                  {{ 'bg-[#3b6d11] text-white' if active_page == 'index' else 'text-white/60 hover:bg-white/[0.07] hover:text-white' }}">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-[15px] h-[15px] shrink-0 opacity-80">
+            <rect x="2" y="2" width="9" height="9" rx="2"/>
+            <rect x="13" y="2" width="9" height="9" rx="2"/>
+            <rect x="2" y="13" width="9" height="9" rx="2"/>
+            <rect x="13" y="13" width="9" height="9" rx="2"/>
+          </svg>
+          Dashboard
         </a>
-        <a href="{{ url_for('rawdata') }}" class="no-underline">
-          <li
-            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'rawdata' }}"
-          >
-            Rauwe data
-          </li>
+
+        <a href="{{ url_for('rawdata') }}"
+           class="flex items-center gap-[9px] px-2.5 py-[9px] rounded-lg text-[13px] font-medium text-white no-underline! mb-0.5 transition-all duration-150
+                  {{ 'bg-[#3b6d11] text-white' if active_page == 'rawdata' else 'text-white/60 hover:bg-white/[0.07] hover:text-white' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[15px] h-[15px] shrink-0 opacity-80">
+            <path d="M3 6h18M3 12h18M3 18h12"/>
+          </svg>
+          Rauwe data
         </a>
-        <a href="{{ url_for('rapport') }}" class="no-underline">
-          <li
-            class="px-4 py-3 rounded-lg transition-colors duration-200 hover:bg-[#6aa84f] {{ 'bg-[#6aa84f]' if active_page == 'rapport' }}"
-          >
-            Rapport
-          </li>
+
+        <span class="block text-[9px] font-bold text-white/30 tracking-[0.12em] uppercase px-2 mt-3.5 mb-1.5">Rapportage</span>
+
+        <a href="{{ url_for('rapport') }}"
+           class="flex items-center gap-[9px] px-2.5 py-[9px] rounded-lg text-[13px] font-medium text-white no-underline! mb-0.5 transition-all duration-150
+                  {{ 'bg-[#3b6d11] text-white' if active_page == 'rapport' else 'text-white/60 hover:bg-white/[0.07] hover:text-white' }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[15px] h-[15px] shrink-0 opacity-80">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+          </svg>
+          Rapport
         </a>
-      </ul>
+      </nav>
+
+      <!-- Footer -->
+      <div class="px-5 py-3.5 border-t border-white/[0.08] text-[11px] text-white/35">
+        <span class="sensor-dot inline-block w-1.5 h-1.5 rounded-full bg-[#8dc96e] mr-1.5"></span>
+        Sensor actief
+      </div>
     </aside>
 
-    <!-- Main -->
-    <div class="flex-1">{% block content %}{% endblock %}</div>
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+      {% block topbar %}
+      <div class="bg-white border-b border-[#e8e8e2] px-7 h-14 flex items-center justify-between shrink-0">
+        <div>
+          <div class="text-[15px] font-bold text-[#1a2e1f]">
+            {% block page_title %}Groenwerf{% endblock %}
+          </div>
+          <div class="text-[11px] text-[#5a6e60] mt-px">{% block page_sub %}{% endblock %}</div>
+        </div>
+        <div class="flex items-center gap-2.5">{% block topbar_actions %}{% endblock %}</div>
+      </div>
+      {% endblock %}
+
+      <div class="flex-1 overflow-y-auto p-6 px-7">{% block content %}{% endblock %}</div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
