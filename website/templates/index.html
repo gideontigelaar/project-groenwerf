@@ -1,585 +1,137 @@
-{% extends "base.html" %} 
+{% extends "base.html" %}
 {% block title %}Dashboard — Groenwerf{% endblock %}
-{% block page_title %}Veldbeheer overzicht{% endblock %} 
-{% block page_sub%}Grashoogte en maaiadvies per locatie{% endblock %} 
+{% block page_title %}Veldbeheer overzicht{% endblock %}
+{% block page_sub %}Grashoogte en maaiadvies per locatie{% endblock %}
+
 {% block topbar_actions %}
-<a href="{{ url_for('rapport') }}" class="btn-top btn-primary">↓ Rapport</a>
-<div class="avatar">AW</div>
-{% endblock %} {% block content %}
-<style>
-  .kpi-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-    margin-bottom: 22px;
-  }
-  .kpi {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px 18px;
-    border: 1px solid #e8e8e2;
-  }
-  .kpi-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: #5a6e60;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .kpi-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #1a2e1f;
-    line-height: 1;
-  }
-  .kpi-value span {
-    font-size: 13px;
-    font-weight: 500;
-    color: #5a6e60;
-    margin-left: 2px;
-  }
-  .kpi-sub {
-    font-size: 11px;
-    margin-top: 6px;
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-  .badge-ok {
-    background: #dff0c8;
-    color: #2a5238;
-  }
-  .badge-warn {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  .badge-alert {
-    background: #fee2e2;
-    color: #991b1b;
-  }
+  <a href="{{ url_for('rapport') }}"
+     class="px-3.5 py-[7px] rounded-lg text-[12px] font-semibold bg-[#3b6d11] ![color:white] ![text-decoration:none] hover:bg-[#2a5238] transition-all duration-150 cursor-pointer border-0">
+    ↓ Rapport
+  </a>
+  <div class="w-[30px] h-[30px] rounded-full bg-[#dff0c8] flex items-center justify-center text-[10px] font-bold text-[#3b6d11]">AW</div>
+{% endblock %}
 
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 18px;
-  }
-
-  .card {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #e8e8e2;
-    overflow: hidden;
-  }
-  .card-header {
-    padding: 15px 20px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #e8e8e2;
-  }
-  .card-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #1a2e1f;
-  }
-  .card-sub {
-    font-size: 11px;
-    color: #5a6e60;
-    margin-top: 1px;
-  }
-  .filter-row {
-    display: flex;
-    gap: 5px;
-  }
-  .pill {
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1.5px solid #e8e8e2;
-    background: transparent;
-    color: #5a6e60;
-    font-family: "Manrope", sans-serif;
-    transition: all 0.15s;
-  }
-  .pill.active,
-  .pill:hover {
-    border-color: #6aa84f;
-    color: #3b6d11;
-    background: #f2fae8;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  thead th {
-    font-size: 10px;
-    font-weight: 700;
-    color: #5a6e60;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 9px 14px;
-    border-bottom: 1px solid #e8e8e2;
-    text-align: left;
-  }
-  tbody tr {
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-  tbody tr:hover {
-    background: #f2fae8;
-  }
-  tbody td {
-    font-size: 12px;
-    padding: 10px 14px;
-    border-bottom: 1px solid #e8e8e2;
-    color: #1a2e1f;
-  }
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
-  .field-name {
-    font-weight: 600;
-    font-size: 12px;
-  }
-  .field-loc {
-    font-size: 10px;
-    color: #5a6e60;
-    margin-top: 1px;
-  }
-  .bar-wrap {
-    width: 90px;
-    background: #e8e8e2;
-    border-radius: 99px;
-    height: 5px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    border-radius: 99px;
-  }
-
-  .right-col {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
-  .donut-wrap {
-    padding: 18px;
-    text-align: center;
-  }
-  .donut-legend {
-    display: flex;
-    justify-content: center;
-    gap: 14px;
-    margin-top: 10px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #5a6e60;
-  }
-  .legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .activity-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .activity-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px 18px;
-    border-bottom: 1px solid #e8e8e2;
-  }
-  .activity-item:last-child {
-    border-bottom: none;
-  }
-  .act-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    margin-top: 4px;
-    flex-shrink: 0;
-  }
-  .act-text {
-    font-size: 11px;
-    color: #1a2e1f;
-    line-height: 1.5;
-  }
-  .act-time {
-    font-size: 10px;
-    color: #5a6e60;
-    margin-top: 2px;
-  }
-</style>
+{% block content %}
 
 <!-- KPIs -->
-<div class="kpi-row">
-  <div class="kpi">
-    <div class="kpi-label">Actieve velden</div>
-    <div class="kpi-value" id="kpi-fields">— <span>velden</span></div>
-    <div class="kpi-sub">
-      <span class="badge badge-alert" id="kpi-mow-badge">— te maaien</span>
+<div class="grid grid-cols-4 gap-3.5 mb-[22px]">
+
+  <div class="bg-white rounded-xl p-4 border border-[#e8e8e2]">
+    <div class="text-[10px] font-bold text-[#5a6e60] tracking-[0.05em] uppercase mb-1.5">Actieve velden</div>
+    <div class="text-[26px] font-bold text-[#1a2e1f] leading-none" id="kpi-fields">— <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">velden</span></div>
+    <div class="text-[11px] mt-1.5">
+      <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]" id="kpi-mow-badge">— te maaien</span>
     </div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">Gem. grashoogte</div>
-    <div class="kpi-value" id="kpi-avg">— <span>mm</span></div>
-    <div class="kpi-sub">
-      <span class="badge badge-warn" id="kpi-avg-badge">laden...</span>
+
+  <div class="bg-white rounded-xl p-4 border border-[#e8e8e2]">
+    <div class="text-[10px] font-bold text-[#5a6e60] tracking-[0.05em] uppercase mb-1.5">Gem. grashoogte</div>
+    <div class="text-[26px] font-bold text-[#1a2e1f] leading-none" id="kpi-avg">— <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">mm</span></div>
+    <div class="text-[11px] mt-1.5">
+      <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef3c7] text-[#92400e]" id="kpi-avg-badge">laden...</span>
     </div>
   </div>
-  <div class="kpi">
-    <div class="kpi-label">Metingen geladen</div>
-    <div class="kpi-value" id="kpi-readings">— <span>pts</span></div>
-    <div class="kpi-sub"><span class="badge badge-ok">CSV bron</span></div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-label">Laatste meting</div>
-    <div class="kpi-value" id="kpi-time" style="font-size: 16px">—</div>
-    <div class="kpi-sub">
-      <span class="badge badge-ok" id="kpi-temp-badge">—</span>
+
+  <div class="bg-white rounded-xl p-4 border border-[#e8e8e2]">
+    <div class="text-[10px] font-bold text-[#5a6e60] tracking-[0.05em] uppercase mb-1.5">Metingen geladen</div>
+    <div class="text-[26px] font-bold text-[#1a2e1f] leading-none" id="kpi-readings">— <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">pts</span></div>
+    <div class="text-[11px] mt-1.5">
+      <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#dff0c8] text-[#2a5238]">CSV bron</span>
     </div>
   </div>
+
+  <div class="bg-white rounded-xl p-4 border border-[#e8e8e2]">
+    <div class="text-[10px] font-bold text-[#5a6e60] tracking-[0.05em] uppercase mb-1.5">Laatste meting</div>
+    <div class="text-[16px] font-bold text-[#1a2e1f] leading-none" id="kpi-time">—</div>
+    <div class="text-[11px] mt-1.5">
+      <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#dff0c8] text-[#2a5238]" id="kpi-temp-badge">—</span>
+    </div>
+  </div>
+
 </div>
 
 <!-- Main grid -->
-<div class="two-col">
+<div class="grid grid-cols-[1fr_320px] gap-[18px]">
+
   <!-- Fields table -->
-  <div class="card">
-    <div class="card-header">
+  <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden">
+    <div class="px-5 pt-[15px] pb-3 flex items-center justify-between border-b border-[#e8e8e2]">
       <div>
-        <div class="card-title">Veldoverzicht</div>
-        <div class="card-sub">Gemiddelde grashoogte per meting sessie</div>
+        <div class="text-[13px] font-bold text-[#1a2e1f]">Veldoverzicht</div>
+        <div class="text-[11px] text-[#5a6e60] mt-px">Gemiddelde grashoogte per meting sessie</div>
       </div>
-      <div class="filter-row">
-        <button class="pill active" onclick="filterFields('all', this)">
-          Alle
-        </button>
-        <button class="pill" onclick="filterFields('mow', this)">Maaien</button>
-        <button class="pill" onclick="filterFields('ok', this)">Goed</button>
+      <div class="flex gap-[5px]">
+        <button class="pill px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer border-[1.5px] border-[#6aa84f] bg-[#f2fae8] text-[#3b6d11] transition-all duration-150" onclick="filterFields('all', this)">Alle</button>
+        <button class="pill px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer border-[1.5px] border-[#e8e8e2] bg-transparent text-[#5a6e60] transition-all duration-150 hover:border-[#6aa84f] hover:text-[#3b6d11] hover:bg-[#f2fae8]" onclick="filterFields('mow', this)">Maaien</button>
+        <button class="pill px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer border-[1.5px] border-[#e8e8e2] bg-transparent text-[#5a6e60] transition-all duration-150 hover:border-[#6aa84f] hover:text-[#3b6d11] hover:bg-[#f2fae8]" onclick="filterFields('ok', this)">Goed</button>
       </div>
     </div>
-    <table>
+    <table class="w-full border-collapse">
       <thead>
         <tr>
-          <th>Tijdstip</th>
-          <th>TOF (mm)</th>
-          <th>Sonic (mm)</th>
-          <th>Hoogte</th>
-          <th>Status</th>
+          <th class="text-[10px] font-bold text-[#5a6e60] tracking-[0.06em] uppercase px-3.5 py-[9px] border-b border-[#e8e8e2] text-left">Tijdstip</th>
+          <th class="text-[10px] font-bold text-[#5a6e60] tracking-[0.06em] uppercase px-3.5 py-[9px] border-b border-[#e8e8e2] text-left">TOF (mm)</th>
+          <th class="text-[10px] font-bold text-[#5a6e60] tracking-[0.06em] uppercase px-3.5 py-[9px] border-b border-[#e8e8e2] text-left">Sonic (mm)</th>
+          <th class="text-[10px] font-bold text-[#5a6e60] tracking-[0.06em] uppercase px-3.5 py-[9px] border-b border-[#e8e8e2] text-left">Hoogte</th>
+          <th class="text-[10px] font-bold text-[#5a6e60] tracking-[0.06em] uppercase px-3.5 py-[9px] border-b border-[#e8e8e2] text-left">Status</th>
         </tr>
       </thead>
       <tbody id="fields-body">
         <tr>
-          <td
-            colspan="5"
-            style="text-align: center; padding: 20px; color: #5a6e60"
-          >
-            Laden...
-          </td>
+          <td colspan="5" class="text-center px-3.5 py-5 text-[#5a6e60] text-[12px]">Laden...</td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <!-- Right panel -->
-  <div class="right-col">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Maaistatus verdeling</div>
+  <div class="flex flex-col gap-[18px]">
+
+    <!-- Donut -->
+    <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden">
+      <div class="px-5 pt-[15px] pb-3 border-b border-[#e8e8e2]">
+        <div class="text-[13px] font-bold text-[#1a2e1f]">Maaistatus verdeling</div>
       </div>
-      <div class="donut-wrap">
+      <div class="p-[18px] text-center">
         <svg width="160" height="160" viewBox="0 0 160 160">
-          <circle
-            cx="80"
-            cy="80"
-            r="60"
-            fill="none"
-            stroke="#e8e8e2"
-            stroke-width="16"
-          />
-          <circle
-            id="donut-ok"
-            cx="80"
-            cy="80"
-            r="60"
-            fill="none"
-            stroke="#3b6d11"
-            stroke-width="16"
-            stroke-dasharray="0 377"
-            stroke-linecap="round"
-            transform="rotate(-90 80 80)"
-            style="transition: stroke-dasharray 0.9s ease"
-          />
-          <circle
-            id="donut-warn"
-            cx="80"
-            cy="80"
-            r="60"
-            fill="none"
-            stroke="#f59e0b"
-            stroke-width="16"
-            stroke-dasharray="0 377"
-            stroke-linecap="round"
-            transform="rotate(-90 80 80)"
-            style="transition: stroke-dasharray 0.9s ease"
-          />
-          <circle
-            id="donut-alert"
-            cx="80"
-            cy="80"
-            r="60"
-            fill="none"
-            stroke="#ef4444"
-            stroke-width="16"
-            stroke-dasharray="0 377"
-            stroke-linecap="round"
-            transform="rotate(-90 80 80)"
-            style="transition: stroke-dasharray 0.9s ease"
-          />
-          <text
-            x="80"
-            y="75"
-            text-anchor="middle"
-            font-family="Manrope,sans-serif"
-            font-size="20"
-            font-weight="700"
-            fill="#1a2e1f"
-            id="donut-pct"
-          >
-            —
-          </text>
-          <text
-            x="80"
-            y="92"
-            text-anchor="middle"
-            font-family="Manrope,sans-serif"
-            font-size="9"
-            font-weight="600"
-            fill="#5a6e60"
-          >
-            GOED
-          </text>
+          <circle cx="80" cy="80" r="60" fill="none" stroke="#e8e8e2" stroke-width="16"/>
+          <circle id="donut-ok"    cx="80" cy="80" r="60" fill="none" stroke="#3b6d11" stroke-width="16" stroke-dasharray="0 377" stroke-linecap="round" transform="rotate(-90 80 80)" style="transition:stroke-dasharray 0.9s ease"/>
+          <circle id="donut-warn"  cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" stroke-width="16" stroke-dasharray="0 377" stroke-linecap="round" transform="rotate(-90 80 80)" style="transition:stroke-dasharray 0.9s ease"/>
+          <circle id="donut-alert" cx="80" cy="80" r="60" fill="none" stroke="#ef4444" stroke-width="16" stroke-dasharray="0 377" stroke-linecap="round" transform="rotate(-90 80 80)" style="transition:stroke-dasharray 0.9s ease"/>
+          <text x="80" y="75" text-anchor="middle" font-family="Manrope,sans-serif" font-size="20" font-weight="700" fill="#1a2e1f" id="donut-pct">—</text>
+          <text x="80" y="92" text-anchor="middle" font-family="Manrope,sans-serif" font-size="9"  font-weight="600" fill="#5a6e60">GOED</text>
         </svg>
-        <div class="donut-legend">
-          <div class="legend-item">
-            <span class="legend-dot" style="background: #3b6d11"></span>Goed
+        <div class="flex justify-center gap-3.5 mt-2.5">
+          <div class="flex items-center gap-[5px] text-[11px] font-semibold text-[#5a6e60]">
+            <span class="inline-block w-2 h-2 rounded-full bg-[#3b6d11]"></span>Goed
           </div>
-          <div class="legend-item">
-            <span class="legend-dot" style="background: #f59e0b"></span>Let op
+          <div class="flex items-center gap-[5px] text-[11px] font-semibold text-[#5a6e60]">
+            <span class="inline-block w-2 h-2 rounded-full bg-[#f59e0b]"></span>Let op
           </div>
-          <div class="legend-item">
-            <span class="legend-dot" style="background: #ef4444"></span>Maaien
+          <div class="flex items-center gap-[5px] text-[11px] font-semibold text-[#5a6e60]">
+            <span class="inline-block w-2 h-2 rounded-full bg-[#ef4444]"></span>Maaien
           </div>
         </div>
       </div>
     </div>
 
-    <div class="card" style="flex: 1">
-      <div class="card-header">
-        <div class="card-title">Recente activiteit</div>
+    <!-- Activity -->
+    <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden flex-1">
+      <div class="px-5 pt-[15px] pb-3 border-b border-[#e8e8e2]">
+        <div class="text-[13px] font-bold text-[#1a2e1f]">Recente activiteit</div>
       </div>
-      <ul class="activity-list" id="activity-list">
-        <li class="activity-item">
-          <span style="font-size: 11px; color: #5a6e60; padding: 4px 0"
-            >Laden...</span
-          >
+      <ul class="list-none p-0 m-0" id="activity-list">
+        <li class="flex items-start gap-2.5 px-[18px] py-2.5 border-b border-[#e8e8e2]">
+          <span class="text-[11px] text-[#5a6e60] py-1">Laden...</span>
         </li>
       </ul>
     </div>
+
   </div>
 </div>
-{% endblock %} {% block scripts %}
-<script>
-  const CIRC = 2 * Math.PI * 60;
 
-  function statusOf(tof, sonic) {
-    const h = tof || sonic || 0;
-    if (h >= 400)
-      return {
-        label: "Maaien",
-        cls: "badge-alert",
-        color: "#ef4444",
-        level: 2,
-      };
-    if (h >= 80)
-      return { label: "Let op", cls: "badge-warn", color: "#f59e0b", level: 1 };
-    return { label: "Goed", cls: "badge-ok", color: "#3b6d11", level: 0 };
-  }
+{% endblock %}
 
-  function barHtml(h) {
-    const pct = Math.min(100, Math.round(h / 8));
-    const color = h >= 400 ? "#ef4444" : h >= 80 ? "#f59e0b" : "#3b6d11";
-    return `<div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
-            <div style="font-size:10px;color:#5a6e60;margin-top:3px">${h} mm</div>`;
-  }
-
-  let allRows = [];
-  let currentFilter = "all";
-
-  async function loadData() {
-    const res = await fetch("/api/data");
-    allRows = await res.json();
-    renderKPIs();
-    renderTable(currentFilter);
-    renderDonut();
-    renderActivity();
-  }
-
-  function renderKPIs() {
-    const count = allRows.length;
-    const heights = allRows.map((r) =>
-      parseInt(r.tof_mm || r.sonic_median_mm || 0),
-    );
-    const avg = heights.length
-      ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length)
-      : 0;
-    const mowCount = allRows.filter(
-      (r) =>
-        statusOf(parseInt(r.tof_mm || 0), parseInt(r.sonic_median_mm || 0))
-          .level >= 2,
-    ).length;
-    const latest = allRows[0]?.measured_at || "—";
-    const timeStr = latest !== "—" ? latest.slice(11, 16) : "—";
-
-    document.getElementById("kpi-fields").innerHTML =
-      `${count} <span>rijen</span>`;
-    document.getElementById("kpi-mow-badge").textContent =
-      `${mowCount} te maaien`;
-    document.getElementById("kpi-avg").innerHTML = `${avg} <span>mm</span>`;
-    document.getElementById("kpi-avg-badge").textContent =
-      avg >= 200 ? "Boven streefwaarde" : "Normaal";
-    document.getElementById("kpi-avg-badge").className =
-      `badge ${avg >= 200 ? "badge-warn" : "badge-ok"}`;
-    document.getElementById("kpi-readings").innerHTML =
-      `${count} <span>pts</span>`;
-    document.getElementById("kpi-time").textContent = timeStr;
-    document.getElementById("kpi-temp-badge").textContent = "Sensor actief";
-  }
-
-  function renderTable(filter) {
-    const rows = allRows
-      .filter((r) => {
-        const s = statusOf(
-          parseInt(r.tof_mm || 0),
-          parseInt(r.sonic_median_mm || 0),
-        );
-        if (filter === "mow") return s.level >= 2;
-        if (filter === "ok") return s.level === 0;
-        return true;
-      })
-      .slice(0, 20);
-
-    const tbody = document.getElementById("fields-body");
-    if (!rows.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="5" style="text-align:center;padding:20px;color:#5a6e60">Geen data</td></tr>';
-      return;
-    }
-    tbody.innerHTML = rows
-      .map((r) => {
-        const tof = r.tof_mm != null ? parseInt(r.tof_mm) : null;
-        const sonic =
-          r.sonic_median_mm != null ? parseInt(r.sonic_median_mm) : null;
-        const h = tof || sonic || 0;
-        const s = statusOf(tof, sonic);
-        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
-        const d = r.measured_at ? r.measured_at.slice(0, 10) : "—";
-        return `<tr>
-            <td><div class="field-name">${t}</div><div class="field-loc">${d}</div></td>
-            <td>${tof != null ? tof : "—"}</td>
-            <td>${sonic != null ? sonic : "—"}</td>
-            <td>${barHtml(h)}</td>
-            <td><span class="badge ${s.cls}">${s.label}</span></td>
-        </tr>`;
-      })
-      .join("");
-  }
-
-  function filterFields(f, btn) {
-    currentFilter = f;
-    document
-      .querySelectorAll(".pill")
-      .forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    renderTable(f);
-  }
-
-  function renderDonut() {
-    const counts = [0, 0, 0];
-    allRows.forEach(
-      (r) =>
-        counts[
-          statusOf(parseInt(r.tof_mm || 0), parseInt(r.sonic_median_mm || 0))
-            .level
-        ]++,
-    );
-    const total = allRows.length || 1;
-    const segOk = (counts[0] / total) * CIRC;
-    const segWarn = (counts[1] / total) * CIRC;
-    const segAlert = (counts[2] / total) * CIRC;
-
-    document
-      .getElementById("donut-ok")
-      .setAttribute("stroke-dasharray", `${segOk} ${CIRC - segOk}`);
-    document.getElementById("donut-ok").setAttribute("stroke-dashoffset", "0");
-    document
-      .getElementById("donut-warn")
-      .setAttribute("stroke-dasharray", `${segWarn} ${CIRC - segWarn}`);
-    document
-      .getElementById("donut-warn")
-      .setAttribute("stroke-dashoffset", `${-segOk}`);
-    document
-      .getElementById("donut-alert")
-      .setAttribute("stroke-dasharray", `${segAlert} ${CIRC - segAlert}`);
-    document
-      .getElementById("donut-alert")
-      .setAttribute("stroke-dashoffset", `${-segOk - segWarn}`);
-    document.getElementById("donut-pct").textContent =
-      Math.round((counts[0] / total) * 100) + "%";
-  }
-
-  function renderActivity() {
-    const recent = allRows.slice(0, 5);
-    const list = document.getElementById("activity-list");
-    list.innerHTML = recent
-      .map((r) => {
-        const h = parseInt(r.tof_mm || r.sonic_median_mm || 0);
-        const s = statusOf(
-          parseInt(r.tof_mm || 0),
-          parseInt(r.sonic_median_mm || 0),
-        );
-        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
-        return `<li class="activity-item">
-            <span class="act-dot" style="background:${s.color}"></span>
-            <div>
-                <div class="act-text">Meting ontvangen — ${h}mm (${s.label})</div>
-                <div class="act-time">${t}</div>
-            </div>
-        </li>`;
-      })
-      .join("");
-  }
-
-  loadData();
-  setInterval(loadData, 30000);
-</script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 {% endblock %}
