@@ -6,13 +6,21 @@ from datetime import datetime, timezone
 import sys
 import struct
 import math
+import hmac
+import logging
 
 try:
     import credentials
 except ModuleNotFoundError:
     sys.exit("ERROR: credentials.py not found.")
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -45,6 +53,25 @@ def serialize_row(row: dict) -> dict:
     return row
 
 
+def safe_float(val):
+    if val is None: return None
+    try: return float(val) if not math.isnan(float(val)) else None
+    except (ValueError, TypeError): return None
+
+
+def safe_int(val):
+    if val is None: return None
+    try: return int(val)
+    except (ValueError, TypeError): return None
+
+
+def verify_api_key(req):
+    provided_key = req.headers.get("X-API-Key", "")
+    if provided_key is None:
+        provided_key = ""
+    return hmac.compare_digest(provided_key, credentials.API_KEY)
+
+
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({
@@ -57,7 +84,7 @@ def health_check():
 @app.route("/sensor-data", methods=["POST"])
 @limiter.limit("120 per minute")
 def receive_data():
-    if request.headers.get("X-API-Key") != credentials.API_KEY:
+    if not verify_api_key(request):
         return jsonify({"error": "unauthorized"}), 401
 
     db = cursor = None
@@ -115,25 +142,25 @@ def receive_data():
                     continue
 
                 measured_at = item.get("measured_at", item.get("m_at"))
-                if measured_at:
+                if measured_at and isinstance(measured_at, str):
                     try:
                         measured_at = measured_at.replace("T", " ").replace("Z", "")
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError, AttributeError):
                         measured_at = fallback_time
                 else:
                     measured_at = fallback_time
 
                 values_to_insert.append((
-                    item.get("lat", item.get("lt")),
-                    item.get("lon", item.get("ln")),
-                    item.get("grassHeightTof", item.get("ght")),
-                    item.get("grassHeightSonic", item.get("ghs")),
-                    item.get("temperature", item.get("t")),
-                    item.get("sonic_raw_mm", item.get("sr")),
-                    item.get("tof_raw_mm", item.get("tr")),
-                    item.get("accel_raw_x", item.get("ax")),
-                    item.get("accel_raw_y", item.get("ay")),
-                    item.get("accel_raw_z", item.get("az")),
+                    safe_float(item.get("lat", item.get("lt"))),
+                    safe_float(item.get("lon", item.get("ln"))),
+                    safe_int(item.get("grassHeightTof", item.get("ght"))),
+                    safe_int(item.get("grassHeightSonic", item.get("ghs"))),
+                    safe_float(item.get("temperature", item.get("t"))),
+                    safe_int(item.get("sonic_raw_mm", item.get("sr"))),
+                    safe_int(item.get("tof_raw_mm", item.get("tr"))),
+                    safe_float(item.get("accel_raw_x", item.get("ax"))),
+                    safe_float(item.get("accel_raw_y", item.get("ay"))),
+                    safe_float(item.get("accel_raw_z", item.get("az"))),
                     measured_at,
                 ))
 
@@ -151,13 +178,23 @@ def receive_data():
 
         return jsonify({"status": "ok", "inserted": inserted}), 200
 
+    except struct.error as e:
+        logging.warning(f"Binary parsing error: {e}")
+        return jsonify({"error": "invalid binary structure"}), 400
     except Error as e:
         if db:
             db.rollback()
-        return jsonify({"error": "db error", "details": str(e)}), 500
+        logging.error(f"Database error in receive_data: {e}")
+        return jsonify({"error": "db error"}), 500
+    except Exception as e:
+        if db:
+            db.rollback()
+        logging.error(f"Unexpected error in receive_data: {e}", exc_info=True)
+        return jsonify({"error": "internal server error"}), 500
     finally:
         if cursor:
-            cursor.close()
+            try: cursor.close()
+            except Exception: pass
         if db and db.is_connected():
             db.close()
 
@@ -165,6 +202,9 @@ def receive_data():
 @app.route("/sensor-data", methods=["GET"])
 @limiter.limit("60 per minute")
 def get_data():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
     try:
         limit = int(request.args.get("limit", DEFAULT_LIMIT))
         offset = int(request.args.get("offset", 0))
@@ -232,13 +272,18 @@ def get_data():
         }), 200
 
     except Error as e:
-        return jsonify({"error": "db error", "details": str(e)}), 500
+        logging.error(f"Database error in get_data: {e}")
+        return jsonify({"error": "db error"}), 500
+    except Exception as e:
+        logging.error(f"Unexpected error in get_data: {e}", exc_info=True)
+        return jsonify({"error": "internal server error"}), 500
     finally:
         if cursor:
-            cursor.close()
+            try: cursor.close()
+            except Exception: pass
         if db and db.is_connected():
             db.close()
 
 
 if __name__ == "__main__":
-    app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT, debug=True)
+    app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT)
