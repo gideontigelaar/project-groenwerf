@@ -1,336 +1,93 @@
-{% extends "base.html" %} {% block title %}Rapport — Groenwerf{% endblock %} {%
-block page_title %}Veldbeheer rapport{% endblock %} {% block page_sub
-%}Overzicht voor management en klanten{% endblock %} {% block topbar_actions %}
-<button
-  onclick="window.print()"
-  style="
-    padding: 7px 14px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: &quot;Manrope&quot;, sans-serif;
-    cursor: pointer;
-    background: #3b6d11;
-    color: #fff;
-    border: none;
-  "
->
-  Afdrukken / PDF
-</button>
-<div class="avatar">AW</div>
-{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% block title %}Rapport — Groenwerf{% endblock %}
+{% block page_title %}Veldbeheer rapport{% endblock %}
+{% block page_sub %}Overzicht voor management en klanten{% endblock %}
+
+{% block topbar_actions %}
+  <button
+    onclick="window.print()"
+    class="px-3.5 py-[7px] rounded-lg text-[12px] font-semibold bg-[#3b6d11] text-white border-0 cursor-pointer hover:bg-[#2a5238] transition-colors duration-150"
+    style="font-family: 'Manrope', sans-serif;"
+  >
+    Afdrukken / PDF
+  </button>
+  <div class="w-[30px] h-[30px] rounded-full bg-[#dff0c8] flex items-center justify-center text-[10px] font-bold text-[#3b6d11]">AW</div>
+{% endblock %}
+
+{% block content %}
+
 <style>
-  .report-wrap {
-    max-width: 720px;
-  }
-  .report-card {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #e8e8e2;
-    overflow: hidden;
-    margin-bottom: 18px;
-  }
-  .report-header {
-    background: #1f3d2b;
-    color: #fff;
-    padding: 28px 28px 22px;
-  }
-  .report-logo-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .report-logo-mark {
-    width: 38px;
-    height: 38px;
-    background: #6aa84f;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .report-logo-mark svg {
-    width: 20px;
-    height: 20px;
-    fill: #fff;
-  }
-  .report-company {
-    font-size: 15px;
-    font-weight: 700;
-    color: #fff;
-  }
-  .report-company-sub {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
-  }
-  .report-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 4px;
-  }
-  .report-date {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .section {
-    padding: 20px 24px;
-  }
-  .section-title {
-    font-size: 10px;
-    font-weight: 700;
-    color: #5a6e60;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e8e8e2;
-  }
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-  .summary-item {
-    background: #f4f4f0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    text-align: center;
-  }
-  .summary-num {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1a2e1f;
-  }
-  .summary-lbl {
-    font-size: 10px;
-    font-weight: 700;
-    color: #5a6e60;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-top: 3px;
-  }
-
-  .field-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #e8e8e2;
-    font-size: 12px;
-  }
-  .field-row:last-child {
-    border-bottom: none;
-  }
-  .field-time {
-    font-weight: 600;
-    color: #1a2e1f;
-  }
-  .field-date {
-    font-size: 10px;
-    color: #5a6e60;
-    margin-top: 1px;
-  }
-  .field-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .field-height {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a2e1f;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-  .badge-ok {
-    background: #dff0c8;
-    color: #2a5238;
-  }
-  .badge-warn {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  .badge-alert {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-
-  .recs {
-    font-size: 12px;
-    line-height: 1.8;
-    color: #3d4f40;
-  }
-  .recs strong {
-    color: #1a2e1f;
-  }
-
   @media print {
-    .main-content > .topbar {
-      display: none;
-    }
-    aside.sidebar {
-      display: none;
-    }
-    body {
-      display: block;
-    }
-    .page-body {
-      padding: 0;
-    }
-    .report-wrap {
-      max-width: 100%;
-    }
+    .main-content > .topbar { display: none; }
+    aside.sidebar { display: none; }
+    body { display: block; }
+    .page-body { padding: 0; }
+    .report-wrap { max-width: 100%; }
   }
 </style>
+<div class="flex justify-center">
+<div class="report-wrap max-w-[720px]">
 
-<div class="report-wrap">
-  <!-- Header -->
-  <div class="report-card">
-    <div class="report-header">
-      <div class="report-logo-row">
-        <div class="report-logo-mark">
-          <svg viewBox="0 0 24 24">
-            <path
-              d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"
-            />
-          </svg>
-        </div>
-        <div>
-          <div class="report-company">
-            Groenvoorziening A.J. van der Werf B.V.
+    <!-- Header card -->
+    <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden mb-[18px]">
+
+      <!-- Dark header -->
+      <div class="bg-[#1f3d2b] text-white px-7 pt-7 pb-[22px]">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-[38px] h-[38px] bg-[#6aa84f] rounded-[10px] flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white">
+              <path d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"/>
+            </svg>
           </div>
-          <div class="report-company-sub">
-            Industrieweg 33 · 9781 AC Bedum · info@groenwerf.nl
+          <div>
+            <div class="text-[15px] font-bold text-white">Groenvoorziening A.J. van der Werf B.V.</div>
+            <div class="text-[11px] text-white/50 mt-0.5">Industrieweg 33 · 9781 AC Bedum · info@groenwerf.nl</div>
+          </div>
+        </div>
+        <div class="text-[22px] font-bold text-white mb-1">Veldbeheer Rapport</div>
+        <div class="text-[12px] text-white/50" id="report-date">Laden...</div>
+      </div>
+
+      <!-- Summary -->
+      <div class="px-6 py-5">
+        <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.08em] mb-3.5 pb-2 border-b border-[#e8e8e2]">Samenvatting</div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-[#f4f4f0] rounded-[10px] px-3.5 py-3 text-center">
+            <div class="text-[24px] font-bold text-[#1a2e1f]" id="r-total">—</div>
+            <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.04em] mt-[3px]">Metingen</div>
+          </div>
+          <div class="bg-[#f4f4f0] rounded-[10px] px-3.5 py-3 text-center">
+            <div class="text-[24px] font-bold text-[#3b6d11]" id="r-ok">—</div>
+            <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.04em] mt-[3px]">Goed</div>
+          </div>
+          <div class="bg-[#f4f4f0] rounded-[10px] px-3.5 py-3 text-center">
+            <div class="text-[24px] font-bold text-[#ef4444]" id="r-mow">—</div>
+            <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.04em] mt-[3px]">Te maaien</div>
           </div>
         </div>
       </div>
-      <div class="report-title">Veldbeheer Rapport</div>
-      <div class="report-date" id="report-date">Laden...</div>
     </div>
 
-    <!-- Summary -->
-    <div class="section">
-      <div class="section-title">Samenvatting</div>
-      <div class="summary-grid">
-        <div class="summary-item">
-          <div class="summary-num" id="r-total">—</div>
-          <div class="summary-lbl">Metingen</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-num" style="color: #3b6d11" id="r-ok">—</div>
-          <div class="summary-lbl">Goed</div>
-        </div>
-        <div class="summary-item">
-          <div class="summary-num" style="color: #ef4444" id="r-mow">—</div>
-          <div class="summary-lbl">Te maaien</div>
-        </div>
+    <!-- Field details -->
+    <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden mb-[18px]">
+      <div class="px-6 py-5">
+        <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.08em] mb-3.5 pb-2 border-b border-[#e8e8e2]">Meting details (laatste 20)</div>
+        <div id="report-rows">Laden...</div>
       </div>
     </div>
-  </div>
 
-  <!-- Field details -->
-  <div class="report-card">
-    <div class="section">
-      <div class="section-title">Meting details (laatste 20)</div>
-      <div id="report-rows">Laden...</div>
+    <!-- Recommendations -->
+    <div class="bg-white rounded-[14px] border border-[#e8e8e2] overflow-hidden mb-[18px]">
+      <div class="px-6 py-5">
+        <div class="text-[10px] font-bold text-[#5a6e60] uppercase tracking-[0.08em] mb-3.5 pb-2 border-b border-[#e8e8e2]">Aanbevelingen</div>
+        <div class="text-[12px] leading-[1.8] text-[#3d4f40]" id="report-recs">Laden...</div>
+      </div>
     </div>
-  </div>
 
-  <!-- Recommendations -->
-  <div class="report-card">
-    <div class="section">
-      <div class="section-title">Aanbevelingen</div>
-      <div class="recs" id="report-recs">Laden...</div>
-    </div>
   </div>
 </div>
-{% endblock %} {% block scripts %}
-<script>
-  function statusOf(tof, sonic) {
-    const h = tof || sonic || 0;
-    if (h >= 400) return { label: "Maaien", cls: "badge-alert", level: 2 };
-    if (h >= 80) return { label: "Let op", cls: "badge-warn", level: 1 };
-    return { label: "Goed", cls: "badge-ok", level: 0 };
-  }
+{% endblock %}
 
-  async function loadReport() {
-    const res = await fetch("/api/data");
-    const rows = await res.json();
-
-    const now = new Date().toLocaleDateString("nl-NL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    document.getElementById("report-date").textContent =
-      `Gegenereerd op ${now} · Prototype v1.0`;
-
-    const counts = [0, 0, 0];
-    rows.forEach(
-      (r) =>
-        counts[
-          statusOf(parseInt(r.tof_mm || 0), parseInt(r.sonic_median_mm || 0))
-            .level
-        ]++,
-    );
-
-    document.getElementById("r-total").textContent = rows.length;
-    document.getElementById("r-ok").textContent = counts[0];
-    document.getElementById("r-mow").textContent = counts[2];
-
-    document.getElementById("report-rows").innerHTML = rows
-      .slice(0, 20)
-      .map((r) => {
-        const tof = r.tof_mm != null ? parseInt(r.tof_mm) : null;
-        const sonic =
-          r.sonic_median_mm != null ? parseInt(r.sonic_median_mm) : null;
-        const h = tof || sonic || 0;
-        const s = statusOf(tof, sonic);
-        const time = r.measured_at ? r.measured_at.slice(11, 16) : "—";
-        const date = r.measured_at ? r.measured_at.slice(0, 10) : "—";
-        return `<div class="field-row">
-            <div><div class="field-time">${time}</div><div class="field-date">${date}</div></div>
-            <div class="field-right">
-                <div class="field-height">${h} mm</div>
-                <span class="badge ${s.cls}">${s.label}</span>
-            </div>
-        </div>`;
-      })
-      .join("");
-
-    const mowCount = counts[2];
-    const warnCount = counts[1];
-    document.getElementById("report-recs").innerHTML = `
-        Op basis van de sensordata van vandaag:<br><br>
-        ${
-          mowCount > 0
-            ? `<strong>${mowCount} meting${mowCount > 1 ? "en" : ""}</strong> tonen een grashoogte boven 400mm — directe maaiactie aanbevolen.<br>`
-            : ""
-        }
-        ${
-          warnCount > 0
-            ? `<strong>${warnCount} meting${warnCount > 1 ? "en" : ""}</strong> tonen een grashoogte tussen 80–400mm — nauwlettend in de gaten houden.<br>`
-            : ""
-        }
-        ${
-          counts[0] > 0
-            ? `<strong>${counts[0]} meting${counts[0] > 1 ? "en" : ""}</strong> ${counts[0] > 1 ? "zijn" : "is"} binnen de normale waarden.<br>`
-            : ""
-        }
-        <br><em style="color:#5a6e60;font-size:11px">Dit rapport is gegenereerd op basis van live sensordata. Drempelwaarden: ≥400mm = maaien, ≥80mm = let op.</em>
-    `;
-  }
-
-  loadReport();
-</script>
+{% block scripts %}
+<script src="{{url_for('static', filename='rapport.js')}}"></script>
 {% endblock %}
