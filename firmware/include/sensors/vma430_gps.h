@@ -37,7 +37,7 @@ extern location_t location;
 // Returns true on success (ACKs received), false if config commands timed out.
 bool gps_init(void);
 
-// Block until a complete UBX packet is received or timeout (~1500 ms).
+// Read available bytes and build a complete UBX packet without blocking.
 // Returns true if a valid packet was stored in the internal buffer.
 bool gps_get_ubx_packet(void);
 
