@@ -25,14 +25,21 @@ async function fetchData() {
         }
  
         const rows = await Promise.all(data.map(async row => {
-            const address = await getAddress(row.latitude, row.longitude);
-            return `
-                <tr>
-                    <td>${row.tof_mm ?? '-'}</td>
-                    <td>${row.sonic_median_mm ?? '-'}</td>
-                    <td colspan="2">${address}</td>
-                    <td>${row.measured_at ?? '-'}</td>
-                </tr>
+        const address = await getAddress(row.latitude, row.longitude);
+        const h = parseInt(row.tof_mm || row.sonic_median_mm || 0);
+        const badge = h >= 400
+            ? `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]">Maaien</span>`
+            : h >= 80
+            ? `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef3c7] text-[#92400e]">Let op</span>`
+            : `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#dff0c8] text-[#2a5238]">Goed</span>`;
+        return `
+            <tr class="transition-colors duration-100 hover:bg-[#f2fae8]">
+                <td class="text-[12px] px-4 py-[9px] border-b border-[#e8e8e2] text-[#1a2e1f]">${row.tof_mm ?? '-'}</td>
+                <td class="text-[12px] px-4 py-[9px] border-b border-[#e8e8e2] text-[#1a2e1f]">${row.sonic_median_mm ?? '-'}</td>
+                <td class="text-[12px] px-4 py-[9px] border-b border-[#e8e8e2]">${badge}</td>
+                <td class="text-[12px] px-4 py-[9px] border-b border-[#e8e8e2] font-mono text-[11px] text-[#5a6e60]">${address}</td>
+                <td class="text-[12px] px-4 py-[9px] border-b border-[#e8e8e2] text-[#1a2e1f]">${row.measured_at ?? '-'}</td>
+            </tr>
             `;
         }));
  
