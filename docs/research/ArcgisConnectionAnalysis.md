@@ -1,7 +1,7 @@
 # MySQL database importeren naar ArcGIS
 
-## 1: Setup arcgis
-- Point layer aanmaken in arcgis, met fields grass_height en timestamp, lat en longitude zijn
+## 1: Setup ArcGIS
+- Point layer aanmaken in ArcGIS, met fields grass_height en timestamp, latitude en longitude zijn
 niet nodig omdat deze al in de point layer ingebouwd zitten.
 
 ## 2: MySQL data importeren
