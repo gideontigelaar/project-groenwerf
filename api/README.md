@@ -3,6 +3,20 @@
 ## Prerequisites
 - Python 3.x and `pip`
 - MySQL Server
+- ArcGIS Online Account
+
+## ArcGIS Online Setup
+Before syncing data via `arcgis_sync.py`, you need to create a Hosted Feature Layer in ArcGIS Online to accept the data.
+
+1. Go to your ArcGIS Online account and create a new **Hosted Feature Layer** (Point layer).
+2. Add the following fields to your Feature Layer (names must match exactly):
+   - `ToF_Height_mm` (Type: Integer)
+   - `ToF_Quality_Grade` (Type: String)
+   - `Sonic_Height_mm` (Type: Integer)
+   - `Sonic_Quality_Grade` (Type: String)
+   - `Timestamp` (Type: String)
+3. Save the layer and copy the Feature Layer URL.
+4. Add the URL to your `credentials.py` file as `ARCGIS_LAYER_URL`.
 
 ## Setup
 1. In the `api/` directory, create and activate a virtual environment:
@@ -44,6 +58,7 @@
        accel_raw_y  FLOAT           DEFAULT NULL,
        accel_raw_z  FLOAT           DEFAULT NULL,
        measured_at  DATETIME        DEFAULT NULL,
+       synced       TINYINT(1)      DEFAULT 0,
        PRIMARY KEY (id)
    );
    ```
@@ -78,5 +93,5 @@ All requests to the `/sensor-data` endpoints (both `GET` and `POST`) must includ
 
 **Example GET Request:**
 ```bash
-curl -H "X-API-Key: YOUR_SECRET_API_KEY" "[http://127.0.0.1:5002/sensor-data?limit=10](http://127.0.0.1:5002/sensor-data?limit=10)"
+curl -H "X-API-Key: YOUR_SECRET_API_KEY" "http://127.0.0.1:5002/sensor-data?limit=10"
 ```

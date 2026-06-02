@@ -19,6 +19,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s'
 )
 
+# init flask app
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
 
@@ -41,37 +42,34 @@ db_pool = pooling.MySQLConnectionPool(
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 5000
 
-
 def get_db():
     return db_pool.get_connection()
 
-
+# format datetime objects for json response
 def serialize_row(row: dict) -> dict:
     for key, val in row.items():
         if isinstance(val, datetime):
             row[key] = val.strftime("%Y-%m-%dT%H:%M:%SZ")
     return row
 
-
 def safe_float(val):
     if val is None: return None
     try: return float(val) if not math.isnan(float(val)) else None
     except (ValueError, TypeError): return None
-
 
 def safe_int(val):
     if val is None: return None
     try: return int(val)
     except (ValueError, TypeError): return None
 
-
+# check api key against credentials
 def verify_api_key(req):
     provided_key = req.headers.get("X-API-Key", "")
     if provided_key is None:
         provided_key = ""
     return hmac.compare_digest(provided_key, credentials.API_KEY)
 
-
+# health check
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({
@@ -80,7 +78,7 @@ def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }), 200
 
-
+# handle incoming sensor data
 @app.route("/sensor-data", methods=["POST"])
 @limiter.limit("120 per minute")
 def receive_data():
@@ -96,16 +94,19 @@ def receive_data():
         db = get_db()
         cursor = db.cursor()
 
+        # parse binary payload
         if request.content_type == "application/octet-stream":
             raw_data = request.get_data(as_text=False)
             item_size = 40
 
+            # validate payload size
             if len(raw_data) % item_size != 0 or len(raw_data) == 0:
                 return jsonify({"error": "invalid binary payload length"}), 400
 
             if (len(raw_data) // item_size) > 100:
                 return jsonify({"error": "batch too large, maximum 100 items per request"}), 400
 
+            # process binary chunks
             for i in range(0, len(raw_data), item_size):
                 chunk = raw_data[i:i+item_size]
                 unpacked = struct.unpack("<ffHHfHHfffHBBBBBB", chunk)
@@ -122,6 +123,7 @@ def receive_data():
                 az  = unpacked[9] if not math.isnan(unpacked[9]) else None
                 year, month, day, hour, minute, second, valid_time = unpacked[10:17]
 
+                # use gps time if valid, else fallback
                 if valid_time == 1:
                     measured_at = f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
                 else:
@@ -129,6 +131,7 @@ def receive_data():
 
                 values_to_insert.append((lat, lon, ght, ghs, t, sr, tr, ax, ay, az, measured_at))
 
+        # parse json payload
         else:
             data = request.get_json(silent=True)
             if not data or not isinstance(data, list):
@@ -164,6 +167,7 @@ def receive_data():
                     measured_at,
                 ))
 
+        # insert valid readings
         if values_to_insert:
             insert_query = """
                 INSERT INTO sensor_readings
@@ -198,13 +202,14 @@ def receive_data():
         if db and db.is_connected():
             db.close()
 
-
+# retrieve sensor data
 @app.route("/sensor-data", methods=["GET"])
 @limiter.limit("60 per minute")
 def get_data():
     if not verify_api_key(request):
         return jsonify({"error": "unauthorized"}), 401
 
+    # parse pagination args
     try:
         limit = int(request.args.get("limit", DEFAULT_LIMIT))
         offset = int(request.args.get("offset", 0))
@@ -223,6 +228,7 @@ def get_data():
     filters = []
     params = []
 
+    # parse time filters
     from_str = request.args.get("from")
     if from_str:
         try:
@@ -230,7 +236,7 @@ def get_data():
             filters.append("measured_at >= %s")
             params.append(from_dt.strftime("%Y-%m-%d %H:%M:%S"))
         except ValueError:
-            return jsonify({"error": "invalid 'from' — use ISO 8601: YYYY-MM-DDTHH:MM:SSZ"}), 400
+            return jsonify({"error": "invalid 'from' format"}), 400
 
     to_str = request.args.get("to")
     if to_str:
@@ -239,7 +245,7 @@ def get_data():
             filters.append("measured_at <= %s")
             params.append(to_dt.strftime("%Y-%m-%d %H:%M:%S"))
         except ValueError:
-            return jsonify({"error": "invalid 'to' — use ISO 8601: YYYY-MM-DDTHH:MM:SSZ"}), 400
+            return jsonify({"error": "invalid 'to' format"}), 400
 
     where_clause = ("WHERE " + " AND ".join(filters)) if filters else ""
     order_clause = f"ORDER BY measured_at {order.upper()}, id {order.upper()}"
@@ -249,12 +255,14 @@ def get_data():
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
+        # get total count
         cursor.execute(
             f"SELECT COUNT(*) AS total FROM sensor_readings {where_clause}",
             params,
         )
         total = cursor.fetchone()["total"]
 
+        # get requested rows
         cursor.execute(
             f"SELECT * FROM sensor_readings {where_clause} {order_clause} LIMIT %s OFFSET %s",
             params + [limit, offset],
@@ -283,7 +291,6 @@ def get_data():
             except Exception: pass
         if db and db.is_connected():
             db.close()
-
 
 if __name__ == "__main__":
     app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT)

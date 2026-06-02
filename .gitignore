@@ -1,14 +1,12 @@
 build/
-firmware/build/
 
 .vscode/
 .idea/
-
 .DS_Store
+
+.venv/
+__pycache__/
+*.pyc
 
 firmware/include/credentials.h
 api/credentials.py
-api/.venv/
-website/.venv/
-
-api/__pycache__
