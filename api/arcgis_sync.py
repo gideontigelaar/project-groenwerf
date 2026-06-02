@@ -16,6 +16,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s'
 )
 
+# determine quality grade based on grass height
 def determine_quality_grade(height_mm):
     if height_mm is None:
         return "Unknown"
@@ -34,10 +35,12 @@ def determine_quality_grade(height_mm):
 def sync_to_arcgis():
     db = cursor = None
     try:
+        # connect to arcgis online
         logging.info("Connecting to ArcGIS Online...")
         gis = GIS("https://www.arcgis.com", credentials.ARCGIS_USERNAME, credentials.ARCGIS_PASSWORD)
         layer = FeatureLayer(credentials.ARCGIS_LAYER_URL)
 
+        # connect to mysql database
         logging.info("Connecting to MySQL Database...")
         db = mysql.connector.connect(
             host=credentials.DB_HOST,
@@ -47,6 +50,7 @@ def sync_to_arcgis():
         )
         cursor = db.cursor(dictionary=True)
 
+        # fetch unsynced readings with valid coordinates
         query = """
             SELECT id, latitude, longitude, tof_mm, sonic_mm, measured_at
             FROM sensor_readings
@@ -67,14 +71,19 @@ def sync_to_arcgis():
         features = []
         synced_ids = []
 
+        # process fetched rows
         for row in rows:
-            height = row.get("tof_mm") if row.get("tof_mm") is not None else row.get("sonic_mm")
+            tof_height = row.get("tof_mm")
+            sonic_height = row.get("sonic_mm")
 
-            if height is None:
+            # skip if we have no height data
+            if tof_height is None and sonic_height is None:
                 continue
 
-            quality = determine_quality_grade(height)
+            tof_quality = determine_quality_grade(tof_height)
+            sonic_quality = determine_quality_grade(sonic_height)
 
+            # create arcgis point feature with separate readings
             feature = Feature(
                 geometry=Point({
                     "x": row["longitude"],
@@ -82,8 +91,10 @@ def sync_to_arcgis():
                     "spatialReference": {"wkid": 4326}
                 }),
                 attributes={
-                    "Height_mm": height,
-                    "Quality_Grade": quality,
+                    "ToF_Height_mm": tof_height,
+                    "ToF_Quality_Grade": tof_quality,
+                    "Sonic_Height_mm": sonic_height,
+                    "Sonic_Quality_Grade": sonic_quality,
                     "Timestamp": str(row["measured_at"])
                 }
             )
@@ -94,9 +105,11 @@ def sync_to_arcgis():
             logging.info("No valid features with height data to sync.")
             return
 
+        # push features to arcgis
         logging.info(f"Pushing {len(features)} points to ArcGIS...")
         result = layer.edit_features(adds=features)
 
+        # mark records as synced if successful
         if "addResults" in result and len(result["addResults"]) > 0:
             logging.info("Successfully added to ArcGIS.")
 
@@ -115,6 +128,7 @@ def sync_to_arcgis():
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
     finally:
+        # cleanup connections
         if cursor:
             cursor.close()
         if db and db.is_connected():
