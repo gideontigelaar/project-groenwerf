@@ -4,14 +4,16 @@ void MedianFilter::push(float value) {
     _buf[_head] = value;
     _head = (_head + 1) % _window;
     if(_size < _window) _size++;
-    _count++;
 }
 
 float MedianFilter::get() const {
     if(_size == 0) return 0.0f;
 
-    std::vector<float> sorted(_buf.begin(), _buf.begin() + _size);
-    std::nth_element(sorted.begin(), sorted.begin() + _size / 2, sorted.end());
+    for (size_t i = 0; i < _size; ++i) {
+        _sort_buf[i] = _buf[i];
+    }
 
-    return sorted[_size / 2];
+    std::nth_element(_sort_buf.begin(), _sort_buf.begin() + _size / 2, _sort_buf.begin() + _size);
+
+    return _sort_buf[_size / 2];
 }

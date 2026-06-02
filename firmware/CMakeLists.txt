@@ -28,7 +28,7 @@ project(grass_monitor_pico C CXX ASM)
 pico_sdk_init()
 
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/credentials.h")
-    message(FATAL_ERROR "Missing credentials.h — copy include/credentials.h.template and fill in details.")
+    message(FATAL_ERROR "Missing credentials.h")
 endif()
 
 add_executable(grass_monitor_pico
@@ -45,6 +45,13 @@ add_executable(grass_monitor_pico
     src/networkmanager.cpp
 )
 
+# disable logging in release mode
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(grass_monitor_pico PRIVATE ENABLE_LOGGING=0)
+else()
+    target_compile_definitions(grass_monitor_pico PRIVATE ENABLE_LOGGING=1)
+endif()
+
 target_include_directories(grass_monitor_pico PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -55,6 +62,7 @@ target_link_libraries(grass_monitor_pico
     hardware_i2c
     hardware_uart
     hardware_adc
+    hardware_watchdog
     pico_cyw43_arch_lwip_threadsafe_background
 )
 

@@ -3,94 +3,87 @@
 #include "sensors/tof_sensor.h"
 #include "sensors/adxl345.h"
 #include "sensors/rcwl1604.h"
-#include "sensors/vma430_gps.h"
 #include "sensors/tmp36.h"
+#include "sensors/vma430_gps.h"
 #include "processing/sensor_processor.h"
 #include "networkmanager.h"
-#include <string>
+#include "config.h"
+#include <vector>
 
-// System LED states
+#pragma pack(push, 1)
+struct BinaryReading {
+    float lat;
+    float lon;
+    uint16_t ght;
+    uint16_t ghs;
+    float t;
+    uint16_t sr;
+    uint16_t tr;
+    float ax;
+    float ay;
+    float az;
+    uint16_t year;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
+    uint8_t valid_time;
+};
+#pragma pack(pop)
+
+// system led states
 enum class SystemState {
-    CALIBRATING,         // Green and Yellow Solid
-    READING,             // Green Solid
-    TRANSMITTING,        // Flashing Green
-    ERROR_WARNING,       // Yellow Solid
-    WIFI_RECONNECTING,   // Flashing Yellow
-    HALTED               // Green and Yellow Solid
+    CALIBRATING,        // green and yellow solid
+    READING,            // green solid
+    TRANSMITTING,       // flashing green
+    WIFI_RECONNECTING,  // flashing yellow
+    ERROR_WARNING,      // yellow solid
+    HALTED              // green and yellow solid
 };
 
 class GrassMonitor {
 public:
     GrassMonitor();
-
     void init();
     void run();
 
 private:
-    // for ToF (I2C0)
-    static constexpr uint I2C0_SDA = 20;
-    static constexpr uint I2C0_SCL = 21;
-    static constexpr uint I2C_FREQ = 400000;
-
-    // for ADXL345 (I2C1)
-    static constexpr uint I2C1_SDA = 14;
-    static constexpr uint I2C1_SCL = 15;
-
-    // for RCWL-1604
-    static constexpr uint RCWL_TRIG = 18;
-    static constexpr uint RCWL_ECHO = 19;
-
-    // for TMP36
-    static constexpr uint TMP36_PIN = 28;
-
-    // for Network LEDs
-    static constexpr uint LED_GREEN  = 26;
-    static constexpr uint LED_YELLOW = 22;
-
-    // Timing constants
-    static constexpr uint32_t TOF_INTERVAL_MS   = 20;
-    static constexpr uint32_t SONIC_INTERVAL_MS = 50;
-    static constexpr uint32_t ACCEL_INTERVAL_MS = 10;
-    static constexpr uint32_t PRINT_INTERVAL_MS = 500;
-    static constexpr uint32_t LOOP_TICK_MS      = 5;
-
-    static constexpr int SEND_BATCH_SIZE = 10;
-
-    // Core components
+    // core components
     TofSensor       _tof;
     ADXL345         _accel;
     RCWL1604        _ultrasonic;
     TMP36           _tmp36;
+
     SensorProcessor _processor;
     NetworkManager  _nm;
 
-    // Status flags
-    bool _tof_ok   = false;
-    bool _accel_ok = false;
-    bool _sonic_ok = false;
-    bool _tmp36_ok = false;
-    bool _gps_ok   = false;
-    bool _using_tmp36 = false;
+    // status flags
+    bool _tof_ok        = false;
+    bool _accel_ok      = false;
+    bool _sonic_ok      = false;
+    bool _tmp36_ok      = false;
+    bool _using_tmp36   = false;
+    bool _gps_ok        = false;
 
-    // Timing state
+    // timing state
     uint32_t _last_tof_ms   = 0;
-    uint32_t _last_sonic_ms = 0;
     uint32_t _last_accel_ms = 0;
+    uint32_t _last_sonic_ms = 0;
     uint32_t _last_print_ms = 0;
 
-    // Data batch state
+    // data batch state
     int _reading_counter = 0;
-    std::string _readings = "";
+    std::vector<BinaryReading> _readings;
 
-    // Internal methods
+    // internal methods
+    void pollNetwork();
+    void pollSensors(uint32_t now_ms);
+    void updateTemperature();
+    void processAndSendBatch(uint32_t now_ms);
     void initSystemLeds();
     void updateSystemLeds(SystemState state);
     void scanI2c(i2c_inst_t* i2c, const char* label);
     void calibrateSensors();
-
-    void pollNetwork();
-    void pollSensors(uint32_t now_ms);
-    void processAndSendBatch(uint32_t now_ms);
-    void updateTemperature();
-    std::string buildJsonReading();
+    void appendBinaryReading();
 };

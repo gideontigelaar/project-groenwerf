@@ -3,19 +3,7 @@
 #include "hardware/uart.h"
 #include <stdint.h>
 #include <stdbool.h>
-
-#define GPS_UART      uart0
-#define GPS_UART_TX   12
-#define GPS_UART_RX   13
-#define GPS_BAUD      9600
-
-#define UBX_SYNC_1    0xB5
-#define UBX_SYNC_2    0x62
-#define NAV_CLASS     0x01
-
-#define ACK_TIMEOUT_MS 1500
-#define UBX_TIMEOUT_MS 1100
-#define UBX_MAX_PAYLOAD 128
+#include "config.h"
 
 typedef struct {
     int      year;
@@ -38,7 +26,7 @@ typedef struct {
     uint16_t payload_length;
     uint8_t  CK_A;
     uint8_t  CK_B;
-    uint8_t  msg[UBX_MAX_PAYLOAD];
+    uint8_t  msg[Config::Gps::UBX_MAX_PAYLOAD];
 } ubx_msg_t;
 
 // Populated after gps_parse_ubx_data()
@@ -49,7 +37,7 @@ extern location_t location;
 // Returns true on success (ACKs received), false if config commands timed out.
 bool gps_init(void);
 
-// Block until a complete UBX packet is received or timeout (~1500 ms).
+// Read available bytes and build a complete UBX packet without blocking.
 // Returns true if a valid packet was stored in the internal buffer.
 bool gps_get_ubx_packet(void);
 

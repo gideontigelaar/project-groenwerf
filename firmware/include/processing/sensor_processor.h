@@ -1,7 +1,9 @@
 #pragma once
 #include <cstdint>
+#include <algorithm>
 #include "processing/median_filter.h"
 #include "processing/vibration_processor.h"
+#include "config.h"
 
 struct RawData {
     uint16_t tof_mm         = 0;
@@ -43,22 +45,13 @@ public:
     void reset();
 
 private:
-    static constexpr float  KNOWN_HEIGHT_MM     = 750.0f; // distance from sensor to ground
-    static constexpr int    CALIBRATION_SAMPLES = 10;
-
-    static constexpr float  VIBRATION_LOW_G     = 0.05f; // idle threshold
-    static constexpr float  VIBRATION_HIGH_G    = 0.15f;
-    static constexpr size_t WINDOW_NARROW       = 10; // fastest (500ms)
-    static constexpr size_t WINDOW_MEDIUM       = 18;
-    static constexpr size_t WINDOW_WIDE         = 25; // max smoothing has 1.25s latency
-
     CalibrationData _cal;
     RawData         _raw;
 
-    MedianFilter        _tof_median{5};
-    MedianFilter        _sonic_narrow{WINDOW_NARROW};
-    MedianFilter        _sonic_medium{WINDOW_MEDIUM};
-    MedianFilter        _sonic_wide{WINDOW_WIDE};
+    MedianFilter        _tof_median{Config::Sensor::CALIBRATION_SAMPLES};
+    MedianFilter        _sonic_narrow{std::max(static_cast<size_t>(Config::Sensor::WINDOW_NARROW), static_cast<size_t>(Config::Sensor::CALIBRATION_SAMPLES))};
+    MedianFilter        _sonic_medium{Config::Sensor::WINDOW_MEDIUM};
+    MedianFilter        _sonic_wide{Config::Sensor::WINDOW_WIDE};
     VibrationProcessor  _vibration;
 
     uint32_t _last_accel_ms = 0;

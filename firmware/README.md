@@ -1,49 +1,27 @@
-# Building the firmware (Mac)
+# Firmware Documentation (Mac)
 
-## Prerequisites
-The easiest way is to install the Raspberry Pi Pico VS Code extension, which downloads the SDK and toolchain automatically into `~/.pico-sdk/`. You can then build via the extension or the terminal.
+This directory contains the embedded code for the Raspberry Pi Pico 2W.
 
-For terminal builds you also need CMake:
-```bash
-xcode-select --install
-brew install cmake
-```
+## Building and Deployment
+1. **Toolchain**: Ensure the Raspberry Pi Pico SDK is installed.
+2. **Credentials**:
+   - Copy the template: `cp include/credentials.h.template include/credentials.h`
+   - Edit the file: `nano include/credentials.h`
+   - Ensure the `API_KEY` matches the value configured in your `api/` deployment.
+   - Configure your `WIFI_SSID`, `WIFI_PASSWORD`, `SERVER_HOST` (or `SERVER_IP`), and `SERVER_PORT`.
+3. **Build**:
+   ```bash
+   mkdir build && cd build
 
-Set the SDK path before building:
-```bash
-export PICO_SDK_PATH=~/.pico-sdk/sdk/2.2.0
-```
+   # For Production (Serial logging disabled, optimized):
+   cmake -DCMAKE_BUILD_TYPE=Release ..
 
-## Credentials
-Copy the credentials template and fill in your values:
-```bash
-cp include/credentials.h.template include/credentials.h
-nano include/credentials.h
-```
-The API key must match the one set up in the server. See `server/README.md` for instructions.
+   # For Debugging (Serial logging enabled via USB/UART):
+   cmake -DCMAKE_BUILD_TYPE=Debug ..
 
-## Clean build
-Do this the first time, or after changing `CMakeLists.txt`. In `firmware/`:
-```bash
-rm -rf build && mkdir build && cd build
-cmake ..
-make -j4
-```
+   make -j4
+   ```
+4. **Flash**: Hold the `BOOTSEL` button while plugging in the Pico, then copy the resulting `.uf2` file to the RPI-RP2 drive.
 
-## Recompiling
-In `firmware/`:
-```bash
-cd build && make -j4
-```
-
-## Flashing
-Hold BOOTSEL, plug in USB and the Pico shows up as a drive called `RP2350`. In `firmware/build/`:
-```bash
-cp -X grass_monitor_pico.uf2 /Volumes/RP2350/
-```
-
-## Viewing output
-```bash
-screen $(ls /dev/tty.usbmodem*) 115200
-```
-Exit with `Ctrl+A` then `K`.
+## Configuration
+See `api/README.md` for instructions on setting up the backend endpoint that the firmware expects.

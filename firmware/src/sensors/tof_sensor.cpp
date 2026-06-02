@@ -1,6 +1,5 @@
 #include "sensors/tof_sensor.h"
 #include "pico/stdlib.h"
-#include <cstdio>
 #include <cstring>
 
 // Official ST ULD default config blob for VL53L1X, written starting at reg 0x002D
@@ -99,7 +98,6 @@ bool TofSensor::init() {
     uint8_t l0x_id = readReg8_8(0xC0);
     if (l0x_id == 0xEE) {
         _model = TofModel::VL53L0X;
-        printf("  [init] Detected VL53L0X\n");
         return initVL53L0X();
     }
 
@@ -107,11 +105,9 @@ bool TofSensor::init() {
     uint16_t l1x_id = readReg16_16(0x010F);
     if (l1x_id == 0xEACC) {
         _model = TofModel::VL53L1X;
-        printf("  [init] Detected VL53L1X\n");
         return initVL53L1X();
     }
 
-    printf("  [init] No supported ToF sensor found\n");
     return false;
 }
 
@@ -144,7 +140,6 @@ bool TofSensor::initVL53L1X() {
     uint32_t timeout = 100;
     while((readReg16_8(0x00E5) & 0x01) == 0) {
         if(--timeout == 0) {
-            printf("  [init] boot timeout\n");
             return false;
         }
         sleep_ms(10);
@@ -165,12 +160,10 @@ bool TofSensor::initVL53L1X() {
     timeout = 200;
     while((readReg16_8(0x0031) & 0x01) != 0) {
         if(--timeout == 0) {
-            printf("  [init] VHV cal timeout\n");
             return false;
         }
         sleep_ms(10);
     }
-    printf("  [init] VHV cal done\n");
 
     // Clear interrupt and stop
     writeReg16_8(0x0086, 0x01);

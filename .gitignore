@@ -7,8 +7,8 @@ firmware/build/
 .DS_Store
 
 firmware/include/credentials.h
-server/credentials.py
-server/.venv/
+api/credentials.py
+api/.venv/
 website/.venv/
 
-server/__pycache__
+api/__pycache__
