@@ -44,6 +44,7 @@
        accel_raw_y  FLOAT           DEFAULT NULL,
        accel_raw_z  FLOAT           DEFAULT NULL,
        measured_at  DATETIME        DEFAULT NULL,
+       synced       TINYINT(1)      DEFAULT 0,
        PRIMARY KEY (id)
    );
    ```

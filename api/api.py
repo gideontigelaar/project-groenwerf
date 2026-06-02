@@ -41,10 +41,8 @@ db_pool = pooling.MySQLConnectionPool(
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 5000
 
-
 def get_db():
     return db_pool.get_connection()
-
 
 def serialize_row(row: dict) -> dict:
     for key, val in row.items():
@@ -52,25 +50,21 @@ def serialize_row(row: dict) -> dict:
             row[key] = val.strftime("%Y-%m-%dT%H:%M:%SZ")
     return row
 
-
 def safe_float(val):
     if val is None: return None
     try: return float(val) if not math.isnan(float(val)) else None
     except (ValueError, TypeError): return None
-
 
 def safe_int(val):
     if val is None: return None
     try: return int(val)
     except (ValueError, TypeError): return None
 
-
 def verify_api_key(req):
     provided_key = req.headers.get("X-API-Key", "")
     if provided_key is None:
         provided_key = ""
     return hmac.compare_digest(provided_key, credentials.API_KEY)
-
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -79,7 +73,6 @@ def health_check():
         "status": "online",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }), 200
-
 
 @app.route("/sensor-data", methods=["POST"])
 @limiter.limit("120 per minute")
@@ -198,7 +191,6 @@ def receive_data():
         if db and db.is_connected():
             db.close()
 
-
 @app.route("/sensor-data", methods=["GET"])
 @limiter.limit("60 per minute")
 def get_data():
@@ -283,7 +275,6 @@ def get_data():
             except Exception: pass
         if db and db.is_connected():
             db.close()
-
 
 if __name__ == "__main__":
     app.run(host=credentials.FLASK_HOST, port=credentials.FLASK_PORT)
