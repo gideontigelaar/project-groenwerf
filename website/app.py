@@ -1,9 +1,10 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, Response
 import urllib.request
 import urllib.parse
 import json
 import csv
 import os
+from weasyprint import HTML
 
 app = Flask(__name__)
 
@@ -78,6 +79,28 @@ def rawdata():
 @app.route('/rapport')
 def rapport():
     return render_template('rapport.html', active_page="rapport")
+
+@app.route("/pdf")
+def generate_pdf():
+    data = {
+        "title": "Voorbeeld PDF",
+        "description": "Dit is een PDF gegenereerd met Flask en WeasyPrint.",
+        "items": [
+            {"naam": "Item 1", "waarde": 100},
+            {"naam": "Item 2", "waarde": 200},
+            {"naam": "Item 3", "waarde": 300},
+        ]
+    }
+ 
+    html = render_template("pdf.html", **data)
+    pdf = HTML(string=html).write_pdf()
+ 
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": "inline; filename=output.pdf"}
+    )
+    # return html
 
 
 if __name__ == '__main__':
