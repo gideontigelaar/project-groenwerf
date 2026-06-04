@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request, Response
+from flask import Flask, jsonify, render_template, request, Response, make_response
 import urllib.request
 import urllib.parse
 import json
@@ -101,6 +101,30 @@ def generate_pdf():
         headers={"Content-Disposition": "inline; filename=output.pdf"}
     )
     # return html
+
+@app.route('/download-pdf')
+def download_pdf():
+    data = {
+        "title": "Voorbeeld PDF",
+        "description": "Dit is een PDF gegenereerd met Flask en WeasyPrint.",
+        "items": [
+            {"naam": "Item 1", "waarde": 100},
+            {"naam": "Item 2", "waarde": 200},
+            {"naam": "Item 3", "waarde": 300},
+        ]
+    }
+    html = render_template("pdf.html", **data)
+    # 1. Compile the HTML to PDF bytes in memory
+    pdf_bytes = HTML(string=html).write_pdf()
+    
+    # 2. Build a standard web response with those bytes
+    response = make_response(pdf_bytes)
+    
+    # 3. CRITICAL: Tell the browser to handle this asset as a downloadable file attachment
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=veldbeheer-rapport.pdf'
+    
+    return response
 
 
 if __name__ == '__main__':

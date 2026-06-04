@@ -49,4 +49,44 @@ function statusOf(tof, sonic) {
     `;
   }
 
-  loadReport();
+document.getElementById('downloadBtn').addEventListener('click', async function() {
+    const button = this;
+    const originalText = button.textContent;
+    button.textContent = "Genereren...";
+    button.disabled = true;
+
+    try {
+        // Log in de console dat we beginnen
+        console.log("PDF download gestart...");
+        
+        const response = await fetch('/download-pdf');
+        
+        // Als de server een fout geeft (bijv. 404 of 500), gooi een specifieke error
+        if (!response.ok) {
+            throw new Error(`Server gaf statuscode ${response.status} (${response.statusText})`);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = "veldbeheer-rapport.pdf";
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        console.log("PDF succesvol gedownload!");
+
+    } catch (error) {
+        console.error('Download mislukt:', error);
+        // Dit laat nu de échte foutoorzaak zien!
+        alert(`Fout bij downloaden: ${error.message}`);
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+});
+
+loadReport();
