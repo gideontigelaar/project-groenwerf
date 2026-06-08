@@ -102,24 +102,23 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Meetdetails</div>
-            <div class="section-sub">Laatste {{ r.recent | length }} metingen · TOF en Sonic met statusclassificatie</div>
+            <div class="section-title">Veld Details</div>
+            <div class="section-sub">Samenvatting per afgebakend veld op basis van ruimtelijke intersectie</div>
             <table class="data card" style="padding:0; overflow:hidden;">
                 <thead>
                     <tr>
-                        <th>Tijdstip</th><th>Datum</th><th>TOF (mm)</th><th>Sonic (mm)</th><th>Hoogte</th><th>Status</th>
+                        <th>Veldnaam</th><th>Laatste Meting</th><th>Aantal Metingen</th><th>Gemiddelde Hoogte</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for m in r.recent %}
+                    {% for m in r.fields %}
                     {% set color = "#ef4444" if m.level == 2 else "#f59e0b" if m.level == 1 else "#6aa84f" %}
                     {% set badge = "b-mow" if m.level == 2 else "b-warn" if m.level == 1 else "b-ok" %}
                     <tr>
-                        <td class="tabular" style="font-weight:600">{{ m.time }}</td>
-                        <td class="tabular muted">{{ m.date }}</td>
-                        <td class="tabular">{{ m.tof_mm if m.tof_mm is not none else "—" }}</td>
-                        <td class="tabular">{{ m.sonic_mm if m.sonic_mm is not none else "—" }}</td>
-                        <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ color }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.height }} mm</span></td>
+                        <td style="font-weight:600">{{ m.name }}</td>
+                        <td class="tabular muted">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
+                        <td class="tabular">{{ m.total }}</td>
+                        <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ color }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.avg }} mm</span></td>
                         <td><span class="badge {{ badge }}">{{ m.label }}</span></td>
                     </tr>
                     {% endfor %}

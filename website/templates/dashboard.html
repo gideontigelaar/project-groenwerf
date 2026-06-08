@@ -43,11 +43,11 @@
     <div class="rounded-2xl p-5 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm mb-6">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <div class="font-semibold">Grashoogte verloop</div>
-                <div class="text-xs text-zinc-500 dark:text-zinc-400">Laatste metingen, chronologisch</div>
+                <div class="font-semibold">Grashoogte per Veld</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">Gemiddelde hoogte per veld</div>
             </div>
         </div>
-        <div class="relative h-[240px]"><canvas id="trendChart"></canvas></div>
+        <div class="relative h-[240px]"><canvas id="barChart"></canvas></div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -55,7 +55,7 @@
             <div class="px-5 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
                 <div>
                     <div class="font-semibold">Veldoverzicht</div>
-                    <div class="text-xs text-zinc-500 dark:text-zinc-400">Grashoogte per meting</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">Samenvatting per veld</div>
                 </div>
                 <div class="flex gap-1.5" id="filter-pills">
                     <button data-filter="all" class="pill px-3 py-1 rounded-full text-xs font-semibold border border-brand bg-brand/10 text-brand transition-colors">Alle</button>
@@ -67,11 +67,11 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400">
-                            <th class="px-5 py-3 font-bold">Tijdstip</th>
-                            <th class="px-5 py-3 font-bold">TOF</th>
-                            <th class="px-5 py-3 font-bold">Sonic</th>
-                            <th class="px-5 py-3 font-bold">Hoogte</th>
-                            <th class="px-5 py-3 font-bold">Status</th>
+                            <th class="px-5 py-3 font-bold">Veldnaam</th>
+                            <th class="px-5 py-3 font-bold">Laatste Meting</th>
+                            <th class="px-5 py-3 font-bold">Aantal</th>
+                            <th class="px-5 py-3 font-bold">Gem. Hoogte</th>
+                            <th class="px-5 py-3 font-bold">Advies</th>
                         </tr>
                     </thead>
                     <tbody id="fields-body">

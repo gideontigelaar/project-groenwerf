@@ -1,79 +1,62 @@
-// prepare and render data for the web report view
-const MOW = 400;
-const WATCH = 80;
-
-function statusOf(tof, sonic) {
-    const h = (tof || sonic || 0);
-    if (h >= MOW) return { label: "Maaien", level: 2, color: "#ef4444", badge: "text-bg-danger" };
-    if (h >= WATCH) return { label: "Let op", level: 1, color: "#f59e0b", badge: "text-bg-warning" };
-    return { label: "Goed", level: 0, color: "#6aa84f", badge: "text-bg-success" };
-}
-
-const heightOf = r => (r.tof_mm || r.sonic_mm || 0);
-
-let rows = [];
+// render report view based on field summaries
+let reportData = null;
 let barChart = null;
 let donutChart = null;
 
 async function loadReport() {
-    const res = await fetch("/api/data");
-    const json = await res.json();
-    rows = json.data || [];
+    const res = await fetch("/api/summary");
+    reportData = await res.json();
 
     const now = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
-    const src = json.meta && json.meta.source === "arcgis" ? "ArcGIS" : "Geen bron";
+    const src = reportData.source === "arcgis" ? "ArcGIS" : "Geen bron";
     document.getElementById("report-date").textContent = `Gegenereerd op ${now} · Bron: ${src}`;
 
-    const counts = [0, 0, 0];
-    rows.forEach(r => counts[statusOf(r.tof_mm, r.sonic_mm).level]++);
-    document.getElementById("r-total").textContent = rows.length;
-    document.getElementById("r-ok").textContent = counts[0];
-    document.getElementById("r-mow").textContent = counts[2];
+    document.getElementById("r-total").textContent = reportData.total;
+    document.getElementById("r-ok").textContent = reportData.counts_ok;
+    document.getElementById("r-mow").textContent = reportData.counts_mow;
 
     renderRows();
-    renderCharts(counts);
-    renderRecs(counts);
+    renderCharts();
+    renderRecs();
 }
 
 function renderRows() {
-    document.getElementById("report-rows").innerHTML = rows.slice(0, 20).map(r => {
-        const h = heightOf(r);
-        const s = statusOf(r.tof_mm, r.sonic_mm);
-        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
-        const d = r.measured_at ? r.measured_at.slice(0, 10) : "—";
-        return `<div class="flex items-center justify-between py-2.5 border-b border-black/5 dark:border-white/10 last:border-0">
-            <div><div class="font-semibold">${t}</div><div class="text-[11px] text-zinc-500">${d}</div></div>
-            <div class="flex items-center gap-3"><div class="font-semibold tabular-nums">${h} mm</div>
-            <span class="badge rounded-pill ${s.badge}">${s.label}</span></div>
+    if (!reportData.fields.length) {
+        document.getElementById("report-rows").innerHTML = '<div class="px-5 py-4 text-zinc-500">Geen velden gevonden.</div>';
+        return;
+    }
+
+    document.getElementById("report-rows").innerHTML = reportData.fields.map(f => {
+        const badge = f.level === 2 ? "text-bg-danger" : f.level === 1 ? "text-bg-warning" : "text-bg-success";
+        return `<div class="flex items-center justify-between py-3 border-b border-black/5 dark:border-white/10 last:border-0">
+            <div><div class="font-semibold">${f.name}</div><div class="text-[11px] text-zinc-500">Laatste: ${f.latest ? f.latest.slice(0, 16) : "—"}</div></div>
+            <div class="flex items-center gap-4"><div class="text-right"><div class="font-semibold tabular-nums">${f.avg} mm</div><div class="text-[10px] text-zinc-500">${f.total} metingen</div></div>
+            <span class="badge rounded-pill ${badge} w-16 text-center">${f.label}</span></div>
         </div>`;
     }).join("");
 }
 
-function renderCharts(counts) {
+function renderCharts() {
     const th = window.chartTheme();
-    const recent = rows.slice(0, 18).reverse();
 
     if (barChart) barChart.destroy();
     barChart = new Chart(document.getElementById("barChart"), {
         type: "bar",
         data: {
-            labels: recent.map(r => (r.measured_at || "").slice(11, 16)),
+            labels: reportData.fields.map(f => f.name),
             datasets: [{
-                data: recent.map(heightOf),
-                backgroundColor: recent.map(r => statusOf(r.tof_mm, r.sonic_mm).color),
-                borderRadius: 5,
-                maxBarThickness: 26,
+                data: reportData.fields.map(f => f.avg),
+                backgroundColor: reportData.fields.map(f => f.level === 2 ? th.mow : f.level === 1 ? th.warn : th.ok),
+                borderRadius: 4,
+                maxBarThickness: 32,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.parsed.y} mm` } }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: { grid: { display: false }, ticks: { color: th.text, font: { size: 10 }, maxTicksLimit: 9 } },
+                x: { grid: { display: false }, ticks: { color: th.text, font: { size: 10 } } },
                 y: { grid: { color: th.grid }, ticks: { color: th.text, font: { size: 11 }, callback: v => v + " mm" }, beginAtZero: true }
             }
         }
@@ -84,7 +67,7 @@ function renderCharts(counts) {
         type: "doughnut",
         data: {
             labels: ["Goed", "Let op", "Maaien"],
-            datasets: [{ data: counts, backgroundColor: [th.ok, th.warn, th.mow], borderWidth: 0, hoverOffset: 6 }]
+            datasets: [{ data: [reportData.counts_ok, reportData.counts_warn, reportData.counts_mow], backgroundColor: [th.ok, th.warn, th.mow], borderWidth: 0, hoverOffset: 6 }]
         },
         options: {
             responsive: true,
@@ -95,14 +78,17 @@ function renderCharts(counts) {
     });
 }
 
-function renderRecs(counts) {
-    const [ok, warn, mow] = counts;
+function renderRecs() {
+    const ok = reportData.counts_ok;
+    const warn = reportData.counts_warn;
+    const mow = reportData.counts_mow;
     const plural = (n, s, p) => n === 1 ? s : p;
-    let html = "Op basis van de sensordata van vandaag:<br><br>";
-    if (mow) html += `<strong>${mow} ${plural(mow, "meting", "metingen")}</strong> ${plural(mow, "toont", "tonen")} een grashoogte boven ${MOW} mm — directe maaiactie aanbevolen.<br>`;
-    if (warn) html += `<strong>${warn} ${plural(warn, "meting", "metingen")}</strong> ${plural(warn, "ligt", "liggen")} tussen ${WATCH}–${MOW} mm — nauwlettend volgen.<br>`;
-    if (ok) html += `<strong>${ok} ${plural(ok, "meting", "metingen")}</strong> ${plural(ok, "is", "zijn")} binnen de normale waarden.<br>`;
-    html += `<br><em class="text-xs text-zinc-500">Drempelwaarden: ≥${MOW} mm = maaien, ≥${WATCH} mm = let op.</em>`;
+
+    let html = "Op basis van de ruimtelijke sensordata:<br><br>";
+    if (mow) html += `<strong>${mow} ${plural(mow, "meting", "metingen")}</strong> verspreid over de velden tonen een grashoogte boven de streefwaarde — directe maaiactie aanbevolen.<br>`;
+    if (warn) html += `<strong>${warn} ${plural(warn, "meting", "metingen")}</strong> bevinden zich in de waarschuwingszone — nauwlettend volgen.<br>`;
+    if (ok) html += `<strong>${ok} ${plural(ok, "meting", "metingen")}</strong> zijn binnen de normale waarden.<br>`;
+    html += `<br><em class="text-xs text-zinc-500">Zie de tabel hierboven voor een specificatie per veld.</em>`;
     document.getElementById("report-recs").innerHTML = html;
 }
 
@@ -132,11 +118,7 @@ document.getElementById("downloadBtn").addEventListener("click", async function 
 });
 
 window.addEventListener("themechange", () => {
-    if (rows.length) {
-        const c = [0, 0, 0];
-        rows.forEach(r => c[statusOf(r.tof_mm, r.sonic_mm).level]++);
-        renderCharts(c);
-    }
+    if (reportData) renderCharts();
 });
 
 loadReport();

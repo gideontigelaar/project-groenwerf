@@ -149,10 +149,21 @@ def _fetch_rows():
 
 def _do_refresh():
     rows, source = _fetch_rows()
+    fields = []
+    try:
+        flayer = _get_fields_layer()
+        if flayer:
+            fset = flayer.query(where="1=1", out_fields="*", return_geometry=True, out_sr=4326)
+            fields = [{"attributes": f.attributes, "geometry": f.geometry} for f in fset.features]
+    except Exception:
+        pass
+
     with _cache_lock:
         if rows:
             _cache["rows"] = rows
             _cache["source"] = source
+        if fields:
+            _cache["fields"] = fields
         _cache["ts"] = time.time()
 
 def _trigger_background_refresh():
@@ -174,16 +185,13 @@ def get_rows():
     with _cache_lock:
         fresh = (now - _cache["ts"]) < CACHE_TTL
         have = bool(_cache["rows"])
-        rows, source = _cache["rows"], _cache["source"]
-
-    if fresh and have:
-        return rows, source
-    if not have:
-        _do_refresh()
-    else:
-        _trigger_background_refresh()
+    if not (fresh and have):
+        if not have:
+            _do_refresh()
+        else:
+            _trigger_background_refresh()
     with _cache_lock:
-        return _cache["rows"], _cache["source"]
+        return _cache.get("rows", []), _cache.get("source", "none"), _cache.get("fields", [])
 
 def status_level(row):
     h = (row.get("tof_mm") or row.get("sonic_mm") or 0)
@@ -195,33 +203,57 @@ def status_level(row):
 
 STATUS_LABELS = ["Goed", "Let op", "Maaien"]
 
-def build_report(rows):
-    # compute report parameters for pdf
+def _in_poly(x, y, rings):
+    # point-in-polygon ray casting
+    if not x or not y or not rings: return False
+    inside = False
+    for ring in rings:
+        for i in range(len(ring)):
+            p1x, p1y = ring[i]
+            p2x, p2y = ring[(i + 1) % len(ring)]
+            if ((p1y > y) != (p2y > y)) and (x < (p2x - p1x) * (y - p1y) / (p2y - p1y + 1e-9) + p1x):
+                inside = not inside
+    return inside
+
+def build_report(rows, fields):
+    # group and summarize measurements per field
     counts = [0, 0, 0]
-    heights = []
-    for r in rows:
-        counts[status_level(r)] += 1
-        heights.append(r.get("tof_mm") or r.get("sonic_mm") or 0)
+    field_summaries = []
 
-    total = len(rows)
-    avg = round(sum(heights) / len(heights)) if heights else 0
-    latest = rows[0]["measured_at"] if rows else None
+    for i, f in enumerate(fields):
+        name = _attr(f.get("attributes", {}), "Name", "Naam", "Field_Name") or f"Veld {i+1}"
+        rings = f.get("geometry", {}).get("rings", [])
+        f_rows = [r for r in rows if _in_poly(r.get("longitude"), r.get("latitude"), rings)]
 
-    recent = []
-    for r in rows[:18]:
-        lvl = status_level(r)
-        h = r.get("tof_mm") or r.get("sonic_mm") or 0
-        recent.append({
-            "tof_mm": r.get("tof_mm"),
-            "sonic_mm": r.get("sonic_mm"),
-            "height": h,
-            "measured_at": r.get("measured_at") or "—",
-            "time": (r.get("measured_at") or "—")[11:16] or "—",
-            "date": (r.get("measured_at") or "—")[:10] or "—",
+        if not f_rows:
+            continue
+
+        f_heights = [r.get("tof_mm") or r.get("sonic_mm") or 0 for r in f_rows]
+        f_avg = round(sum(f_heights) / len(f_heights))
+        f_counts = [0, 0, 0]
+        for r in f_rows:
+            f_counts[status_level(r)] += 1
+
+        for c_i in range(3):
+            counts[c_i] += f_counts[c_i]
+
+        lvl = 2 if f_counts[2] > 0 else (1 if f_counts[1] > 0 else 0)
+
+        field_summaries.append({
+            "name": name,
+            "total": len(f_rows),
+            "avg": f_avg,
+            "counts_ok": f_counts[0],
+            "counts_warn": f_counts[1],
+            "counts_mow": f_counts[2],
+            "latest": f_rows[0]["measured_at"] if f_rows else "—",
             "label": STATUS_LABELS[lvl],
             "level": lvl,
-            "bar_pct": min(100, round(h / 8)),
+            "bar_pct": min(100, round(f_avg / 8))
         })
+
+    field_summaries.sort(key=lambda s: s["level"], reverse=True)
+    total = sum(counts)
 
     r_circle = 60
     circ = 2 * math.pi * r_circle
@@ -239,36 +271,28 @@ def build_report(rows):
 
     return {
         "total": total,
-        "avg": avg,
+        "avg": round(sum([s["avg"] * s["total"] for s in field_summaries]) / total) if total else 0,
         "counts_ok": counts[0],
         "counts_warn": counts[1],
         "counts_mow": counts[2],
         "pct_ok": round((counts[0] / total) * 100) if total else 0,
         "pct_warn": round((counts[1] / total) * 100) if total else 0,
         "pct_mow": round((counts[2] / total) * 100) if total else 0,
-        "latest": latest or "—",
+        "latest": rows[0]["measured_at"] if rows else "—",
         "generated": time.strftime("%d-%m-%Y %H:%M"),
-        "recent": recent,
+        "fields": field_summaries,
         "donut": {"circ": round(circ, 2), "segments": segments},
         "thresholds": {"mow": THRESHOLD_MOW, "watch": THRESHOLD_WATCH},
     }
 
 @app.route("/api/fields")
 def api_fields():
-    layer = _get_fields_layer()
-    if not layer:
-        return jsonify({"features": []})
-    try:
-        fset = layer.query(where="1=1", out_fields="*", return_geometry=True, out_sr=4326)
-        features = [{"attributes": f.attributes, "geometry": f.geometry} for f in fset.features]
-        return jsonify({"features": features})
-    except Exception as exc:
-        app.logger.error("arcgis fields fetch failed: %s", exc)
-        return jsonify({"error": str(exc)}), 500
+    _, _, fields = get_rows()
+    return jsonify({"features": fields})
 
 @app.route("/api/data")
 def api_data():
-    rows, source = get_rows()
+    rows, source, _ = get_rows()
     sort = request.args.get("sort", "measured_at")
     allowed = {"tof_mm", "sonic_mm", "longitude", "latitude"}
     if sort in allowed:
@@ -276,8 +300,14 @@ def api_data():
             v = r.get(sort)
             return v if isinstance(v, (int, float)) else -1
         rows = sorted(rows, key=key, reverse=True)
-
     return jsonify({"data": rows[:100], "meta": {"source": source, "total": len(rows)}})
+
+@app.route("/api/summary")
+def api_summary():
+    rows, source, fields = get_rows()
+    rep = build_report(rows, fields)
+    rep["source"] = source
+    return jsonify(rep)
 
 @app.route("/api/sync", methods=["POST"])
 def api_sync():
@@ -301,8 +331,8 @@ def report():
 
 def _render_pdf():
     from weasyprint import HTML
-    rows, _ = get_rows()
-    html = render_template("pdf.html", r=build_report(rows))
+    rows, _, fields = get_rows()
+    html = render_template("pdf.html", r=build_report(rows, fields))
     return HTML(string=html, base_url=request.url_root).write_pdf()
 
 @app.route("/pdf")

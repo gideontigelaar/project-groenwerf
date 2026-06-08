@@ -1,25 +1,15 @@
-// manage dashboard data loading, ui sync, and rendering
-const MOW = 400;
-const WATCH = 80;
-
-function statusOf(tof, sonic) {
-    const h = (tof || sonic || 0);
-    if (h >= MOW) return { label: "Maaien", level: 2, color: "#ef4444", badge: "text-bg-danger" };
-    if (h >= WATCH) return { label: "Let op", level: 1, color: "#f59e0b", badge: "text-bg-warning" };
-    return { label: "Goed", level: 0, color: "#6aa84f", badge: "text-bg-success" };
-}
-
-let allRows = [];
+// manage dashboard data loading and rendering
+let reportData = null;
 let currentFilter = "all";
 let donutChart = null;
-let trendChart = null;
+let barChart = null;
 
 async function loadData() {
     try {
-        const res = await fetch("/api/data");
+        const res = await fetch("/api/summary");
         const json = await res.json();
-        allRows = (json.data || []);
-        document.getElementById("kpi-source").textContent = json.meta && json.meta.source === "arcgis" ? "ArcGIS" : "Geen bron";
+        reportData = json;
+        document.getElementById("kpi-source").textContent = json.source === "arcgis" ? "ArcGIS" : "Geen bron";
         renderKPIs();
         renderTable(currentFilter);
         renderCharts();
@@ -29,25 +19,17 @@ async function loadData() {
     }
 }
 
-function heightOf(r) {
-    return (r.tof_mm || r.sonic_mm || 0);
-}
-
 function renderKPIs() {
-    const count = allRows.length;
-    const heights = allRows.map(heightOf);
-    const avg = heights.length ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length) : 0;
-    const mow = allRows.filter(r => statusOf(r.tof_mm, r.sonic_mm).level >= 2).length;
-    const latest = allRows[0]?.measured_at || "—";
+    if (!reportData) return;
 
-    document.getElementById("kpi-count").textContent = count;
-    document.getElementById("kpi-avg").innerHTML = `${avg} <span class="text-sm font-normal text-zinc-500">mm</span>`;
-    document.getElementById("kpi-mow").textContent = mow;
-    document.getElementById("kpi-mow-badge").textContent = `${mow} meting${mow === 1 ? "" : "en"}`;
-    document.getElementById("kpi-time").textContent = latest !== "—" ? latest.slice(11, 16) : "—";
+    document.getElementById("kpi-count").textContent = reportData.total;
+    document.getElementById("kpi-avg").innerHTML = `${reportData.avg} <span class="text-sm font-normal text-zinc-500">mm</span>`;
+    document.getElementById("kpi-mow").textContent = reportData.counts_mow;
+    document.getElementById("kpi-mow-badge").textContent = `${reportData.counts_mow} meting${reportData.counts_mow === 1 ? "" : "en"}`;
+    document.getElementById("kpi-time").textContent = reportData.latest !== "—" ? reportData.latest.slice(11, 16) : "—";
 
     const avgBadge = document.getElementById("kpi-avg-badge");
-    if (avg >= 200) {
+    if (reportData.avg >= 200) {
         avgBadge.textContent = "Boven streefwaarde";
         avgBadge.className = "badge rounded-pill text-bg-warning";
     } else {
@@ -57,37 +39,34 @@ function renderKPIs() {
 }
 
 function renderTable(filter) {
-    const rows = allRows.filter(r => {
-        const lvl = statusOf(r.tof_mm, r.sonic_mm).level;
-        if (filter === "mow") return lvl >= 2;
-        if (filter === "ok") return lvl === 0;
+    if (!reportData) return;
+
+    const rows = reportData.fields.filter(f => {
+        if (filter === "mow") return f.level >= 2;
+        if (filter === "ok") return f.level === 0;
         return true;
-    }).slice(0, 25);
+    });
 
     const tbody = document.getElementById("fields-body");
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-zinc-500 text-sm">Geen data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-zinc-500 text-sm">Geen velden</td></tr>';
         return;
     }
-    tbody.innerHTML = rows.map(r => {
-        const tof = r.tof_mm ?? null;
-        const sonic = r.sonic_mm ?? null;
-        const h = heightOf(r);
-        const s = statusOf(tof, sonic);
-        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
-        const d = r.measured_at ? r.measured_at.slice(0, 10) : "—";
-        const pct = Math.min(100, Math.round(h / 8));
+
+    tbody.innerHTML = rows.map(f => {
+        const color = f.level === 2 ? "#ef4444" : f.level === 1 ? "#f59e0b" : "#6aa84f";
+        const badge = f.level === 2 ? "text-bg-danger" : f.level === 1 ? "text-bg-warning" : "text-bg-success";
         return `<tr class="border-t border-black/5 dark:border-white/10 hover:bg-black/[0.025] dark:hover:bg-white/5 transition-colors">
-            <td class="px-5 py-3"><div class="font-semibold">${t}</div><div class="text-[11px] text-zinc-500">${d}</div></td>
-            <td class="px-5 py-3 tabular-nums">${tof != null ? tof : "—"}</td>
-            <td class="px-5 py-3 tabular-nums">${sonic != null ? sonic : "—"}</td>
+            <td class="px-5 py-3 font-semibold">${f.name}</td>
+            <td class="px-5 py-3 text-[11px] text-zinc-500">${f.latest ? f.latest.slice(0, 16) : "—"}</td>
+            <td class="px-5 py-3 tabular-nums">${f.total}</td>
             <td class="px-5 py-3">
                 <div class="w-24 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                    <div class="h-full rounded-full" style="width:${pct}%;background:${s.color}"></div>
+                    <div class="h-full rounded-full" style="width:${f.bar_pct}%;background:${color}"></div>
                 </div>
-                <div class="text-[11px] text-zinc-500 mt-1 tabular-nums">${h} mm</div>
+                <div class="text-[11px] text-zinc-500 mt-1 tabular-nums">${f.avg} mm</div>
             </td>
-            <td class="px-5 py-3"><span class="badge rounded-pill ${s.badge}">${s.label}</span></td>
+            <td class="px-5 py-3"><span class="badge rounded-pill ${badge}">${f.label}</span></td>
         </tr>`;
     }).join("");
 }
@@ -104,56 +83,48 @@ document.getElementById("filter-pills").addEventListener("click", (e) => {
 });
 
 function renderCharts() {
-    const counts = [0, 0, 0];
-    allRows.forEach(r => counts[statusOf(r.tof_mm, r.sonic_mm).level]++);
-    const total = allRows.length || 1;
-    document.getElementById("donut-pct").textContent = Math.round((counts[0] / total) * 100) + "%";
-
+    if (!reportData) return;
     const th = window.chartTheme();
 
+    // donut
     if (donutChart) donutChart.destroy();
     donutChart = new Chart(document.getElementById("donutChart"), {
         type: "doughnut",
         data: {
             labels: ["Goed", "Let op", "Maaien"],
-            datasets: [{ data: counts, backgroundColor: [th.ok, th.warn, th.mow], borderWidth: 0, hoverOffset: 6 }]
+            datasets: [{ data: [reportData.counts_ok, reportData.counts_warn, reportData.counts_mow], backgroundColor: [th.ok, th.warn, th.mow], borderWidth: 0, hoverOffset: 6 }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             cutout: "72%",
             plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed}` } }
+                legend: { display: false }
             }
         }
     });
 
-    const series = allRows.slice(0, 40).reverse();
-    if (trendChart) trendChart.destroy();
-    trendChart = new Chart(document.getElementById("trendChart"), {
-        type: "line",
+    document.getElementById("donut-pct").textContent = reportData.pct_ok + "%";
+
+    // bar chart showing avg height per field
+    if (barChart) barChart.destroy();
+    barChart = new Chart(document.getElementById("barChart"), {
+        type: "bar",
         data: {
-            labels: series.map(r => (r.measured_at || "").slice(11, 19)),
+            labels: reportData.fields.map(f => f.name),
             datasets: [{
-                data: series.map(heightOf),
-                borderColor: th.brand,
-                borderWidth: 2,
-                tension: 0.35,
-                pointRadius: 0,
-                fill: true,
-                backgroundColor: "rgba(106,168,79,0.12)",
+                data: reportData.fields.map(f => f.avg),
+                backgroundColor: reportData.fields.map(f => f.level === 2 ? th.mow : f.level === 1 ? th.warn : th.ok),
+                borderRadius: 4,
+                maxBarThickness: 32,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { callbacks: { label: c => `${c.parsed.y} mm` } }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: { grid: { color: th.grid }, ticks: { color: th.text, maxTicksLimit: 8, font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: th.text, font: { size: 10 } } },
                 y: { grid: { color: th.grid }, ticks: { color: th.text, font: { size: 11 }, callback: v => v + " mm" }, beginAtZero: true }
             }
         }
@@ -162,24 +133,29 @@ function renderCharts() {
 
 function renderActivity() {
     const list = document.getElementById("activity-list");
-    const recent = allRows.slice(0, 6);
-    if (!recent.length) {
+    if (!reportData || !reportData.fields.length) {
         list.innerHTML = '<li class="px-5 py-3 text-xs text-zinc-500">Geen activiteit</li>';
         return;
     }
-    list.innerHTML = recent.map(r => {
-        const h = heightOf(r);
-        const s = statusOf(r.tof_mm, r.sonic_mm);
-        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
+
+    // show recent fields that require attention
+    const recent = reportData.fields.filter(f => f.level > 0).slice(0, 6);
+    if (!recent.length) {
+        list.innerHTML = '<li class="px-5 py-3 text-xs text-zinc-500">Geen actie vereist, alles ziet er goed uit.</li>';
+        return;
+    }
+
+    list.innerHTML = recent.map(f => {
+        const color = f.level === 2 ? "#ef4444" : "#f59e0b";
         return `<li class="flex items-start gap-3 px-5 py-3 border-t border-black/5 dark:border-white/10 first:border-t-0">
-            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background:${s.color}"></span>
-            <div><div class="text-xs">Meting ontvangen — <span class="font-semibold tabular-nums">${h} mm</span> (${s.label})</div>
-            <div class="text-[11px] text-zinc-500 mt-0.5">${t}</div></div>
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background:${color}"></span>
+            <div><div class="text-xs font-semibold">${f.name} — <span class="tabular-nums">${f.avg} mm</span> (${f.label})</div>
+            <div class="text-[11px] text-zinc-500 mt-0.5">Metingen: ${f.total} — Laatste: ${f.latest ? f.latest.slice(11, 16) : "—"}</div></div>
         </li>`;
     }).join("");
 }
 
-// manual sync button handling
+// manual sync trigger
 const syncBtn = document.getElementById("syncBtn");
 if (syncBtn) {
     syncBtn.addEventListener("click", async () => {
@@ -197,7 +173,7 @@ if (syncBtn) {
 }
 
 window.addEventListener("themechange", () => {
-    if (allRows.length) renderCharts();
+    if (reportData) renderCharts();
 });
 
 loadData();
