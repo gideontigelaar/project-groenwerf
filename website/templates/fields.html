@@ -4,7 +4,15 @@
 {% block page_sub %}Gereconstrueerde locaties van veldsensoren{% endblock %}
 
 {% block head %}
-    <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+        window.ARCGIS_FIELDS_URL = {{ fields_url | tojson }};
+        window.ARCGIS_DATA_URL = {{ data_url | tojson }};
+    </script>
+    <style>
+        .leaflet-pane { z-index: 10 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -14,10 +22,25 @@
                 <div class="font-semibold">Velden</div>
                 <div class="text-xs text-zinc-500 dark:text-zinc-400" id="fields-count">Laden…</div>
             </div>
-            <div class="p-4 border-b border-black/5 dark:border-white/10">
+            <div class="p-4 border-b border-black/5 dark:border-white/10 space-y-3">
                 <select id="fieldSelect" class="form-select form-select-sm">
                     <option value="">Kies een veld…</option>
                 </select>
+                <div id="filterControls" class="grid grid-cols-2 gap-3 pt-2 opacity-50 pointer-events-none transition-opacity">
+                    <div class="space-y-1">
+                        <label for="dateFilter" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Datum</label>
+                        <input type="date" id="dateFilter" class="form-control form-control-sm text-xs" />
+                    </div>
+                    <div class="space-y-1">
+                        <label for="sortSelect" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Sorteren op</label>
+                        <select id="sortSelect" class="form-select form-select-sm text-xs">
+                            <option value="date_desc">Nieuwste</option>
+                            <option value="date_asc">Oudste</option>
+                            <option value="height_desc">Hoogste</option>
+                            <option value="height_asc">Laagste</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <ul id="field-list" class="m-0 p-0 list-none overflow-y-auto flex-1"></ul>
         </div>
@@ -37,6 +60,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://js.arcgis.com/4.30/"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="{{ url_for('static', filename='fields.js') }}"></script>
 {% endblock %}

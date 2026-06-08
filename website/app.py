@@ -43,6 +43,8 @@ def _arcgis_configured():
         and getattr(credentials, "ARCGIS_USERNAME", None)
     )
 
+_arc_fields_layer = None
+
 def _get_layer():
     # lazily create and cache the featurelayer
     global _arc_layer
@@ -57,6 +59,22 @@ def _get_layer():
             )
             _arc_layer = FeatureLayer(credentials.ARCGIS_LAYER_URL, gis=gis)
     return _arc_layer
+
+def _get_fields_layer():
+    global _arc_fields_layer
+    if _arc_fields_layer is not None:
+        return _arc_fields_layer
+    with _arc_lock:
+        if _arc_fields_layer is None:
+            gis = GIS(
+                "https://www.arcgis.com",
+                credentials.ARCGIS_USERNAME,
+                credentials.ARCGIS_PASSWORD,
+            )
+            fields_url = getattr(credentials, "ARCGIS_FIELDS_URL", None)
+            if fields_url:
+                _arc_fields_layer = FeatureLayer(fields_url, gis=gis)
+    return _arc_fields_layer
 
 def _attr(attr, *names):
     for n in names:
@@ -103,6 +121,7 @@ def _fetch_from_arcgis():
         out_fields="ToF_Height_mm,Sonic_Height_mm,Measured_At",
         return_geometry=True,
         result_record_count=500,
+        out_sr=4326,
     )
     rows = []
     for f in feature_set.features:
@@ -234,6 +253,19 @@ def build_report(rows):
         "thresholds": {"mow": THRESHOLD_MOW, "watch": THRESHOLD_WATCH},
     }
 
+@app.route("/api/fields")
+def api_fields():
+    layer = _get_fields_layer()
+    if not layer:
+        return jsonify({"features": []})
+    try:
+        fset = layer.query(where="1=1", out_fields="*", return_geometry=True, out_sr=4326)
+        features = [{"attributes": f.attributes, "geometry": f.geometry} for f in fset.features]
+        return jsonify({"features": features})
+    except Exception as exc:
+        app.logger.error("arcgis fields fetch failed: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
 @app.route("/api/data")
 def api_data():
     rows, source = get_rows()
@@ -259,7 +291,9 @@ def dashboard():
 
 @app.route("/fields")
 def fields():
-    return render_template("fields.html", active_page="fields")
+    data_url = getattr(credentials, "ARCGIS_LAYER_URL", "") if credentials else ""
+    fields_url = getattr(credentials, "ARCGIS_FIELDS_URL", "") if credentials else ""
+    return render_template("fields.html", active_page="fields", data_url=data_url, fields_url=fields_url)
 
 @app.route("/report")
 def report():
