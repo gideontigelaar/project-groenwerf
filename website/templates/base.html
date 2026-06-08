@@ -1,5 +1,5 @@
 {% macro nav_link(key, href, label, active_page) -%}
-    <a href="{{ href }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if active_page == key %}bg-brand text-white shadow-sm shadow-brand/30{% else %}text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
+    <a href="{{ href }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors {% if active_page == key %}bg-brand text-white shadow-sm shadow-brand/30{% else %}!text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
         {% if key == 'dashboard' %}
             <svg viewBox="0 0 24 24" fill="currentColor" class="w-[18px] h-[18px] shrink-0 opacity-90"><rect x="2" y="2" width="9" height="9" rx="2"/><rect x="13" y="2" width="9" height="9" rx="2"/><rect x="2" y="13" width="9" height="9" rx="2"/><rect x="13" y="13" width="9" height="9" rx="2"/></svg>
         {% elif key == 'fields' %}
