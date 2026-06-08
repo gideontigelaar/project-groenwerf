@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Velden — Groenwerf{% endblock %}
+{% block page_title %}Velden op de kaart{% endblock %}
+{% block page_sub %}Gereconstrueerde locaties van veldsensoren{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.30/"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-[calc(100vh-9rem)]">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex flex-col">
+            <div class="px-5 py-4 border-b border-black/5 dark:border-white/10">
+                <div class="font-semibold">Velden</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400" id="fields-count">Laden…</div>
+            </div>
+            <div class="p-4 border-b border-black/5 dark:border-white/10">
+                <select id="fieldSelect" class="form-select form-select-sm">
+                    <option value="">Kies een veld…</option>
+                </select>
+            </div>
+            <ul id="field-list" class="m-0 p-0 list-none overflow-y-auto flex-1"></ul>
+        </div>
+
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden relative">
+            <div id="mapView" class="absolute inset-0"></div>
+            <div id="mapEmpty" class="hidden absolute inset-0 flex items-center justify-center p-8 text-center bg-white/80 dark:bg-black/80 z-10 backdrop-blur-sm">
+                <div class="max-w-sm">
+                    <div class="font-display text-xl font-semibold mb-2">Geen locaties gevonden</div>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                        Er is momenteel geen data beschikbaar die geldige coördinaten bevat.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='fields.js') }}"></script>
+{% endblock %}

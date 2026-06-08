@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Groenwerf{% endblock %}
+{% block page_title %}Veldbeheer overzicht{% endblock %}
+{% block page_sub %}Grashoogte en maaiadvies per meting{% endblock %}
+
+{% block head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+    <button id="syncBtn" class="btn btn-outline-secondary btn-sm fw-semibold px-3">Sync nu</button>
+    <a href="{{ url_for('report') }}" class="btn btn-success btn-sm fw-semibold px-3" style="--bs-btn-bg:#3b6d11;--bs-btn-border-color:#3b6d11;--bs-btn-hover-bg:#2f590e;--bs-btn-hover-border-color:#2f590e;">Rapport</a>
+{% endblock %}
+
+{% block content %}
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        {% set card = "rounded-2xl p-5 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm" %}
+        <div class="{{ card }}">
+            <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-2">Metingen geladen</div>
+            <div class="font-display text-3xl font-semibold leading-none" id="kpi-count">—</div>
+            <div class="mt-3"><span class="badge rounded-pill text-bg-light" id="kpi-source">—</span></div>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-2">Gem. grashoogte</div>
+            <div class="font-display text-3xl font-semibold leading-none" id="kpi-avg">— <span class="text-sm font-normal text-zinc-500">mm</span></div>
+            <div class="mt-3"><span class="badge rounded-pill" id="kpi-avg-badge">—</span></div>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-2">Te maaien</div>
+            <div class="font-display text-3xl font-semibold leading-none text-[#ef4444]" id="kpi-mow">—</div>
+            <div class="mt-3"><span class="badge rounded-pill text-bg-danger" id="kpi-mow-badge">—</span></div>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-2">Laatste meting</div>
+            <div class="font-display text-2xl font-semibold leading-none" id="kpi-time">—</div>
+            <div class="mt-3"><span class="badge rounded-pill text-bg-success" style="--bs-success-bg-subtle:#dff0c8">Sensor actief</span></div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl p-5 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <div class="font-semibold">Grashoogte verloop</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">Laatste metingen, chronologisch</div>
+            </div>
+        </div>
+        <div class="relative h-[240px]"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
+                <div>
+                    <div class="font-semibold">Veldoverzicht</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">Grashoogte per meting</div>
+                </div>
+                <div class="flex gap-1.5" id="filter-pills">
+                    <button data-filter="all" class="pill px-3 py-1 rounded-full text-xs font-semibold border border-brand bg-brand/10 text-brand transition-colors">Alle</button>
+                    <button data-filter="mow" class="pill px-3 py-1 rounded-full text-xs font-semibold border border-black/10 dark:border-white/15 text-zinc-500 dark:text-zinc-400 transition-colors">Maaien</button>
+                    <button data-filter="ok" class="pill px-3 py-1 rounded-full text-xs font-semibold border border-black/10 dark:border-white/15 text-zinc-500 dark:text-zinc-400 transition-colors">Goed</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400">
+                            <th class="px-5 py-3 font-bold">Tijdstip</th>
+                            <th class="px-5 py-3 font-bold">TOF</th>
+                            <th class="px-5 py-3 font-bold">Sonic</th>
+                            <th class="px-5 py-3 font-bold">Hoogte</th>
+                            <th class="px-5 py-3 font-bold">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fields-body">
+                        <tr><td colspan="5" class="px-5 py-8 text-center text-zinc-500 text-sm">Laden…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-black/5 dark:border-white/10 font-semibold">Maaistatus</div>
+                <div class="p-5 flex flex-col items-center">
+                    <div class="relative w-[180px] h-[180px]">
+                        <canvas id="donutChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="font-display text-2xl font-semibold" id="donut-pct">—</div>
+                            <div class="text-[10px] uppercase tracking-[0.1em] text-zinc-500">Goed</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#6aa84f]"></span>Goed</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></span>Let op</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>Maaien</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex-1">
+                <div class="px-5 py-4 border-b border-black/5 dark:border-white/10 font-semibold">Recente activiteit</div>
+                <ul class="m-0 p-0 list-none" id="activity-list">
+                    <li class="px-5 py-3 text-xs text-zinc-500">Laden…</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}

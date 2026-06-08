@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Rapport — Groenwerf{% endblock %}
+{% block page_title %}Veldbeheer rapport{% endblock %}
+{% block page_sub %}Overzicht voor management en klanten{% endblock %}
+
+{% block head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+    <button id="downloadBtn" class="btn btn-success btn-sm fw-semibold px-3" style="--bs-btn-bg:#3b6d11;--bs-btn-border-color:#3b6d11;--bs-btn-hover-bg:#2f590e;--bs-btn-hover-border-color:#2f590e;">
+        PDF downloaden
+    </button>
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden">
+            <div class="bg-brand text-white px-6 py-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"/></svg>
+                    </div>
+                    <div>
+                        <div class="font-semibold">Groenvoorziening A.J. van der Werf B.V.</div>
+                        <div class="text-xs text-white/70">Industrieweg 33 · 9781 AC Bedum · info@groenwerf.nl</div>
+                    </div>
+                </div>
+                <div class="font-display text-2xl font-semibold">Veldbeheer Rapport</div>
+                <div class="text-xs text-white/70 mt-1" id="report-date">Laden…</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 p-6">
+                {% set kpi = "rounded-xl p-4 text-center border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/5" %}
+                <div class="{{ kpi }}"><div class="font-display text-2xl font-semibold" id="r-total">—</div><div class="text-[10px] uppercase tracking-[0.08em] text-zinc-500 mt-1">Metingen</div></div>
+                <div class="{{ kpi }}"><div class="font-display text-2xl font-semibold text-[#6aa84f]" id="r-ok">—</div><div class="text-[10px] uppercase tracking-[0.08em] text-zinc-500 mt-1">Goed</div></div>
+                <div class="{{ kpi }}"><div class="font-display text-2xl font-semibold text-[#ef4444]" id="r-mow">—</div><div class="text-[10px] uppercase tracking-[0.08em] text-zinc-500 mt-1">Te maaien</div></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-6">
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm p-5">
+                <div class="font-semibold mb-1">Grashoogte per meting</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Laatste 18 metingen</div>
+                <div class="relative h-[240px]"><canvas id="barChart"></canvas></div>
+            </div>
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm p-5 flex flex-col items-center">
+                <div class="font-semibold self-start mb-4">Verdeling</div>
+                <div class="relative w-[170px] h-[170px]"><canvas id="donutChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/5 dark:border-white/10 font-semibold">Meting details (laatste 20)</div>
+            <div id="report-rows" class="px-5 py-2 text-sm">Laden…</div>
+        </div>
+
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/5 dark:border-white/10 font-semibold">Aanbevelingen</div>
+            <div class="px-5 py-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300" id="report-recs">Laden…</div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='report.js') }}"></script>
+{% endblock %}

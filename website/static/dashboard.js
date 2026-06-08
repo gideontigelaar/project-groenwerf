@@ -1,130 +1,204 @@
-const CIRC = 2 * Math.PI * 60;
+// manage dashboard data loading, ui sync, and rendering
+const MOW = 400;
+const WATCH = 80;
 
-  function statusOf(tof, sonic) {
-    const h = tof || sonic || 0;
-    if (h >= 400) return { label: "Maaien", bgCls: "bg-[#fee2e2]", textCls: "text-[#991b1b]", color: "#ef4444", level: 2 };
-    if (h >= 80)  return { label: "Let op",  bgCls: "bg-[#fef3c7]", textCls: "text-[#92400e]", color: "#f59e0b", level: 1 };
-    return                { label: "Goed",   bgCls: "bg-[#dff0c8]", textCls: "text-[#2a5238]", color: "#3b6d11", level: 0 };
-  }
+function statusOf(tof, sonic) {
+    const h = (tof || sonic || 0);
+    if (h >= MOW) return { label: "Maaien", level: 2, color: "#ef4444", badge: "text-bg-danger" };
+    if (h >= WATCH) return { label: "Let op", level: 1, color: "#f59e0b", badge: "text-bg-warning" };
+    return { label: "Goed", level: 0, color: "#6aa84f", badge: "text-bg-success" };
+}
 
-  function barHtml(h) {
-    const pct   = Math.min(100, Math.round(h / 8));
-    const color = h >= 400 ? "#ef4444" : h >= 80 ? "#f59e0b" : "#3b6d11";
-    return `<div class="w-[90px] bg-[#e8e8e2] rounded-full h-[5px] overflow-hidden">
-              <div style="width:${pct}%;background:${color}" class="h-full rounded-full"></div>
-            </div>
-            <div class="text-[10px] text-[#5a6e60] mt-[3px]">${h} mm</div>`;
-  }
+let allRows = [];
+let currentFilter = "all";
+let donutChart = null;
+let trendChart = null;
 
-  let allRows = [];
-  let currentFilter = "all";
+async function loadData() {
+    try {
+        const res = await fetch("/api/data");
+        const json = await res.json();
+        allRows = (json.data || []);
+        document.getElementById("kpi-source").textContent = json.meta && json.meta.source === "arcgis" ? "ArcGIS" : "Geen bron";
+        renderKPIs();
+        renderTable(currentFilter);
+        renderCharts();
+        renderActivity();
+    } catch (e) {
+        document.getElementById("fields-body").innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-[#ef4444] text-sm">Kon data niet laden</td></tr>';
+    }
+}
 
-  async function loadData() {
-    const res = await fetch("/api/data");
-    allRows = await res.json();
-    renderKPIs();
-    renderTable(currentFilter);
-    renderDonut();
-    renderActivity();
-  }
+function heightOf(r) {
+    return (r.tof_mm || r.sonic_mm || 0);
+}
 
-  function renderKPIs() {
-    const count    = allRows.length;
-    const heights  = allRows.map(r => parseInt(r.tof_mm || r.sonic_median_mm || 0));
-    const avg      = heights.length ? Math.round(heights.reduce((a,b) => a+b, 0) / heights.length) : 0;
-    const mowCount = allRows.filter(r => statusOf(parseInt(r.tof_mm||0), parseInt(r.sonic_median_mm||0)).level >= 2).length;
-    const latest   = allRows[0]?.measured_at || "—";
-    const timeStr  = latest !== "—" ? latest.slice(11,16) : "—";
+function renderKPIs() {
+    const count = allRows.length;
+    const heights = allRows.map(heightOf);
+    const avg = heights.length ? Math.round(heights.reduce((a, b) => a + b, 0) / heights.length) : 0;
+    const mow = allRows.filter(r => statusOf(r.tof_mm, r.sonic_mm).level >= 2).length;
+    const latest = allRows[0]?.measured_at || "—";
 
-    document.getElementById("kpi-fields").innerHTML   = `${count} <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">rijen</span>`;
-    document.getElementById("kpi-mow-badge").textContent = `${mowCount} te maaien`;
-    document.getElementById("kpi-avg").innerHTML      = `${avg} <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">mm</span>`;
-    document.getElementById("kpi-avg-badge").textContent = avg >= 200 ? "Boven streefwaarde" : "Normaal";
-    document.getElementById("kpi-avg-badge").className   = `inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${avg >= 200 ? "bg-[#fef3c7] text-[#92400e]" : "bg-[#dff0c8] text-[#2a5238]"}`;
-    document.getElementById("kpi-readings").innerHTML = `${count} <span class="text-[13px] font-medium text-[#5a6e60] ml-0.5">pts</span>`;
-    document.getElementById("kpi-time").textContent   = timeStr;
-    document.getElementById("kpi-temp-badge").textContent = "Sensor actief";
-  }
+    document.getElementById("kpi-count").textContent = count;
+    document.getElementById("kpi-avg").innerHTML = `${avg} <span class="text-sm font-normal text-zinc-500">mm</span>`;
+    document.getElementById("kpi-mow").textContent = mow;
+    document.getElementById("kpi-mow-badge").textContent = `${mow} meting${mow === 1 ? "" : "en"}`;
+    document.getElementById("kpi-time").textContent = latest !== "—" ? latest.slice(11, 16) : "—";
 
-  function renderTable(filter) {
+    const avgBadge = document.getElementById("kpi-avg-badge");
+    if (avg >= 200) {
+        avgBadge.textContent = "Boven streefwaarde";
+        avgBadge.className = "badge rounded-pill text-bg-warning";
+    } else {
+        avgBadge.textContent = "Normaal";
+        avgBadge.className = "badge rounded-pill text-bg-success";
+    }
+}
+
+function renderTable(filter) {
     const rows = allRows.filter(r => {
-      const s = statusOf(parseInt(r.tof_mm||0), parseInt(r.sonic_median_mm||0));
-      if (filter === "mow") return s.level >= 2;
-      if (filter === "ok")  return s.level === 0;
-      return true;
-    }).slice(0, 20);
+        const lvl = statusOf(r.tof_mm, r.sonic_mm).level;
+        if (filter === "mow") return lvl >= 2;
+        if (filter === "ok") return lvl === 0;
+        return true;
+    }).slice(0, 25);
 
     const tbody = document.getElementById("fields-body");
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center px-3.5 py-5 text-[#5a6e60] text-[12px]">Geen data</td></tr>';
-      return;
+        tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-zinc-500 text-sm">Geen data</td></tr>';
+        return;
     }
     tbody.innerHTML = rows.map(r => {
-      const tof   = r.tof_mm != null ? parseInt(r.tof_mm) : null;
-      const sonic = r.sonic_median_mm != null ? parseInt(r.sonic_median_mm) : null;
-      const h     = tof || sonic || 0;
-      const s     = statusOf(tof, sonic);
-      const t     = r.measured_at ? r.measured_at.slice(11,16) : "—";
-      const d     = r.measured_at ? r.measured_at.slice(0,10)  : "—";
-      return `<tr class="cursor-pointer hover:bg-[#f2fae8] transition-colors duration-100">
-        <td class="text-[12px] px-3.5 py-2.5 border-b border-[#e8e8e2] text-[#1a2e1f]">
-          <div class="font-semibold text-[12px]">${t}</div>
-          <div class="text-[10px] text-[#5a6e60] mt-px">${d}</div>
-        </td>
-        <td class="text-[12px] px-3.5 py-2.5 border-b border-[#e8e8e2] text-[#1a2e1f]">${tof  != null ? tof  : "—"}</td>
-        <td class="text-[12px] px-3.5 py-2.5 border-b border-[#e8e8e2] text-[#1a2e1f]">${sonic != null ? sonic : "—"}</td>
-        <td class="text-[12px] px-3.5 py-2.5 border-b border-[#e8e8e2] text-[#1a2e1f]">${barHtml(h)}</td>
-        <td class="text-[12px] px-3.5 py-2.5 border-b border-[#e8e8e2] text-[#1a2e1f]">
-          <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${s.bgCls} ${s.textCls}">${s.label}</span>
-        </td>
-      </tr>`;
+        const tof = r.tof_mm ?? null;
+        const sonic = r.sonic_mm ?? null;
+        const h = heightOf(r);
+        const s = statusOf(tof, sonic);
+        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
+        const d = r.measured_at ? r.measured_at.slice(0, 10) : "—";
+        const pct = Math.min(100, Math.round(h / 8));
+        return `<tr class="border-t border-black/5 dark:border-white/10 hover:bg-black/[0.025] dark:hover:bg-white/5 transition-colors">
+            <td class="px-5 py-3"><div class="font-semibold">${t}</div><div class="text-[11px] text-zinc-500">${d}</div></td>
+            <td class="px-5 py-3 tabular-nums">${tof != null ? tof : "—"}</td>
+            <td class="px-5 py-3 tabular-nums">${sonic != null ? sonic : "—"}</td>
+            <td class="px-5 py-3">
+                <div class="w-24 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                    <div class="h-full rounded-full" style="width:${pct}%;background:${s.color}"></div>
+                </div>
+                <div class="text-[11px] text-zinc-500 mt-1 tabular-nums">${h} mm</div>
+            </td>
+            <td class="px-5 py-3"><span class="badge rounded-pill ${s.badge}">${s.label}</span></td>
+        </tr>`;
     }).join("");
-  }
+}
 
-  function filterFields(f, btn) {
-    currentFilter = f;
-    document.querySelectorAll(".pill").forEach(p => {
-      p.classList.remove("border-[#6aa84f]", "bg-[#f2fae8]", "text-[#3b6d11]");
-      p.classList.add("border-[#e8e8e2]", "bg-transparent", "text-[#5a6e60]");
+document.getElementById("filter-pills").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-filter]");
+    if (!btn) return;
+    currentFilter = btn.dataset.filter;
+    document.querySelectorAll("#filter-pills .pill").forEach(p => {
+        p.className = "pill px-3 py-1 rounded-full text-xs font-semibold border border-black/10 dark:border-white/15 text-zinc-500 dark:text-zinc-400 transition-colors";
     });
-    btn.classList.remove("border-[#e8e8e2]", "bg-transparent", "text-[#5a6e60]");
-    btn.classList.add("border-[#6aa84f]", "bg-[#f2fae8]", "text-[#3b6d11]");
-    renderTable(f);
-  }
+    btn.className = "pill px-3 py-1 rounded-full text-xs font-semibold border border-brand bg-brand/10 text-brand transition-colors";
+    renderTable(currentFilter);
+});
 
-  function renderDonut() {
+function renderCharts() {
     const counts = [0, 0, 0];
-    allRows.forEach(r => counts[statusOf(parseInt(r.tof_mm||0), parseInt(r.sonic_median_mm||0)).level]++);
-    const total    = allRows.length || 1;
-    const segOk    = (counts[0] / total) * CIRC;
-    const segWarn  = (counts[1] / total) * CIRC;
-    const segAlert = (counts[2] / total) * CIRC;
-
-    document.getElementById("donut-ok")   .setAttribute("stroke-dasharray", `${segOk} ${CIRC - segOk}`);
-    document.getElementById("donut-ok")   .setAttribute("stroke-dashoffset", "0");
-    document.getElementById("donut-warn") .setAttribute("stroke-dasharray", `${segWarn} ${CIRC - segWarn}`);
-    document.getElementById("donut-warn") .setAttribute("stroke-dashoffset", `${-segOk}`);
-    document.getElementById("donut-alert").setAttribute("stroke-dasharray", `${segAlert} ${CIRC - segAlert}`);
-    document.getElementById("donut-alert").setAttribute("stroke-dashoffset", `${-segOk - segWarn}`);
+    allRows.forEach(r => counts[statusOf(r.tof_mm, r.sonic_mm).level]++);
+    const total = allRows.length || 1;
     document.getElementById("donut-pct").textContent = Math.round((counts[0] / total) * 100) + "%";
-  }
 
-  function renderActivity() {
-    const recent = allRows.slice(0, 5);
-    const list   = document.getElementById("activity-list");
+    const th = window.chartTheme();
+
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(document.getElementById("donutChart"), {
+        type: "doughnut",
+        data: {
+            labels: ["Goed", "Let op", "Maaien"],
+            datasets: [{ data: counts, backgroundColor: [th.ok, th.warn, th.mow], borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "72%",
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed}` } }
+            }
+        }
+    });
+
+    const series = allRows.slice(0, 40).reverse();
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById("trendChart"), {
+        type: "line",
+        data: {
+            labels: series.map(r => (r.measured_at || "").slice(11, 19)),
+            datasets: [{
+                data: series.map(heightOf),
+                borderColor: th.brand,
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 0,
+                fill: true,
+                backgroundColor: "rgba(106,168,79,0.12)",
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: c => `${c.parsed.y} mm` } }
+            },
+            scales: {
+                x: { grid: { color: th.grid }, ticks: { color: th.text, maxTicksLimit: 8, font: { size: 10 } } },
+                y: { grid: { color: th.grid }, ticks: { color: th.text, font: { size: 11 }, callback: v => v + " mm" }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderActivity() {
+    const list = document.getElementById("activity-list");
+    const recent = allRows.slice(0, 6);
+    if (!recent.length) {
+        list.innerHTML = '<li class="px-5 py-3 text-xs text-zinc-500">Geen activiteit</li>';
+        return;
+    }
     list.innerHTML = recent.map(r => {
-      const h = parseInt(r.tof_mm || r.sonic_median_mm || 0);
-      const s = statusOf(parseInt(r.tof_mm||0), parseInt(r.sonic_median_mm||0));
-      const t = r.measured_at ? r.measured_at.slice(11,16) : "—";
-      return `<li class="flex items-start gap-2.5 px-[18px] py-2.5 border-b border-[#e8e8e2] last:border-b-0">
-        <span class="inline-block w-[7px] h-[7px] rounded-full mt-1 shrink-0" style="background:${s.color}"></span>
-        <div>
-          <div class="text-[11px] text-[#1a2e1f] leading-[1.5]">Meting ontvangen — ${h}mm (${s.label})</div>
-          <div class="text-[10px] text-[#5a6e60] mt-0.5">${t}</div>
-        </div>
-      </li>`;
+        const h = heightOf(r);
+        const s = statusOf(r.tof_mm, r.sonic_mm);
+        const t = r.measured_at ? r.measured_at.slice(11, 16) : "—";
+        return `<li class="flex items-start gap-3 px-5 py-3 border-t border-black/5 dark:border-white/10 first:border-t-0">
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background:${s.color}"></span>
+            <div><div class="text-xs">Meting ontvangen — <span class="font-semibold tabular-nums">${h} mm</span> (${s.label})</div>
+            <div class="text-[11px] text-zinc-500 mt-0.5">${t}</div></div>
+        </li>`;
     }).join("");
-  }
+}
 
-  loadData();
-  setInterval(loadData, 30000);
+// manual sync button handling
+const syncBtn = document.getElementById("syncBtn");
+if (syncBtn) {
+    syncBtn.addEventListener("click", async () => {
+        syncBtn.disabled = true;
+        syncBtn.textContent = "Syncing...";
+        try {
+            await fetch("/api/sync", { method: "POST" });
+            await loadData();
+        } catch (e) {
+            console.error("sync failed", e);
+        }
+        syncBtn.textContent = "Sync nu";
+        syncBtn.disabled = false;
+    });
+}
+
+window.addEventListener("themechange", () => {
+    if (allRows.length) renderCharts();
+});
+
+loadData();
+setInterval(loadData, 30000);

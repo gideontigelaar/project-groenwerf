@@ -1,330 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Groenwerf — Veldbeheer Rapport</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- <script src="https://cdn.tailwindcss.com"></script> -->
-<link href="{{ url_for('static', filename='tailwind.css', _external=True) }}" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-  /* Only non-Tailwind-expressible styles remain here */
-  body { font-size: 14px; }
+    <head>
+        <meta charset="UTF-8" />
+        <title>Groenwerf — Veldbeheer Rapport</title>
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <style>
+            @page { size: A4; margin: 18mm 14mm; }
+            * { box-sizing: border-box; }
+            body { font-family: "Manrope", "Helvetica Neue", Arial, sans-serif; color: #1a2e1f; font-size: 11px; margin: 0; }
+            h1, h2, .display { font-family: "Fraunces", Georgia, serif; }
+            .muted { color: #5a6e60; }
+            .tabular { font-variant-numeric: tabular-nums; }
 
-  .report-header::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 40px,
-      rgba(255,255,255,0.015) 40px,
-      rgba(255,255,255,0.015) 80px
-    );
-    pointer-events: none;
-  }
+            .header { background: #3b6d11; color: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
+            .header .brand { font-size: 13px; font-weight: 600; opacity: .9; margin-bottom: 10px; }
+            .header h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
+            .header .sub { font-size: 11px; color: rgba(255,255,255,.7); }
+            .header .meta { font-size: 10px; color: rgba(255,255,255,.7); margin-top: 12px; }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-  .status-dot { animation: pulse-dot 2s infinite; }
+            table { width: 100%; border-collapse: collapse; }
 
-  .section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #e0e8d8;
-  }
+            .kpis td { width: 25%; padding: 0 6px; vertical-align: top; }
+            .kpis td:first-child { padding-left: 0; }
+            .kpis td:last-child { padding-right: 0; }
+            .kpi { border: 1px solid #e6e8e0; border-radius: 12px; padding: 12px 14px; }
+            .kpi .label { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: #5a6e60; font-weight: 700; margin-bottom: 6px; }
+            .kpi .value { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; line-height: 1; }
+            .kpi .value small { font-size: 11px; font-family: "Manrope", sans-serif; color: #5a6e60; }
 
-  .height-bar-track { max-width: 80px; }
+            .section-title { font-size: 16px; font-weight: 600; color: #3b6d11; margin: 0 0 2px; }
+            .section-sub { font-size: 10px; color: #5a6e60; margin-bottom: 12px; }
+            .section { margin-bottom: 22px; }
 
-  .data-table tr:hover td { background: #f2fae8; }
+            .card { border: 1px solid #e6e8e0; border-radius: 12px; padding: 16px; }
 
-  @media print {
-    body { background: white; }
-    .cols-2, .cols-3, .cols-chart { break-inside: avoid; }
-    .section { break-inside: avoid; }
-  }
-</style>
-</head>
-<body class="font-sans bg-bg text-ink leading-relaxed min-h-screen">
+            .legend-row { display: table; width: 100%; margin: 6px 0; font-size: 11px; }
+            .legend-row .l { display: table-cell; }
+            .legend-row .r { display: table-cell; text-align: right; font-variant-numeric: tabular-nums; color: #5a6e60; }
+            .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
 
-<!-- HEADER -->
-<header class="report-header bg-green-800 text-white relative overflow-hidden">
-  <div class="relative z-10 max-w-[1100px] mx-auto px-12 pt-10 pb-9 grid gap-6" style="grid-template-columns:1fr auto;align-items:end;">
+            .data th { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: #5a6e60; text-align: left; padding: 9px 10px; border-bottom: 1px solid #e6e8e0; background: #fafcf7; }
+            .data td { font-size: 10.5px; padding: 8px 10px; border-bottom: 1px solid #eef1ea; }
+            .data tr:last-child td { border-bottom: 0; }
 
-    <div>
-      <!-- Logo row -->
-      <div class="flex items-center gap-3 mb-5">
-        <div class="w-9 h-9 bg-green-400 rounded-lg flex items-center justify-center">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 3C10 3 4 7 4 12a6 6 0 0012 0c0-5-6-9-6-9z" fill="white" fill-opacity="0.9"/>
-            <path d="M10 8v8M7 11l3-3 3 3" stroke="#3b6d11" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+            .bar-track { width: 70px; height: 6px; background: #e6e8e0; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; }
+            .bar-fill { display: block; height: 6px; border-radius: 4px; }
+
+            .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 700; }
+            .b-ok { background: #e6f3d6; color: #2a5238; }
+            .b-warn { background: #fef3c7; color: #92400e; }
+            .b-mow { background: #fee2e2; color: #991b1b; }
+
+            .footer { border-top: 1px solid #e6e8e0; padding-top: 12px; margin-top: 8px; font-size: 10px; color: #5a6e60; display: table; width: 100%; }
+            .footer .l { display: table-cell; }
+            .footer .r { display: table-cell; text-align: right; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="brand">Groenvoorziening A.J. van der Werf B.V. · Groenwerf</div>
+            <h1>Veldbeheer Rapport</h1>
+            <div class="sub">Grashoogte analyse · Maaiadvies · Sensordata overzicht</div>
+            <div class="meta">Gegenereerd op {{ r.generated }} · Laatste meting: {{ r.latest }}</div>
         </div>
-        <span class="font-serif text-lg font-semibold text-white/90 tracking-[0.01em]">Groenwerf</span>
-      </div>
-      <div class="font-serif text-[38px] font-bold leading-[1.15] text-white mb-2">Veldbeheer Rapport</div>
-      <div class="text-sm text-white/55 font-normal">Grashoogte analyse · Maaiadvies per locatie · Sensordata overzicht</div>
-    </div>
 
-    <div class="text-right">
-      <div class="text-[10px] uppercase tracking-[0.1em] text-white/40 mb-1">Rapportdatum</div>
-      <div class="font-mono text-[13px] text-white/75 mb-[14px]" id="report-date">—</div>
-      <div class="text-[10px] uppercase tracking-[0.1em] text-white/40 mb-1">Periode</div>
-      <div class="font-mono text-[13px] text-white/75 mb-[14px]">Afgelopen 7 dagen</div>
-      <div class="inline-flex items-center gap-1.5 bg-green-400/20 border border-green-400/35 text-green-200 px-3 py-[5px] rounded-full text-[11px] font-semibold">
-        <span class="status-dot w-[7px] h-[7px] rounded-full bg-green-300"></span>
-        Live sensordata
-      </div>
-    </div>
+        <div class="section">
+            <table class="kpis">
+                <tr>
+                    <td><div class="kpi"><div class="label">Metingen</div><div class="value">{{ r.total }}</div></div></td>
+                    <td><div class="kpi"><div class="label">Gem. hoogte</div><div class="value">{{ r.avg }} <small>mm</small></div></div></td>
+                    <td><div class="kpi"><div class="label">Te maaien</div><div class="value" style="color:#ef4444">{{ r.counts_mow }}</div></div></td>
+                    <td><div class="kpi"><div class="label">Binnen norm</div><div class="value" style="color:#6aa84f">{{ r.counts_ok }}</div></div></td>
+                </tr>
+            </table>
+        </div>
 
-  </div>
-</header>
+        <div class="section">
+            <div class="section-title">Maaistatus verdeling</div>
+            <div class="section-sub">Aandeel metingen per statuscategorie</div>
+            <table>
+                <tr>
+                    <td style="width:170px; vertical-align:middle;">
+                        <svg width="150" height="150" viewBox="0 0 160 160">
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="#e6e8e0" stroke-width="18"/>
+                            {% for s in r.donut.segments %}
+                            <circle cx="80" cy="80" r="60" fill="none" stroke="{{ s.color }}" stroke-width="18" stroke-dasharray="{{ s.dash }}" stroke-dashoffset="{{ s.offset }}" transform="rotate(-90 80 80)" stroke-linecap="butt"/>
+                            {% endfor %}
+                            <text x="80" y="78" text-anchor="middle" font-family="Fraunces, serif" font-size="26" font-weight="600" fill="#1a2e1f">{{ r.pct_ok }}%</text>
+                            <text x="80" y="96" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" fill="#5a6e60">GOED</text>
+                        </svg>
+                    </td>
+                    <td style="vertical-align:middle; padding-left:18px;">
+                        <div class="card">
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#6aa84f"></span>Goed</span><span class="r">{{ r.counts_ok }} ({{ r.pct_ok }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#f59e0b"></span>Let op</span><span class="r">{{ r.counts_warn }} ({{ r.pct_warn }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#ef4444"></span>Maaien</span><span class="r">{{ r.counts_mow }} ({{ r.pct_mow }}%)</span></div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
-<!-- BODY -->
-<main class="max-w-[1100px] mx-auto px-12 pt-9 pb-16">
+        <div class="section">
+            <div class="section-title">Meetdetails</div>
+            <div class="section-sub">Laatste {{ r.recent | length }} metingen · TOF en Sonic met statusclassificatie</div>
+            <table class="data card" style="padding:0; overflow:hidden;">
+                <thead>
+                    <tr>
+                        <th>Tijdstip</th><th>Datum</th><th>TOF (mm)</th><th>Sonic (mm)</th><th>Hoogte</th><th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in r.recent %}
+                    {% set color = "#ef4444" if m.level == 2 else "#f59e0b" if m.level == 1 else "#6aa84f" %}
+                    {% set badge = "b-mow" if m.level == 2 else "b-warn" if m.level == 1 else "b-ok" %}
+                    <tr>
+                        <td class="tabular" style="font-weight:600">{{ m.time }}</td>
+                        <td class="tabular muted">{{ m.date }}</td>
+                        <td class="tabular">{{ m.tof_mm if m.tof_mm is not none else "—" }}</td>
+                        <td class="tabular">{{ m.sonic_mm if m.sonic_mm is not none else "—" }}</td>
+                        <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ color }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.height }} mm</span></td>
+                        <td><span class="badge {{ badge }}">{{ m.label }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-4 gap-3.5 mb-9">
-
-    <div class="bg-white border border-border rounded-2xl p-[18px_20px]">
-      <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-muted mb-2">Actieve velden</div>
-      <div class="font-serif text-[32px] font-bold text-ink leading-none mb-2">6 <span class="font-sans text-[13px] font-medium text-muted">velden</span></div>
-      <span class="inline-block px-[9px] py-[3px] rounded-full text-[10px] font-bold bg-alert-red-light text-red-800">3 te maaien</span>
-    </div>
-
-    <div class="bg-white border border-border rounded-2xl p-[18px_20px]">
-      <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-muted mb-2">Gem. grashoogte</div>
-      <div class="font-serif text-[32px] font-bold text-ink leading-none mb-2">74 <span class="font-sans text-[13px] font-medium text-muted">mm</span></div>
-      <span class="inline-block px-[9px] py-[3px] rounded-full text-[10px] font-bold bg-amber-light text-amber-800">Boven advies</span>
-    </div>
-
-    <div class="bg-white border border-border rounded-2xl p-[18px_20px]">
-      <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-muted mb-2">Metingen geladen</div>
-      <div class="font-serif text-[32px] font-bold text-ink leading-none mb-2">847 <span class="font-sans text-[13px] font-medium text-muted">pts</span></div>
-      <span class="inline-block px-[9px] py-[3px] rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">CSV bron</span>
-    </div>
-
-    <div class="bg-white border border-border rounded-2xl p-[18px_20px]">
-      <div class="text-[10px] font-bold uppercase tracking-[0.08em] text-muted mb-2">Laatste meting</div>
-      <div class="font-serif text-[20px] font-bold text-ink leading-none mb-2" id="last-meas">—</div>
-      <span class="inline-block px-[9px] py-[3px] rounded-full text-[10px] font-bold bg-green-100 text-green-700">Temp: 17°C</span>
-    </div>
-
-  </div>
-
-  <!-- MAAIADVIES -->
-  <div class="section mb-9">
-    <div class="section-title font-serif text-xl font-semibold text-green-800 mb-1 flex items-center gap-2.5">Maaiadvies per veld</div>
-    <div class="text-xs text-muted mb-[18px]">Gebaseerd op TOF en Sonic sensormetingen van de afgelopen 24 uur</div>
-    <div class="grid grid-cols-3 gap-3">
-
-      <div class="rounded-xl p-4 border bg-[#fff5f5] border-[#fcc]">
-        <span class="text-xl mb-2 block">🔴</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld A — Hooiland Noord</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 112 mm — <strong>direct maaien aanbevolen.</strong> Overschrijdt drempelwaarde van 90 mm aanzienlijk.</div>
-      </div>
-
-      <div class="rounded-xl p-4 border bg-[#fff5f5] border-[#fcc]">
-        <span class="text-xl mb-2 block">🔴</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld D — Weideperceel Oost</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 98 mm — <strong>maaien noodzakelijk.</strong> Sonic en TOF in overeenstemming.</div>
-      </div>
-
-      <div class="rounded-xl p-4 border bg-[#fff5f5] border-[#fcc]">
-        <span class="text-xl mb-2 block">🔴</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld F — Buitenrand Zuid</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 94 mm — <strong>maaien aanbevolen.</strong> Langzame groei, toch boven norm.</div>
-      </div>
-
-      <div class="rounded-xl p-4 border bg-[#fffbeb] border-[#fed7aa]">
-        <span class="text-xl mb-2 block">🟡</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld B — Sportveldje</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 72 mm — <strong>let op.</strong> Nadert drempelwaarde. Controleren over 2–3 dagen.</div>
-      </div>
-
-      <div class="rounded-xl p-4 border bg-[#fffbeb] border-[#fed7aa]">
-        <span class="text-xl mb-2 block">🟡</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld E — Centraal Grasland</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 68 mm — <strong>let op.</strong> Groeisnelheid verhoogd door recent regenweer.</div>
-      </div>
-
-      <div class="rounded-xl p-4 border bg-green-50 border-green-200">
-        <span class="text-xl mb-2 block">🟢</span>
-        <div class="text-xs font-bold text-ink mb-[3px]">Veld C — Inrijpad West</div>
-        <div class="text-[11px] text-muted leading-relaxed">Grashoogte 41 mm — <strong>geen actie nodig.</strong> Recent gemaaid, groei stabiel.</div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- CHARTS ROW 1 -->
-  <div class="section mb-9">
-    <div class="section-title font-serif text-xl font-semibold text-green-800 mb-1 flex items-center gap-2.5">Grashoogte analyse</div>
-    <div class="text-xs text-muted mb-[18px]">Vergelijking TOF vs Sonic sensor per veld · Weektrend</div>
-
-    <div class="grid gap-[18px]" style="grid-template-columns:2fr 1fr;">
-
-      <!-- Bar chart -->
-      <div class="bg-white border border-border rounded-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div>
-            <div class="text-[13px] font-bold text-ink">Grashoogte per veld</div>
-            <div class="text-[11px] text-muted mt-0.5">TOF en Sonic sensoren — laatste meting</div>
-          </div>
-          <div class="flex gap-3 items-center">
-            <div class="flex items-center gap-1.5 text-xs text-muted font-medium">
-              <span class="w-2.5 h-2.5 rounded-sm inline-block bg-green-600"></span>TOF
+        <div class="section">
+            <div class="section-title">Aanbevelingen</div>
+            <div class="card" style="font-size:11px; line-height:1.7;">
+                {% if r.counts_mow %}<div><strong>{{ r.counts_mow }} meting{{ "en" if r.counts_mow != 1 }}</strong> boven {{ r.thresholds.mow }} mm — directe maaiactie aanbevolen.</div>{% endif %}
+                {% if r.counts_warn %}<div><strong>{{ r.counts_warn }} meting{{ "en" if r.counts_warn != 1 }}</strong> tussen {{ r.thresholds.watch }}–{{ r.thresholds.mow }} mm — nauwlettend volgen.</div>{% endif %}
+                {% if r.counts_ok %}<div><strong>{{ r.counts_ok }} meting{{ "en" if r.counts_ok != 1 }}</strong> binnen de normale waarden.</div>{% endif %}
+                <div class="muted" style="margin-top:8px; font-size:10px;">Drempelwaarden: ≥{{ r.thresholds.mow }} mm = maaien, ≥{{ r.thresholds.watch }} mm = let op.</div>
             </div>
-            <div class="flex items-center gap-1.5 text-xs text-muted font-medium">
-              <span class="w-2.5 h-2.5 rounded-sm inline-block bg-green-300 border border-dashed border-green-600"></span>Sonic
-            </div>
-          </div>
         </div>
-        <div class="p-5">
-          <div class="relative w-full h-[260px]">
-            <canvas id="barChart" role="img" aria-label="Staafgrafiek grashoogte per veld">Grashoogte: Veld A 112mm, Veld B 72mm, Veld C 41mm, Veld D 98mm, Veld E 68mm, Veld F 94mm.</canvas>
-          </div>
+
+        <div class="footer">
+            <span class="l"><span class="display" style="color:#3b6d11; font-weight:600;">Groenwerf</span> · Veldbeheer &amp; grashoogte monitoring</span>
+            <span class="r">Gegenereerd op {{ r.generated }} · Versie 2.4</span>
         </div>
-      </div>
-
-      <!-- Donut -->
-      <div class="bg-white border border-border rounded-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-border">
-          <div class="text-[13px] font-bold text-ink">Maaistatus verdeling</div>
-          <div class="text-[11px] text-muted mt-0.5">Alle 6 velden</div>
-        </div>
-        <div class="p-5 flex flex-col items-center gap-4">
-          <div class="relative w-[180px] h-[180px]">
-            <canvas id="donutChart" role="img" aria-label="Donutgrafiek statusverdeling">Goed: 1, Let op: 2, Maaien: 3.</canvas>
-          </div>
-          <div class="w-full flex flex-col gap-1.5">
-            <div class="flex justify-between items-center text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-green-600 inline-block"></span>Goed</span>
-              <span class="font-mono font-medium">1 veld (17%)</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-amber inline-block"></span>Let op</span>
-              <span class="font-mono font-medium">2 velden (33%)</span>
-            </div>
-            <div class="flex justify-between items-center text-xs">
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-alert-red inline-block"></span>Maaien</span>
-              <span class="font-mono font-medium">3 velden (50%)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- LINE CHART -->
-  <div class="section mb-9">
-    <div class="bg-white border border-border rounded-2xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-border flex items-center justify-between">
-        <div>
-          <div class="text-[13px] font-bold text-ink">Weektrend grashoogte</div>
-          <div class="text-[11px] text-muted mt-0.5">Gemiddelde dagelijkse grashoogte per veld over de afgelopen 7 dagen (mm)</div>
-        </div>
-        <div class="flex gap-3 flex-wrap">
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-[#ef4444] inline-block"></span>Veld A</div>
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-amber inline-block"></span>Veld B</div>
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-green-600 inline-block"></span>Veld C</div>
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-[#b45309] inline-block"></span>Veld D</div>
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-green-400 inline-block"></span>Veld E</div>
-          <div class="flex items-center gap-1.5 text-xs text-muted font-medium"><span class="w-2.5 h-2.5 rounded-sm bg-[#dc2626] inline-block"></span>Veld F</div>
-        </div>
-      </div>
-      <div class="p-5">
-        <div class="relative w-full h-[240px]">
-          <canvas id="lineChart" role="img" aria-label="Lijndiagram weektrend grashoogte">Weektrend grashoogte voor alle 6 velden over 7 dagen.</canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- DETAIL TABLE -->
-  <div class="section mb-9">
-    <div class="section-title font-serif text-xl font-semibold text-green-800 mb-1 flex items-center gap-2.5">Meetdetails per sessie</div>
-    <div class="text-xs text-muted mb-[18px]">Alle metingen gesorteerd op tijdstip — TOF en Sonic waarden met statusclassificatie</div>
-    <div class="bg-white border border-border rounded-2xl overflow-hidden">
-      <table class="data-table w-full border-collapse">
-        <thead>
-          <tr>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Tijdstip</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Veld</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">TOF (mm)</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Sonic (mm)</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Gem. hoogte</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Groei / dag</th>
-            <th class="text-[10px] font-bold uppercase tracking-[0.06em] text-muted px-3.5 py-2.5 border-b border-border text-left bg-[#fafcf7]">Status</th>
-          </tr>
-        </thead>
-        <tbody id="detail-table"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- MAP + LOCATIE -->
-  <div class="section mb-9">
-    <div class="section-title font-serif text-xl font-semibold text-green-800 mb-1 flex items-center gap-2.5">Locatieoverzicht</div>
-    <div class="text-xs text-muted mb-[18px]">Veldlocaties op kaart — status per perceel</div>
-    <div class="grid grid-cols-2 gap-[18px]">
-
-      <div class="bg-white border border-border rounded-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-border">
-          <div class="text-[13px] font-bold text-ink">Kaartweergave — regio Limburg</div>
-          <div class="text-[11px] text-muted mt-0.5">Indicatieve locaties percelen</div>
-        </div>
-        <div id="map-svg-wrap" class="w-full h-[320px] overflow-hidden rounded-b-2xl"></div>
-      </div>
-
-      <div class="bg-white border border-border rounded-2xl overflow-hidden">
-        <div class="px-5 py-4 border-b border-border">
-          <div class="text-[13px] font-bold text-ink">Perceeloverzicht</div>
-          <div class="text-[11px] text-muted mt-0.5">Status en coördinaten per locatie</div>
-        </div>
-        <div class="p-3">
-          <div class="flex flex-col gap-2" id="loc-list"></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- SCATTER -->
-  <div class="section mb-9">
-    <div class="bg-white border border-border rounded-2xl overflow-hidden">
-      <div class="px-5 py-4 border-b border-border">
-        <div class="text-[13px] font-bold text-ink">TOF vs Sonic correlatie</div>
-        <div class="text-[11px] text-muted mt-0.5">Spreiding van beide sensoren — ideale correlatie = diagonale lijn</div>
-      </div>
-      <div class="p-5">
-        <div class="relative w-full h-[260px]">
-          <canvas id="scatterChart" role="img" aria-label="Spreidingsdiagram TOF versus Sonic sensor waarden">Correlatie tussen TOF en Sonic sensormetingen per veld.</canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</main>
-
-<!-- FOOTER -->
-<footer class="max-w-[1100px] mx-auto px-12 pb-10 flex items-center justify-between border-t border-border pt-6 text-[11px] text-muted">
-  <div>
-    <div class="font-serif text-sm font-semibold text-green-600">Groenwerf</div>
-    <div class="text-[11px] text-muted mt-0.5">Veldbeheer & grashoogte monitoring systeem</div>
-  </div>
-  <div class="text-right">
-    <div>Rapport gegenereerd op <span id="footer-date">—</span></div>
-    <div>Versie 2.4 · CSV sensordata · Automatisch rapport</div>
-  </div>
-</footer>
-
-<script src="{{url_for('static', filename='pdf.js')}}"></script>
-</body>
+    </body>
 </html>
