@@ -46,10 +46,7 @@
             .bar-track { width: 70px; height: 6px; background: #e6e8e0; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; }
             .bar-fill { display: block; height: 6px; border-radius: 4px; }
 
-            .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 700; }
-            .b-ok { background: #e6f3d6; color: #2a5238; }
-            .b-warn { background: #fef3c7; color: #92400e; }
-            .b-mow { background: #fee2e2; color: #991b1b; }
+            .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 700; text-align: center; }
 
             .footer { border-top: 1px solid #e6e8e0; padding-top: 12px; margin-top: 8px; font-size: 10px; color: #5a6e60; display: table; width: 100%; }
             .footer .l { display: table-cell; }
@@ -58,9 +55,9 @@
     </head>
     <body>
         <div class="header">
-            <div class="brand">Groenvoorziening A.J. van der Werf B.V. · Groenwerf</div>
-            <h1>Veldbeheer Rapport</h1>
-            <div class="sub">Grashoogte analyse · Maaiadvies · Sensordata overzicht</div>
+            <div class="brand">Groenvoorziening A.J. van der Werf B.V.</div>
+            <h1>{% if r.target_field %}Rapport: {{ r.fields[0].name }}{% else %}Veldbeheer Rapport (Totaal){% endif %}</h1>
+            <div class="sub">Kwaliteitsnormering · Maaiadvies · Sensordata overzicht</div>
             <div class="meta">Gegenereerd op {{ r.generated }} · Laatste meting: {{ r.latest }}</div>
         </div>
 
@@ -69,15 +66,16 @@
                 <tr>
                     <td><div class="kpi"><div class="label">Metingen</div><div class="value">{{ r.total }}</div></div></td>
                     <td><div class="kpi"><div class="label">Gem. hoogte</div><div class="value">{{ r.avg }} <small>mm</small></div></div></td>
-                    <td><div class="kpi"><div class="label">Te maaien</div><div class="value" style="color:#ef4444">{{ r.counts_mow }}</div></div></td>
-                    <td><div class="kpi"><div class="label">Binnen norm</div><div class="value" style="color:#6aa84f">{{ r.counts_ok }}</div></div></td>
+                    <td><div class="kpi"><div class="label">A/A+ (Top)</div><div class="value" style="color:#22c55e">{{ r.counts[0] + r.counts[1] }}</div></div></td>
+                    <td><div class="kpi"><div class="label">D (Actie)</div><div class="value" style="color:#ef4444">{{ r.counts[4] }}</div></div></td>
                 </tr>
             </table>
         </div>
 
+        {% if not r.target_field %}
         <div class="section">
-            <div class="section-title">Maaistatus verdeling</div>
-            <div class="section-sub">Aandeel metingen per statuscategorie</div>
+            <div class="section-title">Kwaliteitsverdeling</div>
+            <div class="section-sub">Aandeel metingen per normeringscategorie</div>
             <table>
                 <tr>
                     <td style="width:170px; vertical-align:middle;">
@@ -86,15 +84,17 @@
                             {% for s in r.donut.segments %}
                             <circle cx="80" cy="80" r="60" fill="none" stroke="{{ s.color }}" stroke-width="18" stroke-dasharray="{{ s.dash }}" stroke-dashoffset="{{ s.offset }}" transform="rotate(-90 80 80)" stroke-linecap="butt"/>
                             {% endfor %}
-                            <text x="80" y="78" text-anchor="middle" font-family="Fraunces, serif" font-size="26" font-weight="600" fill="#1a2e1f">{{ r.pct_ok }}%</text>
-                            <text x="80" y="96" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" fill="#5a6e60">GOED</text>
+                            <text x="80" y="78" text-anchor="middle" font-family="Fraunces, serif" font-size="26" font-weight="600" fill="#1a2e1f">{{ r.pcts[0] + r.pcts[1] }}%</text>
+                            <text x="80" y="96" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" fill="#5a6e60">A/A+ KWALITEIT</text>
                         </svg>
                     </td>
                     <td style="vertical-align:middle; padding-left:18px;">
                         <div class="card">
-                            <div class="legend-row"><span class="l"><span class="dot" style="background:#6aa84f"></span>Goed</span><span class="r">{{ r.counts_ok }} ({{ r.pct_ok }}%)</span></div>
-                            <div class="legend-row"><span class="l"><span class="dot" style="background:#f59e0b"></span>Let op</span><span class="r">{{ r.counts_warn }} ({{ r.pct_warn }}%)</span></div>
-                            <div class="legend-row"><span class="l"><span class="dot" style="background:#ef4444"></span>Maaien</span><span class="r">{{ r.counts_mow }} ({{ r.pct_mow }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#22c55e"></span>A+ (Uitstekend)</span><span class="r">{{ r.counts[0] }} ({{ r.pcts[0] }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#84cc16"></span>A (Goed)</span><span class="r">{{ r.counts[1] }} ({{ r.pcts[1] }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#eab308"></span>B (Acceptabel)</span><span class="r">{{ r.counts[2] }} ({{ r.pcts[2] }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#f97316"></span>C (Matig)</span><span class="r">{{ r.counts[3] }} ({{ r.pcts[3] }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#ef4444"></span>D (Slecht)</span><span class="r">{{ r.counts[4] }} ({{ r.pcts[4] }}%)</span></div>
                         </div>
                     </td>
                 </tr>
@@ -102,43 +102,79 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Veld Details</div>
+            <div class="section-title">Veld Details & Advies</div>
             <div class="section-sub">Samenvatting per afgebakend veld op basis van ruimtelijke intersectie</div>
             <table class="data card" style="padding:0; overflow:hidden;">
                 <thead>
                     <tr>
-                        <th>Veldnaam</th><th>Laatste Meting</th><th>Aantal Metingen</th><th>Gemiddelde Hoogte</th><th>Status</th>
+                        <th>Veldnaam</th><th>Laatste Meting</th><th>Maaiadvies</th><th>Gem. Hoogte</th><th>Kwaliteit</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% set badge_colors = ["#166534", "#3f6212", "#854d0e", "#9a3412", "#991b1b"] %}
+                    {% set badge_bgs = ["#dcfce7", "#d9f99d", "#fef08a", "#ffedd5", "#fee2e2"] %}
+                    {% set bar_colors = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"] %}
+
                     {% for m in r.fields %}
-                    {% set color = "#ef4444" if m.level == 2 else "#f59e0b" if m.level == 1 else "#6aa84f" %}
-                    {% set badge = "b-mow" if m.level == 2 else "b-warn" if m.level == 1 else "b-ok" %}
                     <tr>
                         <td style="font-weight:600">{{ m.name }}</td>
                         <td class="tabular muted">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
-                        <td class="tabular">{{ m.total }}</td>
-                        <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ color }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.avg }} mm</span></td>
-                        <td><span class="badge {{ badge }}">{{ m.label }}</span></td>
+                        <td style="color:#3b6d11; font-weight:600">{{ m.action }}</td>
+                        <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ bar_colors[m.level] }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.avg }} mm</span></td>
+                        <td><span class="badge" style="background:{{ badge_bgs[m.level] }}; color:{{ badge_colors[m.level] }}">{{ m.label }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="section">
+            <div class="section-title">Metingen & Maaibeurten</div>
+            <div class="section-sub">Tijdlijn van de meest recente sensordata voor {{ r.fields[0].name }}</div>
+            <table class="data card" style="padding:0; overflow:hidden;">
+                <thead>
+                    <tr>
+                        <th>Type</th><th>Datum</th><th>Grashoogte</th><th>Metingen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in range(r.fields[0].history|length) %}
+                        {% set h = r.fields[0].history[i] %}
+                        {% set title = "Meting" %}
+                        {% set is_mow = false %}
+                        {% if i < r.fields[0].history|length - 1 %}
+                            {% set older_h = r.fields[0].history[i+1].h %}
+                            {% if (older_h - h.h) > 30 %}
+                                {% set title = "Maaibeurt gedetecteerd" %}
+                                {% set is_mow = true %}
+                            {% endif %}
+                        {% endif %}
+                        <tr>
+                            <td style="font-weight:600; {{ 'color:#3b6d11;' if is_mow else '' }}">{{ title }}</td>
+                            <td class="tabular muted">{{ h.time }}</td>
+                            <td class="tabular">{{ h.h }} mm</td>
+                            <td class="muted">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <div class="section">
-            <div class="section-title">Aanbevelingen</div>
+            <div class="section-title">Aanbevelingen & Normering</div>
             <div class="card" style="font-size:11px; line-height:1.7;">
-                {% if r.counts_mow %}<div><strong>{{ r.counts_mow }} meting{{ "en" if r.counts_mow != 1 }}</strong> boven {{ r.thresholds.mow }} mm — directe maaiactie aanbevolen.</div>{% endif %}
-                {% if r.counts_warn %}<div><strong>{{ r.counts_warn }} meting{{ "en" if r.counts_warn != 1 }}</strong> tussen {{ r.thresholds.watch }}–{{ r.thresholds.mow }} mm — nauwlettend volgen.</div>{% endif %}
-                {% if r.counts_ok %}<div><strong>{{ r.counts_ok }} meting{{ "en" if r.counts_ok != 1 }}</strong> binnen de normale waarden.</div>{% endif %}
-                <div class="muted" style="margin-top:8px; font-size:10px;">Drempelwaarden: ≥{{ r.thresholds.mow }} mm = maaien, ≥{{ r.thresholds.watch }} mm = let op.</div>
+                {% if r.counts[4] %}<div><strong>{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (>100 mm) — directe maaiactie noodzakelijk.</div>{% endif %}
+                {% if r.counts[3] %}<div><strong>{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm) — maaien inplannen.</div>{% endif %}
+                {% if r.counts[2] %}<div><strong>{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm) — visueel controleren.</div>{% endif %}
+                {% if r.counts[0] + r.counts[1] %}<div><strong>{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in A/A+ (≤80 mm) — gras is in topconditie.</div>{% endif %}
+                <div class="muted" style="margin-top:8px; font-size:10px;">Kwaliteitseisen: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.</div>
             </div>
         </div>
 
         <div class="footer">
             <span class="l"><span class="display" style="color:#3b6d11; font-weight:600;">Groenwerf</span> · Veldbeheer &amp; grashoogte monitoring</span>
-            <span class="r">Gegenereerd op {{ r.generated }} · Versie 2.4</span>
+            <span class="r">Gegenereerd op {{ r.generated }}</span>
         </div>
     </body>
 </html>

@@ -1,82 +1,68 @@
 (async function () {
-    const fieldsUrl = window.ARCGIS_FIELDS_URL;
     const emptyState = document.getElementById("mapEmpty");
-
-    if (!fieldsUrl) {
-        emptyState.classList.remove("hidden");
-        document.getElementById("fields-count").textContent = "Configuratiefout";
-        return;
-    }
-
-    // init leaflet map
-    const map = L.map('mapView', { zoomControl: false }).setView([52.1, 5.2], 7); // default nl center
+    const map = L.map('mapView', { zoomControl: false }).setView([52.1, 5.2], 7);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        maxZoom: 19, attribution: '© OpenStreetMap'
     }).addTo(map);
+
+    const QUALITY_COLORS = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"];
 
     let allPoints = [];
     let fieldsGeoJSON = null;
     let fieldLayerGroup = L.featureGroup().addTo(map);
     let pointLayerGroup = L.featureGroup().addTo(map);
+    let qualityMap = {};
 
     function colorFor(h) {
-        return h >= 400 ? "#ef4444" : h >= 80 ? "#f59e0b" : "#6aa84f";
+        if (h <= 70) return "#22c55e";
+        if (h <= 80) return "#84cc16";
+        if (h <= 90) return "#eab308";
+        if (h <= 100) return "#f97316";
+        return "#ef4444";
     }
 
     try {
-        // fetch fields via proxy
         const fieldsRes = await fetch("/api/fields");
-
-        if (!fieldsRes.ok) {
-            throw new Error(`Kon velden niet laden via proxy (HTTP ${fieldsRes.status})`);
-        }
-
+        if (!fieldsRes.ok) throw new Error("Kon velden niet laden");
         const esriData = await fieldsRes.json();
 
-        if (esriData.error) {
-            console.error("Backend Proxy Fout:", esriData.error);
-            throw new Error("Backend kon de velden niet ophalen: " + esriData.error);
-        }
+        let summaryData = null;
+        try {
+            const sumRes = await fetch("/api/summary?days=30");
+            summaryData = await sumRes.json();
+            if (summaryData && summaryData.fields) {
+                summaryData.fields.forEach(f => { qualityMap[String(f.id)] = f.level; });
+            }
+        } catch (e) {}
 
-        // convert esri json to geojson
         fieldsGeoJSON = {
             type: "FeatureCollection",
-            features: (esriData.features || []).map(f => {
-                return {
-                    type: "Feature",
-                    properties: f.attributes || {},
-                    geometry: (f.geometry && f.geometry.rings) ? {
-                        type: "Polygon",
-                        coordinates: f.geometry.rings
-                    } : null
-                };
-            }).filter(f => f.geometry != null)
+            features: (esriData.features || []).map(f => ({
+                type: "Feature",
+                properties: f.attributes || {},
+                geometry: (f.geometry && f.geometry.rings) ? { type: "Polygon", coordinates: f.geometry.rings } : null
+            })).filter(f => f.geometry != null)
         };
 
-        // fetch measurements
         const dataRes = await fetch("/api/data");
         const dataJson = await dataRes.json();
         const rows = dataJson.data || [];
 
-        // convert to turf points
         allPoints = rows.filter(r => r.longitude != null && r.latitude != null).map((r, i) => {
             return turf.point([r.longitude, r.latitude], { ...r, id: i, h: r.tof_mm || r.sonic_mm || 0 });
         });
 
-        // populate dropdown
         const sel = document.getElementById("fieldSelect");
         const dateFilter = document.getElementById("dateFilter");
         const sortSelect = document.getElementById("sortSelect");
 
         sel.innerHTML = '<option value="">Kies een veld…</option>';
-
         let validFieldsCount = 0;
 
         fieldsGeoJSON.features.forEach((f, i) => {
-            if (!f.geometry) return; // skip without geometry
+            if (!f.geometry) return;
             validFieldsCount++;
 
             const name = f.properties.Name || f.properties.Naam || f.properties.Field_Name || `Veld ${i + 1}`;
@@ -87,21 +73,25 @@
             opt.textContent = name;
             sel.appendChild(opt);
 
-            // draw polygon
-            const layer = L.geoJSON(f, {
-                style: { color: "#3b6d11", weight: 2, fillOpacity: 0.1 }
-            }).addTo(fieldLayerGroup);
-
+            const level = qualityMap[String(i)];
+            const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#3b6d11";
+            const layer = L.geoJSON(f, { style: { color: fieldColor, weight: 2, fillColor: fieldColor, fillOpacity: (level !== undefined) ? 0.2 : 0.05 } }).addTo(fieldLayerGroup);
             f.properties._layer = layer;
         });
 
         document.getElementById("fields-count").textContent = validFieldsCount + " veld" + (validFieldsCount === 1 ? "" : "en");
 
-        // fit bounds to all fields
-        if (validFieldsCount > 0) {
-            map.fitBounds(fieldLayerGroup.getBounds(), { padding: [20, 20] });
+        if (validFieldsCount > 0) map.fitBounds(fieldLayerGroup.getBounds(), { padding: [20, 20] });
+        else emptyState.classList.remove("hidden");
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialField = urlParams.get('field');
+
+        if (initialField !== null) {
+            sel.value = initialField;
+            renderFieldMeasurements(Number(initialField), true);
         } else {
-            emptyState.classList.remove("hidden");
+            resetSelection();
         }
 
         sel.addEventListener("change", () => {
@@ -109,40 +99,29 @@
             else renderFieldMeasurements(Number(sel.value), true);
         });
 
-        dateFilter.addEventListener("change", () => {
-            if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false);
-        });
-
-        sortSelect.addEventListener("change", () => {
-            if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false);
-        });
-
-        resetSelection();
+        dateFilter.addEventListener("change", () => { if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false); });
+        sortSelect.addEventListener("change", () => { if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false); });
 
     } catch (e) {
         console.error(e);
         emptyState.classList.remove("hidden");
-        document.getElementById("fields-count").textContent = "Fout bij laden";
     }
 
     function resetSelection() {
         pointLayerGroup.clearLayers();
         document.getElementById("filterControls").classList.add("opacity-50", "pointer-events-none");
-        document.getElementById("dateFilter").value = "";
-        document.getElementById("sortSelect").value = "date_desc";
+        document.getElementById("reportLink").classList.add("hidden");
 
-        // reset styles
         fieldsGeoJSON.features.forEach(f => {
             if (f.properties._layer) {
-                f.properties._layer.setStyle({ color: "#3b6d11", weight: 2, fillOpacity: 0.1 });
+                const level = qualityMap[String(f.properties._id)];
+                const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#3b6d11";
+                f.properties._layer.setStyle({ color: fieldColor, weight: 2, fillColor: fieldColor, fillOpacity: (level !== undefined) ? 0.2 : 0.05 });
             }
         });
 
         document.getElementById("field-list").innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Kies een veld om de metingen te bekijken.</li>';
-
-        if (fieldLayerGroup.getLayers().length > 0) {
-            map.fitBounds(fieldLayerGroup.getBounds(), { padding: [20, 20] });
-        }
+        if (fieldLayerGroup.getLayers().length > 0) map.fitBounds(fieldLayerGroup.getBounds(), { padding: [20, 20] });
     }
 
     function renderFieldMeasurements(id, centerMap = true) {
@@ -150,16 +129,17 @@
         if (!field) return;
 
         document.getElementById("filterControls").classList.remove("opacity-50", "pointer-events-none");
+        document.getElementById("reportLink").href = `/report?field=${id}`;
+        document.getElementById("reportLink").classList.remove("hidden");
 
-        // highlight selected field
         if (centerMap) {
             fieldsGeoJSON.features.forEach(f => {
                 if (f.properties._layer) {
                     if (f.properties._id === id) {
-                        f.properties._layer.setStyle({ color: "#6aa84f", weight: 3, fillOpacity: 0.25 });
+                        f.properties._layer.setStyle({ color: "#6aa84f", weight: 3, fillColor: "#6aa84f", fillOpacity: 0.25 });
                         map.fitBounds(f.properties._layer.getBounds(), { padding: [40, 40] });
                     } else {
-                        f.properties._layer.setStyle({ color: "#999", weight: 1, fillOpacity: 0.05 });
+                        f.properties._layer.setStyle({ color: "#999", weight: 1, fillColor: "#999", fillOpacity: 0.05 });
                     }
                 }
             });
@@ -167,35 +147,18 @@
 
         pointLayerGroup.clearLayers();
         const listHtml = [];
-
         const filterDate = document.getElementById("dateFilter").value;
         const sortMode = document.getElementById("sortSelect").value;
 
-        // find points inside field
         let fieldPoints = allPoints.filter(pt => turf.booleanPointInPolygon(pt, field));
 
-        // apply date filter
-        if (filterDate) {
-            fieldPoints = fieldPoints.filter(pt => {
-                const ptDate = pt.properties.measured_at ? pt.properties.measured_at.slice(0, 10) : "";
-                return ptDate === filterDate;
-            });
-        }
+        if (filterDate) fieldPoints = fieldPoints.filter(pt => (pt.properties.measured_at || "").slice(0, 10) === filterDate);
 
-        // apply sorting
         fieldPoints.sort((a, b) => {
-            const propA = a.properties;
-            const propB = b.properties;
-
-            if (sortMode === "date_desc") {
-                return (propB.measured_at || "").localeCompare(propA.measured_at || "");
-            } else if (sortMode === "date_asc") {
-                return (propA.measured_at || "").localeCompare(propB.measured_at || "");
-            } else if (sortMode === "height_desc") {
-                return propB.h - propA.h;
-            } else if (sortMode === "height_asc") {
-                return propA.h - propB.h;
-            }
+            if (sortMode === "date_desc") return (b.properties.measured_at || "").localeCompare(a.properties.measured_at || "");
+            if (sortMode === "date_asc") return (a.properties.measured_at || "").localeCompare(b.properties.measured_at || "");
+            if (sortMode === "height_desc") return b.properties.h - a.properties.h;
+            if (sortMode === "height_asc") return a.properties.h - b.properties.h;
             return 0;
         });
 
@@ -204,23 +167,11 @@
             const h = r.h;
             const when = r.measured_at ? r.measured_at.slice(0, 16) : "";
 
-            // add marker to map
             const marker = L.circleMarker([pt.geometry.coordinates[1], pt.geometry.coordinates[0]], {
-                radius: 6,
-                fillColor: colorFor(h),
-                color: "#fff",
-                weight: 1.5,
-                fillOpacity: 0.9
+                radius: 6, fillColor: colorFor(h), color: "#fff", weight: 1.5, fillOpacity: 0.9
             }).addTo(pointLayerGroup);
 
-            marker.bindPopup(`
-                <div class="font-sans text-xs">
-                    <strong class="text-sm">Meting</strong><br>
-                    Hoogte: ${h} mm<br>
-                    Tijd: ${when}
-                </div>
-            `);
-
+            marker.bindPopup(`<div class="font-sans text-xs"><strong class="text-sm">Meting</strong><br>Hoogte: ${h} mm<br>Tijd: ${when}</div>`);
             r._marker = marker;
 
             listHtml.push(
@@ -229,45 +180,31 @@
                         <span class="font-semibold text-sm">Meting</span>
                         <span class="w-2.5 h-2.5 rounded-full" style="background:${colorFor(h)}"></span>
                     </div>
-                    <div class="text-[11px] text-zinc-500 mt-0.5 tabular-nums pointer-events-none">Hoogte: ${h} mm (TOF: ${r.tof_mm != null ? r.tof_mm : '—'}, Sonic: ${r.sonic_mm != null ? r.sonic_mm : '—'})</div>
+                    <div class="text-[11px] text-zinc-500 mt-0.5 tabular-nums pointer-events-none">Hoogte: ${h} mm</div>
                     <div class="text-[11px] text-zinc-400 pointer-events-none">${when}</div>
                 </li>`
             );
         });
 
         const listEl = document.getElementById("field-list");
-        if (listHtml.length > 0) {
-            listEl.innerHTML = listHtml.join("");
-        } else {
-            listEl.innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden met deze filters.</li>';
-        }
+        if (listHtml.length > 0) listEl.innerHTML = listHtml.join("");
+        else listEl.innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden met deze filters.</li>';
     }
 
-    // interactive highlights
     document.getElementById("field-list").addEventListener("click", (e) => {
         const li = e.target.closest("li[data-point-id]");
         if (!li) return;
-
-        // highlight list item
-        document.querySelectorAll("#field-list li").forEach(el => {
-            el.classList.remove("bg-brand/10", "dark:bg-brand/20");
-        });
+        document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-brand/10", "dark:bg-brand/20"));
         li.classList.add("bg-brand/10", "dark:bg-brand/20");
 
         const id = Number(li.dataset.pointId);
         const pt = allPoints.find(p => p.properties.id === id);
 
         if (pt && pt.properties._marker) {
-            // reset marker styles
-            pointLayerGroup.eachLayer(layer => {
-                layer.setStyle({ color: "#fff", weight: 1.5, radius: 6 });
-            });
-
-            // emphasize clicked marker
+            pointLayerGroup.eachLayer(layer => layer.setStyle({ color: "#fff", weight: 1.5, radius: 6 }));
             const marker = pt.properties._marker;
             marker.setStyle({ color: "#1a2e1f", weight: 3, radius: 9 });
-            marker.bringToFront();
-            marker.openPopup();
+            marker.bringToFront(); marker.openPopup();
         }
     });
 })();

@@ -14,7 +14,7 @@
 <html lang="nl" class="h-full">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <title>{% block title %}Groenwerf{% endblock %}</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -33,15 +33,24 @@
                 --color-brand-soft: #6aa84f;
             }
             @layer base {
-                a {
-                    color: inherit;
-                    text-decoration: none;
+                a { color: inherit; text-decoration: none; }
+                a:hover { color: inherit; text-decoration: none; }
+            }
+            @layer components {
+                .btn {
+                    @apply !inline-flex !items-center !justify-center gap-2 !px-4 !py-2 !text-sm !font-semibold !transition-all !rounded-xl !border-transparent !shadow-sm;
                 }
-                a:hover {
-                    color: inherit;
-                    text-decoration: none;
+                .btn-success {
+                    @apply !bg-brand !text-white hover:!bg-[#2f590e] hover:!shadow-md;
+                }
+                .btn-outline-secondary {
+                    @apply !bg-transparent !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 hover:!bg-black/5 dark:hover:!bg-white/10;
                 }
             }
+            ::-webkit-scrollbar { width: 6px; height: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+            .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
         </style>
 
         <script>
@@ -56,21 +65,25 @@
         {% block head %}{% endblock %}
     </head>
 
-    <body class="h-full font-sans text-zinc-800 dark:text-zinc-100 antialiased">
+    <body class="h-full font-sans text-zinc-800 dark:text-zinc-100 antialiased overflow-hidden">
         <div class="fixed inset-0 -z-30 bg-[#f1f3ec] dark:bg-zinc-950"></div>
         <div class="fixed inset-0 -z-20 bg-[size:42px_42px] bg-[linear-gradient(rgba(59,109,17,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(59,109,17,0.055)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(141,201,110,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(141,201,110,0.05)_1px,transparent_1px)]"></div>
         <div class="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_70%_55%_at_70%_-5%,rgba(106,168,79,0.18),transparent_60%)] dark:bg-[radial-gradient(ellipse_70%_55%_at_70%_-5%,rgba(106,168,79,0.10),transparent_60%)]"></div>
 
-        <div class="flex h-full overflow-hidden">
-            <aside class="hidden md:flex w-64 shrink-0 flex-col h-full border-r border-black/5 dark:border-white/10 bg-white/55 dark:bg-white/[0.03] backdrop-blur-xl">
+        <div class="flex h-full w-full relative">
+            <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity opacity-0"></div>
+
+            <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-50 w-64 shrink-0 flex-col h-full border-r border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex">
                 <div class="px-5 py-5 flex items-center gap-3 border-b border-black/5 dark:border-white/10">
-                    <div class="w-9 h-9 rounded-xl bg-brand flex items-center justify-center shadow-sm shadow-brand/30">
-                        <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"/></svg>
-                    </div>
-                    <div class="leading-tight">
-                        <div class="font-display text-lg font-semibold">Groenwerf</div>
-                        <div class="text-[10px] uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">Sensor dashboard</div>
-                    </div>
+                    <a href="/" class="flex items-center gap-3 !no-underline hover:opacity-80 transition-opacity">
+                        <div class="w-9 h-9 rounded-xl bg-brand flex items-center justify-center shadow-sm shadow-brand/30 shrink-0">
+                            <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M17 8C8 10 5.9 16.17 3.82 19h3.4c.25-1 1.19-3.2 3.78-5C14 12 18 12 22 8c-1.5.5-2.5.5-5 0z"/></svg>
+                        </div>
+                        <div class="leading-tight">
+                            <div class="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100">Groenwerf</div>
+                            <div class="text-[10px] uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">Dashboard</div>
+                        </div>
+                    </a>
                 </div>
 
                 <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -80,41 +93,84 @@
                     <div class="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Rapportage</div>
                     {{ nav_link('report', url_for('report'), 'Rapport', active_page) }}
                 </nav>
-
-                <div class="px-5 py-4 border-t border-black/5 dark:border-white/10 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-soft opacity-60"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-soft"></span>
-                    </span>
-                    Sensor actief
-                </div>
             </aside>
 
-            <div class="flex-1 flex flex-col h-full overflow-hidden">
-                <header class="shrink-0 h-16 px-5 md:px-8 flex items-center justify-between gap-3 border-b border-black/5 dark:border-white/10 bg-white/55 dark:bg-white/[0.03] backdrop-blur-xl">
-                    <div class="min-w-0">
-                        <div class="font-display text-lg md:text-xl font-semibold truncate">{% block page_title %}Groenwerf{% endblock %}</div>
-                        <div class="text-xs text-zinc-500 dark:text-zinc-400 truncate">{% block page_sub %}{% endblock %}</div>
+            <div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+                <header class="shrink-0 h-16 px-4 md:px-8 flex items-center justify-between gap-3 border-b border-black/5 dark:border-white/10 bg-white/55 dark:bg-white/[0.03] backdrop-blur-xl z-10">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <button id="menuToggle" class="md:hidden p-2 -ml-2 text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </button>
+                        <div class="min-w-0">
+                            <div class="font-display text-lg md:text-xl font-semibold truncate">{% block page_title %}Groenwerf{% endblock %}</div>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400 truncate hidden sm:block">{% block page_sub %}{% endblock %}</div>
+                        </div>
                     </div>
 
-                    <div class="flex items-center gap-3 shrink-0">
+                    <div class="flex items-center gap-2 md:gap-3 shrink-0">
                         {% block topbar_actions %}{% endblock %}
-                        <div class="form-check form-switch m-0 ps-0 d-flex align-items-center gap-2">
-                            <label class="form-check-label text-xs text-zinc-500 dark:text-zinc-400" for="themeSwitch" id="themeLabel">Licht</label>
-                            <input class="form-check-input m-0" type="checkbox" role="switch" id="themeSwitch" style="cursor:pointer" />
-                        </div>
-                        <div class="w-9 h-9 rounded-full bg-brand-soft/20 text-brand dark:text-brand-soft flex items-center justify-center text-xs font-bold">AW</div>
+
+                        <button id="themeToggleBtn" class="btn btn-outline-secondary !px-2.5 !py-1.5 active:scale-90 transition-transform" title="Wissel thema">
+                            <svg id="themeIconMoon" class="w-4 h-4 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            <svg id="themeIconSun" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        </button>
                     </div>
                 </header>
 
-                <main class="flex-1 overflow-y-auto p-5 md:p-8">
+                <main class="flex-1 flex flex-col h-full min-h-0 overflow-y-auto p-4 md:p-8">
                     {% block content %}{% endblock %}
                 </main>
             </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="{{ url_for('static', filename='theme.js') }}"></script>
+        <script>
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            function toggleMenu() {
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.remove('opacity-100');
+                    setTimeout(() => sidebarOverlay.classList.add('hidden'), 300);
+                } else {
+                    sidebarOverlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        sidebar.classList.remove('-translate-x-full');
+                        sidebarOverlay.classList.add('opacity-100');
+                    }, 10);
+                }
+            }
+
+            if (menuToggle && sidebarOverlay) {
+                menuToggle.addEventListener('click', toggleMenu);
+                sidebarOverlay.addEventListener('click', toggleMenu);
+            }
+
+            const root = document.documentElement;
+            const themeBtn = document.getElementById("themeToggleBtn");
+            function applyTheme(theme) {
+                root.classList.toggle("dark", theme === "dark");
+                root.setAttribute("data-bs-theme", theme);
+                localStorage.setItem("theme", theme);
+                window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
+            }
+            if (themeBtn) {
+                themeBtn.addEventListener("click", () => {
+                    applyTheme(root.classList.contains("dark") ? "light" : "dark");
+                });
+            }
+
+            window.chartTheme = function () {
+                const dark = document.documentElement.classList.contains("dark");
+                return {
+                    dark, text: dark ? "#a1a1aa" : "#5a6e60", grid: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                    aplus: "#22c55e", a: "#84cc16", b: "#eab308", c: "#f97316", d: "#ef4444", brand: "#3b6d11",
+                };
+            };
+        </script>
         {% block scripts %}{% endblock %}
     </body>
 </html>
