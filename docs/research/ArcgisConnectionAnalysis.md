@@ -42,11 +42,11 @@ for row in rows:
         geometry=Point({
             "x": row["longitude"],
             "y": row["latitude"],
-            "spatialReference": {"wkid": 4326} 
+            "spatialReference": {"wkid": 4326}
         }),
         attributes={
             "Grass_Height": row["grass_height"],
-            "Timestamp": str(row["timestamp"])
+            "Measured_at": str(row["timestamp"])
         }
     )
     features.append(feature)

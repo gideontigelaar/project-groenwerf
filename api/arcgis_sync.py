@@ -95,7 +95,7 @@ def sync_to_arcgis():
                     "ToF_Quality_Grade": tof_quality,
                     "Sonic_Height_mm": sonic_height,
                     "Sonic_Quality_Grade": sonic_quality,
-                    "Timestamp": str(row["measured_at"])
+                    "Measured_At": str(row["measured_at"])
                 }
             )
             features.append(feature)

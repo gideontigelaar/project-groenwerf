@@ -14,7 +14,7 @@ Before syncing data via `arcgis_sync.py`, you need to create a Hosted Feature La
    - `ToF_Quality_Grade` (Type: String)
    - `Sonic_Height_mm` (Type: Integer)
    - `Sonic_Quality_Grade` (Type: String)
-   - `Timestamp` (Type: String)
+   - `Measured_At` (Type: String)
 3. Save the layer and copy the Feature Layer URL.
 4. Add the URL to your `credentials.py` file as `ARCGIS_LAYER_URL`.
 

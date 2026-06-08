@@ -8,5 +8,6 @@ build/
 __pycache__/
 *.pyc
 
-firmware/include/credentials.h
 api/credentials.py
+firmware/include/credentials.h
+website/credentials.py
