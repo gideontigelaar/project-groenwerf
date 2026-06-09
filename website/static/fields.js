@@ -65,6 +65,7 @@
             if (!f.geometry) return;
             validFieldsCount++;
 
+            // map attribute lookups to handle inconsistent arcgis field names
             const name = f.properties.Name || f.properties.Naam || f.properties.Field_Name || `Veld ${i + 1}`;
             f.properties._id = i;
 
@@ -145,11 +146,13 @@
             });
         }
 
+        // clear existing markers before applying new filters
         pointLayerGroup.clearLayers();
         const listHtml = [];
         const filterDate = document.getElementById("dateFilter").value;
         const sortMode = document.getElementById("sortSelect").value;
 
+        // client-side spatial join to assign scattered sensor points to field polygons
         let fieldPoints = allPoints.filter(pt => turf.booleanPointInPolygon(pt, field));
 
         if (filterDate) fieldPoints = fieldPoints.filter(pt => (pt.properties.measured_at || "").slice(0, 10) === filterDate);
@@ -203,6 +206,7 @@
         if (pt && pt.properties._marker) {
             pointLayerGroup.eachLayer(layer => layer.setStyle({ color: "#fff", weight: 1.5, radius: 6 }));
             const marker = pt.properties._marker;
+            // bring selected marker to foreground and increase size for visibility
             marker.setStyle({ color: "#1a2e1f", weight: 3, radius: 9 });
             marker.bringToFront(); marker.openPopup();
         }

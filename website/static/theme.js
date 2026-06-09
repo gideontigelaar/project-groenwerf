@@ -10,6 +10,7 @@
         root.classList.toggle("dark", theme === "dark");
         root.setAttribute("data-bs-theme", theme);
         localStorage.setItem("theme", theme);
+        // broadcast theme change to external listeners
         window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
     }
 
@@ -22,6 +23,7 @@
     }
 })();
 
+// export chart palettes mapped to current theme state
 window.chartTheme = function () {
     const dark = document.documentElement.classList.contains("dark");
     return {

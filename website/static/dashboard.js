@@ -115,6 +115,7 @@ function renderTable() {
     }
 }
 
+// handle dynamic element clicks
 function _handleFieldClick(e) {
     const btn = e.target.closest(".map-link");
     if (btn) return;
@@ -148,6 +149,7 @@ function renderCharts() {
     const colors = [th.aplus, th.a, th.b, th.c, th.d];
 
     const ctx = document.getElementById("mainChart");
+    // destroy previous instances to prevent issues
     if (mainChart) mainChart.destroy();
 
     if (selectedFieldId !== null) {
@@ -253,6 +255,7 @@ async function initMiniMap() {
 
         json.features.forEach((f, i) => {
             if (!f.geometry) return;
+            // map arcgis ring arrays to standard geojson for leaflet rendering
             const geoJsonFeat = { type: "Feature", properties: { _id: i }, geometry: { type: "Polygon", coordinates: f.geometry.rings } };
 
             const fd = reportData ? reportData.fields.find(x => String(x.id) === String(i)) : null;
@@ -282,6 +285,7 @@ function highlightMiniMap(zoomToSelected = false) {
         const fd = reportData.fields.find(x => String(x.id) === fId);
         const color = fd ? colors[fd.level] : "#999";
 
+        // dim unselected map layers and highlight active selection
         if (selectedFieldId === null) {
             layer.setStyle({ color, weight: 2, fillOpacity: 0.2 });
         } else if (fId === selectedFieldId) {
@@ -310,4 +314,5 @@ if (syncBtn) {
 
 window.addEventListener("themechange", () => { if (reportData) { renderCharts(); } });
 loadData();
+// polling loop for real-time background sync
 setInterval(() => loadData(document.getElementById("daysFilter").value), 30000);

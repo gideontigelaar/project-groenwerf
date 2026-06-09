@@ -6,6 +6,7 @@ async function loadReport() {
     const res = await fetch("/api/summary");
     fullData = await res.json();
 
+    // build localized current date string for report header
     const now = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
     const src = fullData.source === "arcgis" ? "ArcGIS" : "Geen bron";
     document.getElementById("report-date").textContent = `Gegenereerd op ${now} · Bron: ${src}`;
@@ -40,6 +41,7 @@ function renderUI(fieldId) {
 
             d = { total: f.total, counts: c, pcts: [0,0,0,0,0], latest: f.latest, fields: [f], title: "Rapport: " + f.name };
             const histTotal = f.history.length || 1;
+            // recalculate distribution percentages dynamically for single field selection
             for(let i=0; i<5; i++) d.pcts[i] = Math.round((c[i] / histTotal) * 100);
         }
 
@@ -156,6 +158,7 @@ document.getElementById("downloadBtn").addEventListener("click", async function 
     btn.textContent = "Genereren…"; btn.disabled = true;
     try {
         const fieldId = document.getElementById("reportFieldSelect").value;
+        // trigger blob download from python backend
         const res = await fetch(`/download-pdf` + (fieldId ? `?field=${fieldId}` : ""));
         if (!res.ok) throw new Error(`Server gaf statuscode ${res.status}`);
         const blob = await res.blob();

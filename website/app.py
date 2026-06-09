@@ -86,6 +86,7 @@ def _fetch_from_arcgis():
     offset = 0
     limit = 2000
 
+    # fetch in batches until nothing left
     while True:
         feature_set = layer.query(
             where="1=1",
@@ -153,9 +154,12 @@ def get_rows():
     with _cache_lock:
         fresh = (now - _cache["ts"]) < CACHE_TTL
         have = bool(_cache["rows"])
+
+    # fallback to sync fetch if empty, else background update
     if not (fresh and have):
         if not have: _do_refresh()
         else: _trigger_background_refresh()
+
     with _cache_lock:
         return _cache.get("rows", []), _cache.get("source", "none"), _cache.get("fields", [])
 
@@ -173,6 +177,8 @@ QUALITY_COLORS = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"]
 def _in_poly(x, y, rings):
     if not x or not y or not rings: return False
     inside = False
+
+    # raycast algorithm for point in polygon
     for ring in rings:
         for i in range(len(ring)):
             p1x, p1y = ring[i]
@@ -183,6 +189,7 @@ def _in_poly(x, y, rings):
 
 def build_report(rows, fields, days=None, target_field_id=None):
     now = datetime.datetime.now()
+
     if days:
         try:
             cutoff = now - datetime.timedelta(days=int(days))
@@ -223,6 +230,7 @@ def build_report(rows, fields, days=None, target_field_id=None):
                 "count": len(d_rows)
             })
 
+        # detect big height drops indicating mowing
         for j in range(len(history)):
             is_mow = False
             if j < len(history) - 1:
@@ -255,6 +263,7 @@ def build_report(rows, fields, days=None, target_field_id=None):
     for s in field_summaries: counts[s["level"]] += s["total"]
     total = sum(counts)
 
+    # calculate svg values for donut chart
     r_circle = 60
     circ = 2 * math.pi * r_circle
     segments = []
@@ -325,7 +334,9 @@ def download_pdf():
     days = request.args.get("days")
     if days == "": days = None
     rows, _, fields = get_rows()
+
     html = render_template("pdf.html", r=build_report(rows, fields, days=days, target_field_id=field_id))
+
     resp = make_response(HTML(string=html, base_url=request.url_root).write_pdf())
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = "attachment; filename=veldbeheer-rapport.pdf"
