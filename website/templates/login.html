@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Login - Groenwerf{% endblock %}
+
+{% block layout %}
+<div class="min-h-full w-full flex items-center justify-center p-4 relative">
+
+    <div class="absolute top-6 right-6">
+        <button class="themeToggleBtn flex items-center justify-center h-[34px] w-[34px] px-0 transition-all rounded-xl border border-black/10 dark:border-white/10 text-zinc-700 dark:text-zinc-200 bg-white/50 dark:bg-black/20 hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 shadow-sm cursor-pointer" title="Wissel thema">
+            <i class="ph-fill ph-moon text-[16px] hidden dark:block"></i>
+            <i class="ph-fill ph-sun text-[16px] block dark:hidden"></i>
+        </button>
+    </div>
+
+    <div class="w-full max-w-[360px] rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-xl overflow-hidden">
+        <div class="bg-brand text-white px-6 py-6 text-center">
+            <div class="w-12 h-12 mx-auto rounded-xl bg-white/20 flex items-center justify-center shadow-sm mb-3">
+                <i class="ph-fill ph-leaf text-[24px]"></i>
+            </div>
+            <div class="font-display text-2xl font-semibold">Groenwerf</div>
+            <div class="text-xs text-white/70 mt-1 uppercase tracking-wider font-semibold">Login</div>
+        </div>
+
+        <div class="p-6">
+            {% if error %}
+            <div class="relative mb-5 px-4 py-3 pe-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl text-center">
+                {{ error }}
+                <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+                    <i class="ph ph-x text-[16px]"></i>
+                </button>
+            </div>
+            {% endif %}
+
+            <form method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
+                    <input type="text" name="username" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Wachtwoord</label>
+                    <input type="password" name="password" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                </div>
+                <button type="submit" class="btn btn-success w-full mt-2 !py-2.5 shadow-md">Inloggen</button>
+            </form>
+
+            <div class="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                Heb je een uitnodigingscode? <br><a href="{{ url_for('register') }}" class="text-brand dark:text-[#7bc53b] font-semibold hover:underline !no-underline">Maak een account aan</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

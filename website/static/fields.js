@@ -7,7 +7,7 @@
         maxZoom: 19, attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    const QUALITY_COLORS = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"];
+    const QUALITY_COLORS = ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"];
 
     let allPoints = [];
     let fieldsGeoJSON = null;
@@ -16,7 +16,7 @@
     let qualityMap = {};
 
     function colorFor(h) {
-        if (h <= 70) return "#22c55e";
+        if (h <= 70) return "#60a526";
         if (h <= 80) return "#84cc16";
         if (h <= 90) return "#eab308";
         if (h <= 100) return "#f97316";
@@ -75,7 +75,7 @@
             sel.appendChild(opt);
 
             const level = qualityMap[String(i)];
-            const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#3b6d11";
+            const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#60a526";
             const layer = L.geoJSON(f, { style: { color: fieldColor, weight: 2, fillColor: fieldColor, fillOpacity: (level !== undefined) ? 0.2 : 0.05 } }).addTo(fieldLayerGroup);
             f.properties._layer = layer;
         });
@@ -116,7 +116,7 @@
         fieldsGeoJSON.features.forEach(f => {
             if (f.properties._layer) {
                 const level = qualityMap[String(f.properties._id)];
-                const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#3b6d11";
+                const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#60a526";
                 f.properties._layer.setStyle({ color: fieldColor, weight: 2, fillColor: fieldColor, fillOpacity: (level !== undefined) ? 0.2 : 0.05 });
             }
         });
@@ -137,7 +137,7 @@
             fieldsGeoJSON.features.forEach(f => {
                 if (f.properties._layer) {
                     if (f.properties._id === id) {
-                        f.properties._layer.setStyle({ color: "#6aa84f", weight: 3, fillColor: "#6aa84f", fillOpacity: 0.25 });
+                        f.properties._layer.setStyle({ color: "#7bc53b", weight: 3, fillColor: "#7bc53b", fillOpacity: 0.25 });
                         map.fitBounds(f.properties._layer.getBounds(), { padding: [40, 40] });
                     } else {
                         f.properties._layer.setStyle({ color: "#999", weight: 1, fillColor: "#999", fillOpacity: 0.05 });

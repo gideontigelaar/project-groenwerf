@@ -16,7 +16,7 @@ async function loadData(days = "30") {
         renderActivity();
         initMiniMap();
     } catch (e) {
-        document.getElementById("fields-body").innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-[#ef4444] text-sm">Kon data niet laden</td></tr>';
+        document.getElementById("fields-body").innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-[#ef4444] text-sm">Kon data niet laden</td></tr>';
     }
 }
 
@@ -29,18 +29,19 @@ document.getElementById("daysFilter").addEventListener("change", (e) => {
 function gradeStyle(level) {
     const th = window.chartTheme();
     const colors = [th.aplus, th.a, th.b, th.c, th.d];
-    const bgs = ["text-bg-success", "text-bg-success", "text-bg-warning", "text-bg-warning", "text-bg-danger"];
-    return { color: colors[level], badge: bgs[level] };
+    return { color: colors[level] };
 }
 
 function renderKPIs() {
     if (!reportData) return;
-    document.getElementById("kpi-fields").textContent = reportData.fields.length;
+
+    const activeBadge = document.getElementById("table-active-fields");
+    if(activeBadge) {
+        activeBadge.textContent = `${reportData.fields.length} Actieve Velden`;
+    }
+
     document.getElementById("kpi-count").textContent = reportData.total;
     document.getElementById("kpi-avg").innerHTML = `${reportData.avg} <span class="text-sm font-normal text-zinc-500">mm</span>`;
-
-    const topCount = reportData.counts[0] + reportData.counts[1];
-    document.getElementById("kpi-top-badge").textContent = `${topCount} meting${topCount === 1 ? "" : "en"} in A/A+`;
 
     document.getElementById("kpi-mow").textContent = reportData.counts[4];
     document.getElementById("kpi-mow-badge").textContent = `${reportData.counts[4]} meting${reportData.counts[4] === 1 ? "" : "en"}`;
@@ -62,8 +63,8 @@ function renderTable() {
     const mobileList = document.getElementById("fields-body-mobile");
 
     if (!reportData.fields.length) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-zinc-500 text-sm">Geen velden of metingen</td></tr>';
-        if (mobileList) mobileList.innerHTML = '<li class="px-5 py-8 text-center text-zinc-500 text-sm">Geen velden of metingen</li>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500 text-sm">Geen velden of metingen</td></tr>';
+        if (mobileList) mobileList.innerHTML = '<li class="px-4 py-6 text-center text-zinc-500 text-sm">Geen velden of metingen</li>';
         return;
     }
 
@@ -72,20 +73,22 @@ function renderTable() {
             const style = gradeStyle(f.level);
             const isActive = selectedFieldId === String(f.id) ? "bg-black/5 dark:bg-white/10" : "";
             return `<tr data-field-id="${f.id}" class="border-t border-black/5 dark:border-white/10 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors cursor-pointer ${isActive}">
-                <td class="px-5 py-3 font-semibold">${f.name}</td>
-                <td class="px-5 py-3 text-[11px] text-zinc-500">${f.latest ? f.latest.slice(0, 16) : "—"}</td>
-                <td class="px-5 py-3 min-w-[120px]">
+                <td class="px-4 py-2.5 font-semibold">${f.name}</td>
+                <td class="px-4 py-2.5 text-[11px] text-zinc-500">${f.latest ? f.latest.slice(0, 16) : "—"}</td>
+                <td class="px-4 py-2.5 min-w-[120px]">
                     <div class="flex items-center gap-2">
                         <div class="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                            <div class="h-full rounded-full" style="width:${f.bar_pct}%;background:${style.color}"></div>
+                            <div class="h-full rounded-full" style="width:${f.bar_pct}%;background-color:${style.color}"></div>
                         </div>
                         <div class="text-[11px] text-zinc-500 tabular-nums w-10">${f.avg} mm</div>
                     </div>
                 </td>
-                <td class="px-5 py-3 text-center"><span class="badge rounded-pill ${style.badge} w-10">${f.label}</span></td>
-                <td class="px-5 py-3 text-right">
-                    <a href="/fields?field=${f.id}" class="map-link inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors" title="Bekijk op kaart">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                <td class="px-4 py-2.5 text-center">
+                    <span class="badge rounded-pill w-10" style="background-color:${style.color}; color:#fff; border:none;">${f.label}</span>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                    <a href="/fields?field=${f.id}" class="map-link inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
+                        <i class="ph-fill ph-map-pin text-[16px]"></i>
                     </a>
                 </td>
             </tr>`;
@@ -96,19 +99,19 @@ function renderTable() {
         mobileList.innerHTML = reportData.fields.map(f => {
             const style = gradeStyle(f.level);
             const isActive = selectedFieldId === String(f.id) ? "bg-black/5 dark:bg-white/10" : "";
-            return `<li data-field-id="${f.id}" class="flex items-center gap-3 px-4 py-3 border-t border-black/5 dark:border-white/10 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors ${isActive}">
-                <span class="badge rounded-pill ${style.badge} shrink-0 w-9 text-center">${f.label}</span>
-                <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-sm truncate">${f.name}</div>
-                    <div class="flex items-center gap-2 mt-1">
-                        <div class="flex-1 h-1 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                            <div class="h-full rounded-full" style="width:${f.bar_pct}%;background:${style.color}"></div>
+            return `<li data-field-id="${f.id}" class="flex items-center gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors ${isActive}">
+                <span class="badge rounded-pill shrink-0 w-9 text-center" style="background-color:${style.color}; color:#fff; border:none;">${f.label}</span>
+                <div class="flex-1 min-w-0 flex flex-col">
+                    <div class="font-semibold text-sm truncate w-full">${f.name}</div>
+                    <div class="flex items-center gap-2 mt-1 w-full">
+                        <div class="flex-1 h-1 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden min-w-0">
+                            <div class="h-full rounded-full" style="width:${f.bar_pct}%;background-color:${style.color}"></div>
                         </div>
                         <span class="text-[11px] text-zinc-500 tabular-nums shrink-0">${f.avg} mm</span>
                     </div>
                 </div>
-                <a href="/fields?field=${f.id}" class="map-link shrink-0 inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors" title="Bekijk op kaart">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                <a href="/fields?field=${f.id}" class="map-link shrink-0 inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
+                    <i class="ph-fill ph-map-pin text-[16px]"></i>
                 </a>
             </li>`;
         }).join("");
@@ -163,7 +166,7 @@ function renderCharts() {
                 labels: f.history.map(r => r.date.slice(5)),
                 datasets: [{
                     label: "Grashoogte", data: f.history.map(r => r.h),
-                    borderColor: th.brand, backgroundColor: "rgba(59,109,17,0.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: f.history.map(r => r.is_mow ? th.brand : th.a)
+                    borderColor: th.brand, backgroundColor: "rgba(96,165,38,0.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: f.history.map(r => r.is_mow ? th.brand : th.a)
                 }]
             },
             options: {
@@ -225,16 +228,19 @@ function renderDonut() {
 function renderActivity() {
     const list = document.getElementById("activity-list");
     if (!reportData || !reportData.fields.length) {
-        list.innerHTML = '<li class="px-5 py-3 text-xs text-zinc-500">Geen activiteit</li>'; return;
+        list.innerHTML = '<li class="px-4 py-3 text-xs text-zinc-500">Geen activiteit</li>'; return;
     }
     const recent = reportData.fields.filter(f => f.level >= 3);
     if (!recent.length) {
-        list.innerHTML = '<li class="px-5 py-3 text-xs text-zinc-500">Geen velden met kwaliteit C of D. Alles in orde!</li>'; return;
+        list.innerHTML = '<li class="px-4 py-3 text-xs text-zinc-500">Geen velden met kwaliteit C of D. Alles in orde!</li>'; return;
     }
-    const colors = [0, 0, 0, "#f97316", "#ef4444"];
+
+    const th = window.chartTheme();
+    const colors = [th.aplus, th.a, th.b, th.c, th.d];
+
     list.innerHTML = recent.map(f => `
-        <li class="flex items-start gap-3 px-5 py-3 border-t border-black/5 dark:border-white/10 first:border-t-0">
-            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background:${colors[f.level]}"></span>
+        <li class="flex items-start gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0">
+            <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background-color:${colors[f.level]}"></span>
             <div><div class="text-xs font-semibold">${f.name} — <span class="tabular-nums">${f.avg} mm</span> (${f.label})</div>
             <div class="text-[11px] text-zinc-500 mt-0.5">Actie: ${f.action}</div></div>
         </li>`).join("");
@@ -251,7 +257,9 @@ async function initMiniMap() {
     try {
         const res = await fetch("/api/fields");
         const json = await res.json();
-        const colors = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"];
+
+        const th = window.chartTheme();
+        const colors = [th.aplus, th.a, th.b, th.c, th.d];
 
         json.features.forEach((f, i) => {
             if (!f.geometry) return;
@@ -259,7 +267,7 @@ async function initMiniMap() {
             const geoJsonFeat = { type: "Feature", properties: { _id: i }, geometry: { type: "Polygon", coordinates: f.geometry.rings } };
 
             const fd = reportData ? reportData.fields.find(x => String(x.id) === String(i)) : null;
-            const color = fd ? colors[fd.level] : "#3b6d11";
+            const color = fd ? colors[fd.level] : th.brand;
             const fillOpacity = fd ? 0.2 : 0.1;
 
             const layer = L.geoJSON(geoJsonFeat, { style: { color, weight: 2, fillOpacity } }).addTo(fieldLayerGroup);
@@ -279,7 +287,9 @@ async function initMiniMap() {
 
 function highlightMiniMap(zoomToSelected = false) {
     if (!fieldLayerGroup || !reportData) return;
-    const colors = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"];
+
+    const th = window.chartTheme();
+    const colors = [th.aplus, th.a, th.b, th.c, th.d];
 
     Object.entries(_miniMapLayers).forEach(([fId, layer]) => {
         const fd = reportData.fields.find(x => String(x.id) === fId);
@@ -304,11 +314,21 @@ function highlightMiniMap(zoomToSelected = false) {
 }
 
 const syncBtn = document.getElementById("syncBtn");
+const syncDesktopText = document.getElementById("syncDesktopText");
+const syncMobileText = document.getElementById("syncMobileText");
+
 if (syncBtn) {
     syncBtn.addEventListener("click", async () => {
-        syncBtn.disabled = true; syncBtn.textContent = "Syncing...";
-        try { await fetch("/api/sync", { method: "POST" }); await loadData(document.getElementById("daysFilter").value); } catch (e) {}
-        syncBtn.textContent = "Sync"; syncBtn.disabled = false;
+        syncBtn.disabled = true;
+        syncDesktopText.textContent = "Bezig met synchroniseren...";
+        syncMobileText.textContent = "Bezig...";
+        try {
+            await fetch("/api/sync", { method: "POST" });
+            await loadData(document.getElementById("daysFilter").value);
+        } catch (e) {}
+        syncDesktopText.textContent = "Synchroniseren";
+        syncMobileText.textContent = "Sync";
+        syncBtn.disabled = false;
     });
 }
 

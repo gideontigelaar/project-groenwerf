@@ -3,8 +3,9 @@ import os
 import threading
 import time
 import datetime
+import requests
 
-from flask import Flask, jsonify, render_template, request, Response, make_response
+from flask import Flask, jsonify, render_template, request, make_response, redirect, url_for, session
 
 try:
     import credentials
@@ -19,7 +20,11 @@ except ImportError:
     FeatureLayer = None
 
 app = Flask(__name__)
+app.secret_key = getattr(credentials, 'FLASK_SECRET_KEY', 'default-dev-key-change-me')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+API_BASE_URL = getattr(credentials, 'API_BASE_URL', 'http://127.0.0.1:5002')
+API_KEY = getattr(credentials, 'API_KEY', '')
 
 CACHE_TTL = 300
 _cache = {"rows": [], "ts": 0.0, "source": "none", "fields": []}
@@ -29,6 +34,206 @@ _bg_running = threading.Event()
 _arc_layer = None
 _arc_fields_layer = None
 _arc_lock = threading.Lock()
+
+# Authentication Hooks
+
+@app.before_request
+def require_login():
+    allowed_routes = ['login', 'register', 'static']
+    if request.endpoint not in allowed_routes and 'user_id' not in session:
+        if request.path.startswith('/api/'):
+            return jsonify({"error": "unauthorized"}), 401
+        return redirect(url_for('login'))
+
+def _get_user_fields(user_id):
+    try:
+        resp = requests.get(
+            f"{API_BASE_URL}/users/{user_id}/fields",
+            headers={"X-API-Key": API_KEY},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            return resp.json().get("fields", [])
+    except Exception:
+        pass
+    return []
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        try:
+            resp = requests.post(
+                f"{API_BASE_URL}/auth/login",
+                json={"username": username, "password": password},
+                headers={"X-API-Key": API_KEY},
+                timeout=5
+            )
+            data = resp.json()
+            if resp.status_code == 200 and data.get("status") == "ok":
+                session['user_id'] = data['user']['id']
+                session['name'] = data['user']['name']
+                session['username'] = data['user']['username']
+                session['role'] = data['user']['role']
+                return redirect(url_for('dashboard'))
+            else:
+                error = data.get("error", "Ongeldige inloggegevens.")
+        except Exception as e:
+            error = "Kon niet verbinden met de inlogserver."
+
+    return render_template("login.html", error=error)
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+
+    error = None
+    success = False
+    if request.method == "POST":
+        name = request.form.get("name")
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        invite_code = request.form.get("invite_code")
+
+        if password != confirm_password:
+            error = "Wachtwoorden komen niet overeen."
+        else:
+            try:
+                resp = requests.post(
+                    f"{API_BASE_URL}/auth/register",
+                    json={"name": name, "username": username, "password": password, "invite_code": invite_code},
+                    headers={"X-API-Key": API_KEY},
+                    timeout=5
+                )
+                data = resp.json()
+                if resp.status_code == 200 and data.get("status") == "ok":
+                    success = True
+                else:
+                    error = data.get("error", "Registratie mislukt.")
+            except Exception as e:
+                error = "Kon niet verbinden met de inlogserver."
+
+    return render_template("register.html", error=error, success=success)
+
+@app.route("/settings", methods=["POST"])
+def settings():
+    name = request.form.get("name")
+    password = request.form.get("password")
+    confirm_password = request.form.get("confirm_password")
+
+    if password and password != confirm_password:
+        return redirect(request.referrer or url_for('dashboard'))
+
+    try:
+        resp = requests.post(
+            f"{API_BASE_URL}/auth/update-profile",
+            json={"user_id": session['user_id'], "name": name, "password": password if password else None},
+            headers={"X-API-Key": API_KEY},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            session['name'] = name
+    except Exception:
+        pass
+
+    return redirect(request.referrer or url_for('dashboard'))
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+
+    error = None
+    success = None
+
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "create":
+            username = request.form.get("username")
+            name = request.form.get("name")
+            password = request.form.get("password")
+            role = request.form.get("role", "user")
+            try:
+                resp = requests.post(
+                    f"{API_BASE_URL}/admin/users",
+                    json={"username": username, "name": name, "password": password, "role": role},
+                    headers={"X-API-Key": API_KEY},
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    success = "Gebruiker succesvol aangemaakt."
+                else:
+                    error = resp.json().get("error", "Fout bij aanmaken gebruiker.")
+            except Exception:
+                error = "Kon niet verbinden met de inlogserver."
+
+        elif action == "delete":
+            user_id = request.form.get("user_id")
+            try:
+                resp = requests.delete(
+                    f"{API_BASE_URL}/admin/users/{user_id}",
+                    headers={"X-API-Key": API_KEY},
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    success = "Gebruiker succesvol verwijderd."
+                else:
+                    error = "Fout bij verwijderen gebruiker."
+            except Exception:
+                error = "Kon niet verbinden met de inlogserver."
+
+        elif action == "set_fields":
+            user_id = request.form.get("user_id")
+            field_ids = [int(x) for x in request.form.getlist("fields")]
+            try:
+                resp = requests.post(
+                    f"{API_BASE_URL}/admin/users/{user_id}/fields",
+                    json={"fields": field_ids},
+                    headers={"X-API-Key": API_KEY},
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    success = "Veldtoegankelijkheid succesvol bijgewerkt."
+                else:
+                    error = "Fout bij bijwerken veldtoegang."
+            except Exception:
+                error = "Kon niet verbinden met de inlogserver."
+
+    users_list = []
+    try:
+        resp = requests.get(
+            f"{API_BASE_URL}/admin/users",
+            headers={"X-API-Key": API_KEY},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            users_list = resp.json().get("users", [])
+    except Exception:
+        error = "Kon gebruikerslijst niet ophalen."
+
+    _, _, fields = get_rows()
+    all_fields = []
+    for i, f in enumerate(fields):
+        name = _attr(f.get("attributes", {}), "Name", "Naam", "Field_Name") or f"Veld {i+1}"
+        all_fields.append({"id": i, "name": name})
+
+    return render_template("admin.html", active_page="admin", users=users_list, all_fields=all_fields, error=error, success=success)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+# ArcGIS Integration
 
 def _arcgis_configured():
     return bool(credentials and GIS and getattr(credentials, "ARCGIS_LAYER_URL", None) and getattr(credentials, "ARCGIS_USERNAME", None))
@@ -172,7 +377,7 @@ def quality_grade(h):
     return 4
 
 QUALITY_LABELS = ["A+", "A", "B", "C", "D"]
-QUALITY_COLORS = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"]
+QUALITY_COLORS = ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"]
 
 def _in_poly(x, y, rings):
     if not x or not y or not rings: return False
@@ -187,7 +392,7 @@ def _in_poly(x, y, rings):
                 inside = not inside
     return inside
 
-def build_report(rows, fields, days=None, target_field_id=None):
+def build_report(rows, fields, days=None, target_field_id=None, user_id=None, user_role=None):
     now = datetime.datetime.now()
 
     if days:
@@ -200,7 +405,14 @@ def build_report(rows, fields, days=None, target_field_id=None):
     counts = [0, 0, 0, 0, 0]
     field_summaries = []
 
+    allowed_fields = None
+    if user_role == 'user' and user_id is not None:
+        allowed_fields = _get_user_fields(user_id)
+
     for i, f in enumerate(fields):
+        if allowed_fields is not None and i not in allowed_fields:
+            continue
+
         name = _attr(f.get("attributes", {}), "Name", "Naam", "Field_Name") or f"Veld {i+1}"
         rings = f.get("geometry", {}).get("rings", [])
         f_rows = [r for r in rows if _in_poly(r.get("longitude"), r.get("latitude"), rings)]
@@ -296,6 +508,9 @@ def build_report(rows, fields, days=None, target_field_id=None):
 @app.route("/api/fields")
 def api_fields():
     _, _, fields = get_rows()
+    if session.get('role') == 'user':
+        allowed = _get_user_fields(session.get('user_id'))
+        fields = [f for i, f in enumerate(fields) if i in allowed]
     return jsonify({"features": fields})
 
 @app.route("/api/data")
@@ -309,7 +524,7 @@ def api_summary():
     if days == "": days = None
     field_id = request.args.get("field_id")
     rows, source, fields = get_rows()
-    rep = build_report(rows, fields, days=days, target_field_id=field_id)
+    rep = build_report(rows, fields, days=days, target_field_id=field_id, user_id=session.get('user_id'), user_role=session.get('role'))
     rep["source"] = source
     return jsonify(rep)
 
@@ -335,7 +550,7 @@ def download_pdf():
     if days == "": days = None
     rows, _, fields = get_rows()
 
-    html = render_template("pdf.html", r=build_report(rows, fields, days=days, target_field_id=field_id))
+    html = render_template("pdf.html", r=build_report(rows, fields, days=days, target_field_id=field_id, user_id=session.get('user_id'), user_role=session.get('role')))
 
     resp = make_response(HTML(string=html, base_url=request.url_root).write_pdf())
     resp.headers["Content-Type"] = "application/pdf"

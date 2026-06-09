@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Gebruikersbeheer - Groenwerf{% endblock %}
+{% block page_title %}Gebruikersbeheer{% endblock %}
+{% block page_sub %}Beheer accounts, rollen en veldtoegankelijkheid{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full space-y-6 min-w-0">
+    {% if error %}
+    <div class="relative px-4 py-3 pe-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl">
+        {{ error }}
+        <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+            <i class="ph ph-x text-[16px]"></i>
+        </button>
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="relative success-alert px-4 py-3 pe-10 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 text-green-700 dark:text-green-400 text-sm font-medium rounded-xl">
+        {{ success }}
+        <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+            <i class="ph ph-x text-[16px]"></i>
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md p-4 sm:p-6 shadow-sm min-w-0">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h3 class="font-display text-lg font-semibold m-0">Overzicht Gebruikers</h3>
+            <button data-bs-toggle="modal" data-bs-target="#createUserModal" class="btn btn-success !py-1.5 !px-3 shadow-md shrink-0 cursor-pointer">
+                <i class="ph ph-user-plus text-[16px]"></i>
+                Nieuwe Gebruiker
+            </button>
+        </div>
+
+        <div class="overflow-x-auto w-full hidden md:block min-w-0">
+            <table class="w-full text-left align-middle text-sm text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                <thead>
+                    <tr class="text-zinc-500 dark:text-zinc-400 border-b border-black/5 dark:border-white/10">
+                        <th class="pb-3 px-2 font-semibold">Naam / Gebruikersnaam</th>
+                        <th class="pb-3 px-2 font-semibold">Rol</th>
+                        <th class="pb-3 px-2 font-semibold">Toegankelijke Velden</th>
+                        <th class="pb-3 px-2 font-semibold text-end">Acties</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-black/5 dark:divide-white/5">
+                    {% for u in users %}
+                    <tr class="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td class="py-3 px-2">
+                            <div class="font-semibold">{{ u.name }}</div>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400">@{{ u.username }}</div>
+                        </td>
+                        <td class="py-3 px-2">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider {% if u.role == 'admin' %}bg-brand/10 text-brand dark:bg-brand/20 dark:text-[#7bc53b]{% else %}bg-zinc-200/50 text-zinc-600 dark:bg-white/10 dark:text-zinc-300{% endif %}">
+                                {{ u.role }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-2">
+                            {% if u.role == 'admin' %}
+                                <span class="text-xs text-zinc-400 italic">Alle velden (Admin)</span>
+                            {% else %}
+                                <div class="flex items-center gap-3">
+                                    <span class="font-medium {% if u.fields|length == 0 %}text-red-500 dark:text-red-400{% endif %}">
+                                        {{ u.fields|length }} velden gekoppeld
+                                    </span>
+                                    <button data-bs-toggle="modal" data-bs-target="#fieldsModal_{{ u.id }}" class="btn btn-outline-secondary !p-1.5 rounded-lg border-black/10 dark:border-white/10 cursor-pointer" title="Koppel velden">
+                                        <i class="ph ph-link text-[16px]"></i>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-2 text-end">
+                            {% if u.id != session.user_id %}
+                            <form action="{{ url_for('admin_panel') }}" method="POST" onsubmit="return confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?');" class="inline">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                <button type="submit" class="btn btn-outline-secondary !py-1.5 !px-2.5 hover:!bg-red-50 dark:hover:!bg-red-500/10 hover:!text-red-600 hover:!border-red-200 dark:hover:!border-red-500/20 transition-colors cursor-pointer" title="Verwijder gebruiker">
+                                    <i class="ph ph-trash text-[16px]"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-xs text-zinc-400 italic px-2">Jijzelf</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="md:hidden flex flex-col gap-3 w-full min-w-0">
+            {% for u in users %}
+            <div class="p-4 rounded-xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] w-full min-w-0">
+                <div class="flex justify-between items-start mb-3 gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-sm truncate">{{ u.name }}</div>
+                        <div class="text-xs text-zinc-500 dark:text-zinc-400 truncate">@{{ u.username }}</div>
+                    </div>
+                    <span class="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shrink-0 {% if u.role == 'admin' %}bg-brand/10 text-brand dark:bg-brand/20 dark:text-[#7bc53b]{% else %}bg-zinc-200/50 text-zinc-600 dark:bg-white/10 dark:text-zinc-300{% endif %}">
+                        {{ u.role }}
+                    </span>
+                </div>
+
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-black/5 dark:border-white/10 gap-2">
+                    {% if u.role == 'admin' %}
+                        <span class="text-xs text-zinc-400 italic flex-1">Alle velden (Admin)</span>
+                    {% else %}
+                        <div class="flex items-center gap-2 flex-1">
+                            <span class="text-xs font-medium {% if u.fields|length == 0 %}text-red-500 dark:text-red-400{% endif %}">
+                                {{ u.fields|length }} velden
+                            </span>
+                            <button data-bs-toggle="modal" data-bs-target="#fieldsModal_{{ u.id }}" class="btn btn-outline-secondary !p-1.5 rounded-lg border-black/10 dark:border-white/10 cursor-pointer" title="Koppel velden">
+                                <i class="ph ph-link text-[14px]"></i>
+                            </button>
+                        </div>
+                    {% endif %}
+
+                    {% if u.id != session.user_id %}
+                    <form action="{{ url_for('admin_panel') }}" method="POST" onsubmit="return confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?');" class="shrink-0">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="user_id" value="{{ u.id }}">
+                        <button type="submit" class="btn btn-outline-secondary !py-1.5 !px-2.5 hover:!bg-red-50 dark:hover:!bg-red-500/10 hover:!text-red-600 transition-colors cursor-pointer" title="Verwijder gebruiker">
+                            <i class="ph ph-trash text-[16px]"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                        <span class="text-xs text-zinc-400 italic shrink-0">Jijzelf</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content !border-0 !rounded-2xl !bg-white dark:!bg-zinc-900 !text-zinc-800 dark:!text-zinc-100 shadow-xl overflow-hidden">
+            <div class="!bg-brand !text-white px-4 py-4 flex items-center justify-between">
+                <h5 class="modal-title font-display text-lg font-semibold flex items-center gap-2" id="createUserModalLabel">
+                    <i class="ph-fill ph-user-plus text-[20px]"></i>
+                    Nieuwe Gebruiker
+                </h5>
+                <button type="button" class="btn-close btn-close-white shadow-none border-0" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+            </div>
+            <form action="{{ url_for('admin_panel') }}" method="POST" class="p-4 space-y-4">
+                <input type="hidden" name="action" value="create">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Volledige Naam</label>
+                    <input type="text" name="name" required class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
+                    <input type="text" name="username" required class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Wachtwoord</label>
+                    <input type="password" name="password" required minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Rol</label>
+                    <select name="role" class="form-select text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand shadow-sm">
+                        <option value="user" selected>User (Beperkte veldtoegang)</option>
+                        <option value="admin">Admin (Volledige toegang + beheer)</option>
+                    </select>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuleren</button>
+                    <button type="submit" class="btn btn-success">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for u in users %}
+    {% if u.role != 'admin' %}
+    <div class="modal fade" id="fieldsModal_{{ u.id }}" tabindex="-1" aria-labelledby="fieldsModalLabel_{{ u.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content !border-0 !rounded-2xl !bg-white dark:!bg-zinc-900 !text-zinc-800 dark:!text-zinc-100 shadow-xl overflow-hidden">
+                <div class="!bg-brand !text-white px-4 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
+                    <div>
+                        <h5 class="modal-title font-display text-lg font-semibold flex items-center gap-2" id="fieldsModalLabel_{{ u.id }}">
+                            <i class="ph-bold ph-link text-[20px]"></i> Velden Toewijzen
+                        </h5>
+                        <div class="text-xs text-white/80 mt-0.5">Voor gebruiker: {{ u.name }}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white shadow-none border-0" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+                </div>
+                <form action="{{ url_for('admin_panel') }}" method="POST" class="p-4 space-y-4">
+                    <input type="hidden" name="action" value="set_fields">
+                    <input type="hidden" name="user_id" value="{{ u.id }}">
+
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                            Selecteer velden die deze gebruiker mag inzien
+                        </div>
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-lg bg-brand/10 text-brand dark:bg-brand/20 dark:text-[#7bc53b] tracking-wide">
+                            <span class="selected-count">{{ u.fields|length }}</span> / {{ all_fields|length }} gekozen
+                        </span>
+                    </div>
+
+                    <div class="max-h-[300px] overflow-y-auto pr-2 flex flex-col gap-2">
+                        {% if all_fields %}
+                            {% for f in all_fields %}
+                            <label class="relative block cursor-pointer m-0 w-full">
+                                <input type="checkbox" name="fields" value="{{ f.id }}" id="modal_f_{{ u.id }}_{{ f.id }}" class="peer sr-only" {% if f.id in u.fields %}checked{% endif %}>
+                                <div class="flex items-center justify-between p-3 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 peer-checked:!border-brand peer-checked:bg-brand/10 dark:peer-checked:bg-brand/20 hover:bg-black/10 dark:hover:bg-white/10 transition-all w-full">
+                                    <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200 select-none m-0">
+                                        {{ f.name }}
+                                    </span>
+                                    <i class="ph-bold ph-check text-brand opacity-0 peer-checked:opacity-100 text-[16px] transition-opacity"></i>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-sm text-zinc-500 italic py-2">Geen velden gevonden op ArcGIS.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="pt-3 border-t border-black/5 dark:border-white/10 flex justify-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuleren</button>
+                        <button type="submit" class="btn btn-success">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[id^='fieldsModal_']").forEach(modal => {
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+            const countSpan = modal.querySelector('.selected-count');
+
+            if (countSpan) {
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const checkedCount = modal.querySelectorAll('input[type="checkbox"]:checked').length;
+                        countSpan.textContent = checkedCount;
+                    });
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

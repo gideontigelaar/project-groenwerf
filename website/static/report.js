@@ -1,173 +1,175 @@
-let fullData = null;
+let reportData = null;
 let barChart = null;
 let donutChart = null;
 
-async function loadReport() {
-    const res = await fetch("/api/summary");
-    fullData = await res.json();
-
-    // build localized current date string for report header
-    const now = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
-    const src = fullData.source === "arcgis" ? "ArcGIS" : "Geen bron";
-    document.getElementById("report-date").textContent = `Gegenereerd op ${now} · Bron: ${src}`;
-
-    const sel = document.getElementById("reportFieldSelect");
-    fullData.fields.forEach(f => {
-        const opt = document.createElement("option");
-        opt.value = f.id; opt.textContent = f.name;
-        sel.appendChild(opt);
-    });
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialField = urlParams.get('field');
-    if (initialField !== null) {
-        sel.value = initialField;
-        renderUI(initialField);
-    } else {
-        renderUI("");
-    }
-}
-
-document.getElementById("reportFieldSelect").addEventListener("change", (e) => { renderUI(e.target.value); });
-
-function renderUI(fieldId) {
-    let d = fullData;
-
-    if (fieldId !== "") {
-        const f = fullData.fields.find(x => String(x.id) === String(fieldId));
-        if (f) {
-            const c = [0,0,0,0,0];
-            f.history.forEach(h => { c[h.lvl]++; });
-
-            d = { total: f.total, counts: c, pcts: [0,0,0,0,0], latest: f.latest, fields: [f], title: "Rapport: " + f.name };
-            const histTotal = f.history.length || 1;
-            // recalculate distribution percentages dynamically for single field selection
-            for(let i=0; i<5; i++) d.pcts[i] = Math.round((c[i] / histTotal) * 100);
-        }
-
-        document.getElementById("chartLabelLeft").textContent = "Metingen Verloop";
-        document.getElementById("chartSubLeft").textContent = "Historie van maaibeurten en metingen";
-        document.getElementById("chartLabelRight").textContent = "Historische Kwaliteit";
-        document.getElementById("table-title").textContent = "Metingen & Maaibeurten";
-        renderHistory(d.fields[0]);
-        renderSingleCharts(d);
-    } else {
-        d.title = "Veldbeheer Rapport (Totaal)";
-        document.getElementById("chartLabelLeft").textContent = "Grashoogte";
-        document.getElementById("chartSubLeft").textContent = "Gemiddelde per veld";
-        document.getElementById("chartLabelRight").textContent = "Kwaliteitsverdeling";
-        document.getElementById("table-title").textContent = "Veld details";
-        renderRows(d.fields);
-        renderCharts(d);
-    }
-
-    document.getElementById("r-title").textContent = d.title;
-    document.getElementById("r-total").textContent = d.total;
-    document.getElementById("r-ok").textContent = d.counts[0] + d.counts[1];
-    document.getElementById("r-mow").textContent = d.counts[4];
-
-    renderRecs(d.counts, fieldId !== "");
-}
-
-function renderRows(fields) {
-    if (!fields.length) { document.getElementById("report-rows").innerHTML = '<div class="px-5 py-4 text-zinc-500">Geen velden gevonden.</div>'; return; }
-    const bgs = ["text-bg-success", "text-bg-success", "text-bg-warning", "text-bg-warning", "text-bg-danger"];
-    document.getElementById("report-rows").innerHTML = fields.map(f => `
-        <div class="flex items-center justify-between py-3 border-b border-black/5 dark:border-white/10 last:border-0">
-            <div>
-                <div class="font-semibold">${f.name}</div>
-                <div class="text-[11px] text-zinc-500">Laatste: ${f.latest ? f.latest.slice(0, 16) : "—"}</div>
-                <div class="text-[11px] mt-1 font-medium text-brand">Advies: ${f.action}</div>
-            </div>
-            <div class="flex items-center gap-4"><div class="text-right"><div class="font-semibold tabular-nums">${f.avg} mm</div><div class="text-[10px] text-zinc-500">${f.total} metingen</div></div>
-            <span class="badge rounded-pill ${bgs[f.level]} w-10 text-center">${f.label}</span></div>
-        </div>`).join("");
-}
-
-function renderHistory(f) {
-    if (!f.history || !f.history.length) { document.getElementById("report-rows").innerHTML = '<div class="px-5 py-4 text-zinc-500">Geen metingen beschikbaar.</div>'; return; }
-    let html = "";
-    f.history.forEach((r, i) => {
-        const countLabel = r.count > 1 ? `gem. van ${r.count} metingen` : `1 meting`;
-        html += `
-        <div class="flex items-center justify-between py-3 border-b border-black/5 dark:border-white/10 last:border-0">
-            <div>
-                <div class="font-semibold ${r.is_mow ? 'text-brand' : ''}">${r.title}</div>
-                <div class="text-[11px] text-zinc-500">${r.date} ${r.time} · <span class="italic">${countLabel}</span></div>
-            </div>
-            <div class="font-semibold tabular-nums">${r.h} mm</div>
-        </div>`;
-    });
-    document.getElementById("report-rows").innerHTML = html;
-}
-
-function renderCharts(d) {
-    const th = window.chartTheme();
-    const colors = [th.aplus, th.a, th.b, th.c, th.d];
-
-    if (barChart) barChart.destroy();
-    barChart = new Chart(document.getElementById("barChart"), {
-        type: "bar",
-        data: { labels: d.fields.map(f => f.name), datasets: [{ label: "Grashoogte", data: d.fields.map(f => f.avg), backgroundColor: d.fields.map(f => colors[f.level]), borderRadius: 4, maxBarThickness: 32 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Grashoogte: ${c.parsed.y} mm` } } }, scales: { x: { grid: { display: false }, ticks: { color: th.text } }, y: { grid: { color: th.grid }, ticks: { color: th.text, callback: v => v + " mm" }, beginAtZero: true } } }
-    });
-
-    if (donutChart) donutChart.destroy();
-    donutChart = new Chart(document.getElementById("donutChart"), {
-        type: "doughnut",
-        data: { labels: ["A+", "A", "B", "C", "D"], datasets: [{ data: d.counts, backgroundColor: colors, borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "72%", plugins: { legend: { display: false } } }
-    });
-    document.getElementById("donut-pct").textContent = (d.pcts[0] + d.pcts[1]) + "%";
-}
-
-function renderSingleCharts(d) {
-    const th = window.chartTheme();
-    const colors = [th.aplus, th.a, th.b, th.c, th.d];
-    const f = d.fields[0];
-
-    if (barChart) barChart.destroy();
-    barChart = new Chart(document.getElementById("barChart"), {
-        type: "line",
-        data: { labels: f.history.map(r => r.date.slice(5)), datasets: [{ label: "Grashoogte", data: f.history.map(r => r.h), borderColor: th.brand, backgroundColor: "rgba(59,109,17,0.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: f.history.map(r => r.is_mow ? th.brand : th.a) }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Grashoogte: ${c.parsed.y} mm` } } }, scales: { x: { ticks: { color: th.text } }, y: { grid: { color: th.grid }, ticks: { color: th.text, callback: v => v + " mm" }, beginAtZero: true } } }
-    });
-
-    if (donutChart) donutChart.destroy();
-    donutChart = new Chart(document.getElementById("donutChart"), {
-        type: "doughnut",
-        data: { labels: ["A+", "A", "B", "C", "D"], datasets: [{ data: d.counts, backgroundColor: colors, borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: "72%", plugins: { legend: { display: false } } }
-    });
-    document.getElementById("donut-pct").textContent = (d.pcts[0] + d.pcts[1]) + "%";
-}
-
-function renderRecs(counts, isSingle) {
-    const plural = (n, s, p) => n === 1 ? s : p;
-    let html = isSingle ? "Op basis van het historische verloop van dit veld:<br><br>" : "Op basis van de actuele data van alle velden:<br><br>";
-    if (counts[4]) html += `<strong>${counts[4]} ${plural(counts[4], "keer/meting", "keer/metingen")}</strong> (D) onder de maat (>100mm) — directe maaiactie noodzakelijk.<br>`;
-    if (counts[3]) html += `<strong>${counts[3]} ${plural(counts[3], "keer/meting", "keer/metingen")}</strong> (C) matig (90-100mm) — maaien inplannen.<br>`;
-    if (counts[2]) html += `<strong>${counts[2]} ${plural(counts[2], "keer/meting", "keer/metingen")}</strong> (B) acceptabel (80-90mm) — visueel controleren.<br>`;
-    if (counts[0] + counts[1]) html += `<strong>${counts[0] + counts[1]} ${plural(counts[0] + counts[1], "keer/meting", "keer/metingen")}</strong> in A/A+ (≤80mm) — gras is in topconditie.<br>`;
-    html += `<br><em class="text-xs text-zinc-500">Kwaliteitseisen: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.</em>`;
-    document.getElementById("report-recs").innerHTML = html;
-}
-
-document.getElementById("downloadBtn").addEventListener("click", async function () {
-    const btn = this; const original = btn.textContent;
-    btn.textContent = "Genereren…"; btn.disabled = true;
+async function loadReportData(days = "30", fieldId = "") {
     try {
-        const fieldId = document.getElementById("reportFieldSelect").value;
-        // trigger blob download from python backend
-        const res = await fetch(`/download-pdf` + (fieldId ? `?field=${fieldId}` : ""));
-        if (!res.ok) throw new Error(`Server gaf statuscode ${res.status}`);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "veldbeheer-rapport.pdf";
-        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    } catch (err) { alert(`Fout bij downloaden: ${err.message}`); } finally { btn.textContent = original; btn.disabled = false; }
+        const res = await fetch(`/api/summary?days=${days}&field_id=${fieldId}`);
+        reportData = await res.json();
+        renderReport();
+        renderCharts();
+    } catch (e) {
+        document.getElementById("report-rows").innerHTML = '<div class="px-4 py-6 text-center text-[#ef4444] text-sm">Kon rapportage data niet laden</div>';
+    }
+}
+
+document.getElementById("reportFieldSelect").addEventListener("change", (e) => {
+    loadReportData("30", e.target.value);
+
+    const downloadBtn = document.getElementById("downloadBtn");
+    if(downloadBtn) {
+        let url = "/download-pdf?days=30";
+        if(e.target.value) url += `&field=${e.target.value}`;
+        downloadBtn.onclick = () => window.open(url, "_blank");
+    }
 });
 
-window.addEventListener("themechange", () => { if (fullData) renderUI(document.getElementById("reportFieldSelect").value); });
-loadReport();
+function gradeStyle(level) {
+    const th = window.chartTheme();
+    const colors = [th.aplus, th.a, th.b, th.c, th.d];
+    return { color: colors[level] };
+}
+
+function renderReport() {
+    if (!reportData) return;
+
+    document.getElementById("report-date").textContent = `Gegenereerd op ${reportData.generated} • Laatste meting: ${reportData.latest}`;
+    document.getElementById("r-total").textContent = reportData.total;
+    document.getElementById("r-ok").textContent = reportData.counts[0] + reportData.counts[1];
+    document.getElementById("r-mow").textContent = reportData.counts[4];
+
+    const rowsEl = document.getElementById("report-rows");
+
+    if (reportData.target_field) {
+        document.getElementById("r-title").textContent = `Rapport: ${reportData.fields[0]?.name || 'Veld'}`;
+        document.getElementById("chartLabelLeft").textContent = "Metingen & Maaibeurten";
+        document.getElementById("chartSubLeft").textContent = "Tijdlijn van de meest recente sensordata";
+
+        let html = `<table class="w-full text-sm text-left"><thead class="border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+
+        if(reportData.fields[0]) {
+            html += reportData.fields[0].history.map(h => {
+                const isMow = h.is_mow;
+                return `<tr>
+                    <td class="px-4 py-2.5 font-semibold ${isMow ? 'text-brand dark:text-[#7bc53b]' : ''}">${h.title}</td>
+                    <td class="px-4 py-2.5 text-zinc-500 tabular-nums">${h.time}</td>
+                    <td class="px-4 py-2.5 tabular-nums">${h.h} mm</td>
+                    <td class="px-4 py-2.5 text-zinc-500 text-xs">gem. van ${h.count} meting${h.count === 1 ? '' : 'en'}</td>
+                </tr>`;
+            }).join("");
+        }
+        html += `</tbody></table>`;
+        rowsEl.innerHTML = html;
+
+    } else {
+        document.getElementById("r-title").textContent = `Veldbeheer Rapport (Totaal)`;
+        document.getElementById("chartLabelLeft").textContent = "Grashoogte";
+        document.getElementById("chartSubLeft").textContent = "Gemiddelde hoogte per veld";
+
+        let html = `<table class="w-full text-sm text-left"><thead class="border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+        html += reportData.fields.map(f => {
+            const style = gradeStyle(f.level);
+            return `<tr>
+                <td class="px-4 py-2.5 font-semibold">${f.name}</td>
+                <td class="px-4 py-2.5 text-[11px] text-zinc-500 tabular-nums">${f.latest ? f.latest.slice(0, 16) : "—"}</td>
+                <td class="px-4 py-2.5 font-medium ${f.level >= 3 ? 'text-brand dark:text-[#7bc53b]' : 'text-zinc-500'}">${f.action}</td>
+                <td class="px-4 py-2.5 text-center"><span class="badge rounded-pill" style="background-color:${style.color}; color:#fff; border:none; width:40px;">${f.label}</span></td>
+            </tr>`;
+        }).join("");
+        html += `</tbody></table>`;
+        rowsEl.innerHTML = html;
+    }
+
+    const recsEl = document.getElementById("report-recs");
+    let recsHtml = `<div class="space-y-3">`;
+    if (reportData.counts[4]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[4]} meting(en)</strong> met kwaliteit D (>100 mm). Direct maaien vereist!</div>`;
+    if (reportData.counts[3]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[3]} meting(en)</strong> met kwaliteit C (90-100 mm). Plan op korte termijn een maaibeurt.</div>`;
+    if (reportData.counts[2]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[2]} meting(en)</strong> met kwaliteit B (80-90 mm). Acceptabel, hou de groei in de gaten.</div>`;
+    if (reportData.counts[0] + reportData.counts[1]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[0] + reportData.counts[1]} meting(en)</strong> in topconditie A/A+ (≤80 mm). Geen actie nodig.</div>`;
+
+    recsHtml += `<div class="text-[10px] text-zinc-400 mt-4 pt-4 border-t border-black/5 dark:border-white/10">Kwaliteitseisen conform normering: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.</div></div>`;
+    recsEl.innerHTML = recsHtml;
+}
+
+function renderCharts() {
+    if (!reportData) return;
+    const th = window.chartTheme();
+    const colors = [th.aplus, th.a, th.b, th.c, th.d];
+
+    const ctx = document.getElementById("barChart");
+    if (barChart) barChart.destroy();
+
+    if (reportData.target_field && reportData.fields[0]) {
+        const f = reportData.fields[0];
+        barChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: f.history.map(r => r.date.slice(5)),
+                datasets: [{
+                    label: "Grashoogte", data: f.history.map(r => r.h),
+                    borderColor: th.brand, backgroundColor: "rgba(96,165,38,0.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: f.history.map(r => r.is_mow ? th.brand : th.a)
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { tooltip: { callbacks: { label: c => `Grashoogte: ${c.parsed.y} mm` } }, legend: { display: false } },
+                scales: { x: { ticks: { color: th.text } }, y: { grid: { color: th.grid }, ticks: { color: th.text, callback: v => v + " mm" }, beginAtZero: true } }
+            }
+        });
+    } else {
+        barChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: reportData.fields.map(f => f.name),
+                datasets: [{
+                    label: "Grashoogte", data: reportData.fields.map(f => f.avg),
+                    backgroundColor: reportData.fields.map(f => colors[f.level]), borderRadius: 4, maxBarThickness: 32
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Grashoogte: ${c.parsed.y} mm` } } },
+                scales: { x: { grid: { display: false }, ticks: { color: th.text } }, y: { grid: { color: th.grid }, ticks: { color: th.text, callback: v => v + " mm" }, beginAtZero: true } }
+            }
+        });
+    }
+
+    const counts = reportData.counts;
+    const total = counts.reduce((a, b) => a + b, 0);
+
+    const ctx2 = document.getElementById("donutChart");
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(ctx2, {
+        type: "doughnut",
+        data: { labels: ["A+", "A", "B", "C", "D"], datasets: [{ data: counts, backgroundColor: colors, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "72%", plugins: { legend: { display: false } } }
+    });
+
+    const pct = total ? Math.round(((counts[0] + counts[1]) / total) * 100) : 0;
+    const pctEl = document.getElementById("donut-pct");
+    if (pctEl) pctEl.textContent = pct + "%";
+}
+
+async function initReportFields() {
+    try {
+        const res = await fetch("/api/fields");
+        const json = await res.json();
+        const sel = document.getElementById("reportFieldSelect");
+
+        json.features.forEach((f, i) => {
+            const name = f.properties.Name || f.properties.Naam || f.properties.Field_Name || `Veld ${i + 1}`;
+            const opt = document.createElement("option");
+            opt.value = i; opt.textContent = name;
+            sel.appendChild(opt);
+        });
+    } catch (e) {}
+}
+
+const downloadBtn = document.getElementById("downloadBtn");
+if(downloadBtn) {
+    downloadBtn.onclick = () => window.open("/download-pdf?days=30", "_blank");
+}
+
+window.addEventListener("themechange", () => { if (reportData) { renderCharts(); } });
+initReportFields();
+loadReportData();

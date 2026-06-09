@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from mysql.connector import pooling, Error
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timezone
 import sys
 import struct
@@ -78,7 +79,265 @@ def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }), 200
 
-# handle incoming sensor data
+
+# Authentication Endpoints
+
+@app.route("/auth/register", methods=["POST"])
+@limiter.limit("10 per minute")
+def register():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    password = data.get("password")
+    name = data.get("name")
+    invite_code = data.get("invite_code")
+
+    if not all([username, password, name, invite_code]):
+        return jsonify({"error": "Ontbrekende velden"}), 400
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # check invite code validity
+        cursor.execute("SELECT id, is_used FROM invite_codes WHERE code = %s", (invite_code,))
+        code_row = cursor.fetchone()
+        if not code_row:
+            return jsonify({"error": "Ongeldige invite code"}), 400
+        if code_row["is_used"]:
+            return jsonify({"error": "Deze invite code is al gebruikt"}), 400
+
+        # check if username already exists
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cursor.fetchone():
+            return jsonify({"error": "Gebruikersnaam is al in gebruik"}), 400
+
+        # hash password and insert user
+        hashed_pw = generate_password_hash(password)
+        cursor.execute("INSERT INTO users (username, password_hash, name, role) VALUES (%s, %s, %s, 'user')", (username, hashed_pw, name))
+
+        # mark invite code as used
+        cursor.execute("UPDATE invite_codes SET is_used = 1 WHERE id = %s", (code_row["id"],))
+        db.commit()
+
+        return jsonify({"status": "ok"}), 200
+
+    except Error as e:
+        if db: db.rollback()
+        logging.error(f"DB Error in register: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/auth/login", methods=["POST"])
+@limiter.limit("30 per minute")
+def login():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        return jsonify({"error": "Vul alle velden in"}), 400
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, password_hash, role FROM users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+
+        if user and check_password_hash(user["password_hash"], password):
+            return jsonify({"status": "ok", "user": {"id": user["id"], "name": user["name"], "username": username, "role": user["role"]}}), 200
+        else:
+            return jsonify({"error": "Ongeldige inloggegevens"}), 401
+
+    except Error as e:
+        logging.error(f"DB Error in login: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/auth/update-profile", methods=["POST"])
+@limiter.limit("15 per minute")
+def update_profile():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    name = data.get("name")
+    password = data.get("password")
+
+    if not user_id or not name:
+        return jsonify({"error": "Ontbrekende velden"}), 400
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        if password:
+            hashed_pw = generate_password_hash(password)
+            cursor.execute("UPDATE users SET name = %s, password_hash = %s WHERE id = %s", (name, hashed_pw, user_id))
+        else:
+            cursor.execute("UPDATE users SET name = %s WHERE id = %s", (name, user_id))
+
+        db.commit()
+        return jsonify({"status": "ok"}), 200
+    except Error as e:
+        if db: db.rollback()
+        logging.error(f"DB Error in update_profile: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+
+# Admin User Management Endpoints
+
+@app.route("/admin/users", methods=["GET"])
+def admin_get_users():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, name, role, created_at FROM users")
+        users = cursor.fetchall()
+
+        for u in users:
+            if isinstance(u["created_at"], datetime):
+                u["created_at"] = u["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+
+            # fetch allowed fields for each user
+            cursor.execute("SELECT field_id FROM user_fields WHERE user_id = %s", (u["id"],))
+            u["fields"] = [r["field_id"] for r in cursor.fetchall()]
+
+        return jsonify({"users": users}), 200
+    except Error as e:
+        logging.error(f"DB Error in admin_get_users: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/admin/users", methods=["POST"])
+def admin_create_user():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    password = data.get("password")
+    name = data.get("name")
+    role = data.get("role", "user")
+
+    if not all([username, password, name]):
+        return jsonify({"error": "Vul alle verplichte velden in"}), 400
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cursor.fetchone():
+            return jsonify({"error": "Gebruikersnaam bestaat al"}), 400
+
+        hashed_pw = generate_password_hash(password)
+        cursor.execute("INSERT INTO users (username, password_hash, name, role) VALUES (%s, %s, %s, %s)", (username, hashed_pw, name, role))
+        db.commit()
+
+        return jsonify({"status": "ok"}), 200
+    except Error as e:
+        if db: db.rollback()
+        logging.error(f"DB Error in admin_create_user: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/admin/users/<int:user_id>", methods=["DELETE"])
+def admin_delete_user():
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        db.commit()
+        return jsonify({"status": "ok"}), 200
+    except Error as e:
+        if db: db.rollback()
+        logging.error(f"DB Error in admin_delete_user: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/admin/users/<int:user_id>/fields", methods=["POST"])
+def admin_set_user_fields(user_id):
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    fields = data.get("fields", [])
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("DELETE FROM user_fields WHERE user_id = %s", (user_id,))
+        if fields:
+            values = [(user_id, int(f_id)) for f_id in fields]
+            cursor.executemany("INSERT INTO user_fields (user_id, field_id) VALUES (%s, %s)", values)
+
+        db.commit()
+        return jsonify({"status": "ok"}), 200
+    except Error as e:
+        if db: db.rollback()
+        logging.error(f"DB Error in admin_set_user_fields: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+@app.route("/users/<int:user_id>/fields", methods=["GET"])
+def get_user_fields(user_id):
+    if not verify_api_key(request):
+        return jsonify({"error": "unauthorized"}), 401
+
+    db = cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT field_id FROM user_fields WHERE user_id = %s", (user_id,))
+        rows = cursor.fetchall()
+        fields = [r["field_id"] for r in rows]
+        return jsonify({"fields": fields}), 200
+    except Error as e:
+        logging.error(f"DB Error in get_user_fields: {e}")
+        return jsonify({"error": "database error"}), 500
+    finally:
+        if cursor: cursor.close()
+        if db and db.is_connected(): db.close()
+
+
+# Sensor Endpoints
+
 @app.route("/sensor-data", methods=["POST"])
 @limiter.limit("120 per minute")
 def receive_data():

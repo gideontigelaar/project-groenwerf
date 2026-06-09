@@ -2,7 +2,7 @@
 <html lang="nl">
     <head>
         <meta charset="UTF-8" />
-        <title>Groenwerf — Veldbeheer Rapport</title>
+        <title>Groenwerf - Veldbeheer Rapport</title>
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style>
             @page { size: A4; margin: 18mm 14mm; }
@@ -12,10 +12,10 @@
             .muted { color: #5a6e60; }
             .tabular { font-variant-numeric: tabular-nums; }
 
-            .header { background: #3b6d11; color: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
-            .header .brand { font-size: 13px; font-weight: 600; opacity: .9; margin-bottom: 10px; }
+            .header { background: #60a526; color: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; }
+            .header .brand { font-size: 13px; font-weight: 600; opacity: .9; margin-bottom: 8px; }
             .header h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
-            .header .sub { font-size: 11px; color: rgba(255,255,255,.7); }
+            .header .sub { font-size: 11px; color: rgba(255,255,255,.8); }
             .header .meta { font-size: 10px; color: rgba(255,255,255,.7); margin-top: 12px; }
 
             table { width: 100%; border-collapse: collapse; }
@@ -28,7 +28,7 @@
             .kpi .value { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; line-height: 1; }
             .kpi .value small { font-size: 11px; font-family: "Manrope", sans-serif; color: #5a6e60; }
 
-            .section-title { font-size: 16px; font-weight: 600; color: #3b6d11; margin: 0 0 2px; }
+            .section-title { font-size: 16px; font-weight: 600; color: #60a526; margin: 0 0 2px; }
             .section-sub { font-size: 10px; color: #5a6e60; margin-bottom: 12px; }
             .section { margin-bottom: 22px; }
 
@@ -55,10 +55,23 @@
     </head>
     <body>
         <div class="header">
-            <div class="brand">Groenvoorziening A.J. van der Werf B.V.</div>
-            <h1>{% if r.target_field %}Rapport: {{ r.fields[0].name }}{% else %}Veldbeheer Rapport (Totaal){% endif %}</h1>
-            <div class="sub">Kwaliteitsnormering · Maaiadvies · Sensordata overzicht</div>
-            <div class="meta">Gegenereerd op {{ r.generated }} · Laatste meting: {{ r.latest }}</div>
+            <table style="width: 100%; border: none; padding: 0; margin: 0; background: transparent;">
+                <tr>
+                    <td style="width: 58px; vertical-align: top;">
+                        <div style="background: rgba(255,255,255,0.2); width: 42px; height: 42px; border-radius: 10px; text-align: center; padding-top: 10px; box-sizing: border-box;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" style="fill: #ffffff;">
+                                <path d="M240,72A48.05,48.05,0,0,0,192,24H160a80.09,80.09,0,0,0-80,80V113.37A79.52,79.52,0,0,0,24,192v16a8,8,0,0,0,8,8H48a80.09,80.09,0,0,0,80-80h0v24a8,8,0,0,0,16,0V136a80.09,80.09,0,0,0,80-80ZM128,112a64.07,64.07,0,0,1,64-64h1.72A64.09,64.09,0,0,1,224,96.64a64.53,64.53,0,0,1-16.71,51.81A79.8,79.8,0,0,0,128,112Z"/>
+                            </svg>
+                        </div>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <div class="brand">Groenwerf</div>
+                        <h1 style="margin-top:0;">{% if r.target_field %}Rapport: {{ r.fields[0].name }}{% else %}Veldbeheer Rapport (Totaal){% endif %}</h1>
+                        <div class="sub">Kwaliteitsnormering · Maaiadvies · Sensordata overzicht</div>
+                        <div class="meta">Gegenereerd op {{ r.generated }} · Laatste meting: {{ r.latest }}</div>
+                    </td>
+                </tr>
+            </table>
         </div>
 
         <div class="section">
@@ -66,7 +79,7 @@
                 <tr>
                     <td><div class="kpi"><div class="label">Metingen</div><div class="value">{{ r.total }}</div></div></td>
                     <td><div class="kpi"><div class="label">Gem. hoogte</div><div class="value">{{ r.avg }} <small>mm</small></div></div></td>
-                    <td><div class="kpi"><div class="label">A/A+ (Top)</div><div class="value" style="color:#22c55e">{{ r.counts[0] + r.counts[1] }}</div></div></td>
+                    <td><div class="kpi"><div class="label">A/A+ (Top)</div><div class="value" style="color:#60a526">{{ r.counts[0] + r.counts[1] }}</div></div></td>
                     <td><div class="kpi"><div class="label">D (Actie)</div><div class="value" style="color:#ef4444">{{ r.counts[4] }}</div></div></td>
                 </tr>
             </table>
@@ -90,7 +103,7 @@
                     </td>
                     <td style="vertical-align:middle; padding-left:18px;">
                         <div class="card">
-                            <div class="legend-row"><span class="l"><span class="dot" style="background:#22c55e"></span>A+ (Uitstekend)</span><span class="r">{{ r.counts[0] }} ({{ r.pcts[0] }}%)</span></div>
+                            <div class="legend-row"><span class="l"><span class="dot" style="background:#60a526"></span>A+ (Uitstekend)</span><span class="r">{{ r.counts[0] }} ({{ r.pcts[0] }}%)</span></div>
                             <div class="legend-row"><span class="l"><span class="dot" style="background:#84cc16"></span>A (Goed)</span><span class="r">{{ r.counts[1] }} ({{ r.pcts[1] }}%)</span></div>
                             <div class="legend-row"><span class="l"><span class="dot" style="background:#eab308"></span>B (Acceptabel)</span><span class="r">{{ r.counts[2] }} ({{ r.pcts[2] }}%)</span></div>
                             <div class="legend-row"><span class="l"><span class="dot" style="background:#f97316"></span>C (Matig)</span><span class="r">{{ r.counts[3] }} ({{ r.pcts[3] }}%)</span></div>
@@ -111,15 +124,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% set badge_colors = ["#166534", "#3f6212", "#854d0e", "#9a3412", "#991b1b"] %}
+                    {% set badge_colors = ["#14532d", "#3f6212", "#854d0e", "#9a3412", "#991b1b"] %}
                     {% set badge_bgs = ["#dcfce7", "#d9f99d", "#fef08a", "#ffedd5", "#fee2e2"] %}
-                    {% set bar_colors = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"] %}
+                    {% set bar_colors = ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"] %}
 
                     {% for m in r.fields %}
                     <tr>
                         <td style="font-weight:600">{{ m.name }}</td>
                         <td class="tabular muted">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
-                        <td style="color:#3b6d11; font-weight:600">{{ m.action }}</td>
+                        <td style="color:#60a526; font-weight:600">{{ m.action }}</td>
                         <td><span class="bar-track"><span class="bar-fill" style="width:{{ m.bar_pct }}%; background:{{ bar_colors[m.level] }}"></span></span> <span class="tabular" style="margin-left:6px">{{ m.avg }} mm</span></td>
                         <td><span class="badge" style="background:{{ badge_bgs[m.level] }}; color:{{ badge_colors[m.level] }}">{{ m.label }}</span></td>
                     </tr>
@@ -150,7 +163,7 @@
                             {% endif %}
                         {% endif %}
                         <tr>
-                            <td style="font-weight:600; {{ 'color:#3b6d11;' if is_mow else '' }}">{{ title }}</td>
+                            <td style="font-weight:600; {{ 'color:#60a526;' if is_mow else '' }}">{{ title }}</td>
                             <td class="tabular muted">{{ h.time }}</td>
                             <td class="tabular">{{ h.h }} mm</td>
                             <td class="muted">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
@@ -173,7 +186,7 @@
         </div>
 
         <div class="footer">
-            <span class="l"><span class="display" style="color:#3b6d11; font-weight:600;">Groenwerf</span> · Veldbeheer &amp; grashoogte monitoring</span>
+            <span class="l"><span class="display" style="color:#60a526; font-weight:600;">Groenwerf</span> · Veldbeheer &amp; grashoogte monitoring</span>
             <span class="r">Gegenereerd op {{ r.generated }}</span>
         </div>
     </body>
