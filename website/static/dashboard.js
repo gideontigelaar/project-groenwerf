@@ -132,16 +132,19 @@ function _handleFieldClick(e) {
 
     renderTable();
     renderCharts();
+    renderActivity();
     highlightMiniMap(true);
 }
 
 document.getElementById("fields-body").addEventListener("click", _handleFieldClick);
 document.getElementById("fields-body-mobile").addEventListener("click", _handleFieldClick);
+document.getElementById("activity-list").addEventListener("click", _handleFieldClick);
 
 document.getElementById("chart-reset").addEventListener("click", () => {
     selectedFieldId = null;
     renderTable();
     renderCharts();
+    renderActivity();
     document.getElementById("chart-reset-wrapper").classList.add("hidden");
     highlightMiniMap(false);
 });
@@ -190,6 +193,24 @@ function renderCharts() {
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
+                onClick: (e, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const f = reportData.fields[idx];
+                        if (f) {
+                            selectedFieldId = String(f.id);
+                            document.getElementById("chart-selected-text").textContent = `Historie: ${f.name}`;
+                            document.getElementById("chart-reset-wrapper").classList.remove("hidden");
+                            renderTable();
+                            renderCharts();
+                            renderActivity();
+                            highlightMiniMap(true);
+                        }
+                    }
+                },
+                onHover: (e, elements) => {
+                    e.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                },
                 plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `Grashoogte: ${c.parsed.y} mm` } } },
                 scales: { x: { grid: { display: false }, ticks: { color: th.text } }, y: { grid: { color: th.grid }, ticks: { color: th.text, callback: v => v + " mm" }, beginAtZero: true } }
             }
@@ -238,12 +259,15 @@ function renderActivity() {
     const th = window.chartTheme();
     const colors = [th.aplus, th.a, th.b, th.c, th.d];
 
-    list.innerHTML = recent.map(f => `
-        <li class="flex items-start gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0">
+    list.innerHTML = recent.map(f => {
+        const isActive = selectedFieldId === String(f.id) ? "bg-black/5 dark:bg-white/10" : "";
+        return `
+        <li data-field-id="${f.id}" class="flex items-start gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors ${isActive}">
             <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background-color:${colors[f.level]}"></span>
             <div><div class="text-xs font-semibold">${f.name} — <span class="tabular-nums">${f.avg} mm</span> (${f.label})</div>
             <div class="text-[11px] text-zinc-500 mt-0.5">Actie: ${f.action}</div></div>
-        </li>`).join("");
+        </li>`;
+    }).join("");
 }
 
 const _miniMapLayers = {};
@@ -276,7 +300,10 @@ async function initMiniMap() {
             layer.on("click", () => {
                 selectedFieldId = String(i);
                 document.getElementById("chart-reset-wrapper").classList.remove("hidden");
-                renderTable(); renderCharts(); highlightMiniMap(true);
+                renderTable();
+                renderCharts();
+                renderActivity();
+                highlightMiniMap(true);
                 const target = document.querySelector(`[data-field-id="${i}"]`);
                 target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             });

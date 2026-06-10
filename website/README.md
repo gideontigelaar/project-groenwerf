@@ -20,6 +20,7 @@ The dashboard groups points into designated fields based on polygon boundaries. 
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
+   playwright install chromium
    ```
 
 2. Copy the credentials template and configure your environment:

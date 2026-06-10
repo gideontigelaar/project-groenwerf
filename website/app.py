@@ -487,11 +487,19 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
         offset += seg_len
 
     latest_formatted = "—"
-    if rows:
+    raw_ts = "—"
+
+    if target_field_id is not None and target_field_id != "" and len(field_summaries) > 0:
+        raw_ts = str(field_summaries[0].get("latest", "—"))
+    elif rows:
         raw_ts = str(rows[0].get("measured_at", "—"))
-        if len(raw_ts) >= 16:
+
+    if raw_ts != "—" and len(raw_ts) >= 16:
+        try:
             dt = datetime.datetime.strptime(raw_ts[:16], "%Y-%m-%d %H:%M")
             latest_formatted = dt.strftime("%d-%m %H:%M")
+        except Exception:
+            pass
 
     return {
         "total": total,
@@ -544,15 +552,26 @@ def report(): return render_template("report.html", active_page="report")
 
 @app.route("/download-pdf")
 def download_pdf():
-    from weasyprint import HTML
+    from playwright.sync_api import sync_playwright
     field_id = request.args.get("field")
     days = request.args.get("days")
     if days == "": days = None
     rows, _, fields = get_rows()
 
-    html = render_template("pdf.html", r=build_report(rows, fields, days=days, target_field_id=field_id, user_id=session.get('user_id'), user_role=session.get('role')))
+    html_content = render_template("pdf.html", r=build_report(rows, fields, days=days, target_field_id=field_id, user_id=session.get('user_id'), user_role=session.get('role')))
 
-    resp = make_response(HTML(string=html, base_url=request.url_root).write_pdf())
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(html_content, wait_until="networkidle")
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "18mm", "bottom": "18mm", "left": "14mm", "right": "14mm"}
+        )
+        browser.close()
+
+    resp = make_response(pdf_bytes)
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = "attachment; filename=veldbeheer-rapport.pdf"
     return resp

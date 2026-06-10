@@ -77,6 +77,12 @@
             const fieldColor = (level !== undefined) ? QUALITY_COLORS[level] : "#60a526";
             const layer = L.geoJSON(f, { style: { color: fieldColor, weight: 2, fillColor: fieldColor, fillOpacity: (level !== undefined) ? 0.2 : 0.05 } }).addTo(fieldLayerGroup);
             f.properties._layer = layer;
+
+            // make field clickable on map
+            layer.on('click', () => {
+                sel.value = i;
+                renderFieldMeasurements(i, true);
+            });
         });
 
         document.getElementById("fields-count").textContent = validFieldsCount + " veld" + (validFieldsCount === 1 ? "" : "en");
