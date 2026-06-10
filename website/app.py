@@ -84,7 +84,7 @@ def login():
             else:
                 error = data.get("error", "Ongeldige inloggegevens.")
         except Exception as e:
-            error = "Kon niet verbinden met de inlogserver."
+            error = "Kon niet verbinden met de server."
 
     return render_template("login.html", error=error)
 
@@ -118,7 +118,7 @@ def register():
                 else:
                     error = data.get("error", "Registratie mislukt.")
             except Exception as e:
-                error = "Kon niet verbinden met de inlogserver."
+                error = "Kon niet verbinden met de server."
 
     return render_template("register.html", error=error, success=success)
 
@@ -173,7 +173,7 @@ def admin_panel():
                 else:
                     error = resp.json().get("error", "Fout bij aanmaken gebruiker.")
             except Exception:
-                error = "Kon niet verbinden met de inlogserver."
+                error = "Kon niet verbinden met de server."
 
         elif action == "delete":
             user_id = request.form.get("user_id")
@@ -188,7 +188,7 @@ def admin_panel():
                 else:
                     error = "Fout bij verwijderen gebruiker."
             except Exception:
-                error = "Kon niet verbinden met de inlogserver."
+                error = "Kon niet verbinden met de server."
 
         elif action == "set_fields":
             user_id = request.form.get("user_id")
@@ -205,7 +205,7 @@ def admin_panel():
                 else:
                     error = "Fout bij bijwerken veldtoegang."
             except Exception:
-                error = "Kon niet verbinden met de inlogserver."
+                error = "Kon niet verbinden met de server."
 
     users_list = []
     try:
