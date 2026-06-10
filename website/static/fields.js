@@ -55,8 +55,13 @@
         });
 
         const sel = document.getElementById("fieldSelect");
-        const dateFilter = document.getElementById("dateFilter");
+        const daysFilter = document.getElementById("daysFilter");
         const sortSelect = document.getElementById("sortSelect");
+
+        const savedDays = localStorage.getItem("daysFilter");
+        if (savedDays !== null && daysFilter) {
+            daysFilter.value = savedDays;
+        }
 
         sel.innerHTML = '<option value="">Kies een veld…</option>';
         let validFieldsCount = 0;
@@ -109,7 +114,10 @@
             else renderFieldMeasurements(Number(sel.value), true);
         });
 
-        dateFilter.addEventListener("change", () => { if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false); });
+        daysFilter.addEventListener("change", (e) => {
+            localStorage.setItem("daysFilter", e.target.value);
+            if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false);
+        });
         sortSelect.addEventListener("change", () => { if (sel.value !== "") renderFieldMeasurements(Number(sel.value), false); });
 
     } catch (e) {
@@ -143,9 +151,10 @@
 
         document.getElementById("filterControls").classList.remove("opacity-50", "pointer-events-none");
 
+        const filterDays = document.getElementById("daysFilter").value;
         const reportLink = document.getElementById("reportLink");
         reportLink.classList.remove("opacity-50", "pointer-events-none");
-        reportLink.href = `/report?field=${id}`;
+        reportLink.href = `/report?field=${id}&days=${filterDays || '30'}`;
 
         if (centerMap) {
             fieldsGeoJSON.features.forEach(f => {
@@ -163,13 +172,22 @@
         // clear existing markers before applying new filters
         pointLayerGroup.clearLayers();
         const listHtml = [];
-        const filterDate = document.getElementById("dateFilter").value;
         const sortMode = document.getElementById("sortSelect").value;
 
         // client-side spatial join to assign scattered sensor points to field polygons
         let fieldPoints = allPoints.filter(pt => turf.booleanPointInPolygon(pt, field));
 
-        if (filterDate) fieldPoints = fieldPoints.filter(pt => (pt.properties.measured_at || "").slice(0, 10) === filterDate);
+        if (filterDays !== "") {
+            const daysNum = parseInt(filterDays, 10);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysNum);
+
+            fieldPoints = fieldPoints.filter(pt => {
+                if (!pt.properties.measured_at) return false;
+                const ptDate = new Date(pt.properties.measured_at);
+                return ptDate >= cutoffDate;
+            });
+        }
 
         fieldPoints.sort((a, b) => {
             if (sortMode === "date_desc") return (b.properties.measured_at || "").localeCompare(a.properties.measured_at || "");
@@ -191,6 +209,19 @@
             marker.bindPopup(`<div class="font-sans text-xs"><strong class="text-sm">Meting</strong><br>Hoogte: ${h} mm<br>Tijd: ${when}</div>`);
             r._marker = marker;
 
+            marker.on('click', () => {
+                document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
+                const li = document.querySelector(`#field-list li[data-point-id="${r.id}"]`);
+                if (li) {
+                    li.classList.add("bg-black/5", "dark:bg-white/10");
+                    li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+
+                pointLayerGroup.eachLayer(layer => layer.setStyle({ color: "#fff", weight: 1.5, radius: 6 }));
+                marker.setStyle({ color: "#1a2e1f", weight: 3, radius: 9 });
+                marker.bringToFront();
+            });
+
             listHtml.push(
                 `<li data-point-id="${r.id}" class="px-5 py-3 border-t border-black/5 dark:border-white/10 first:border-t-0 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/5 transition-colors">
                     <div class="flex items-center justify-between pointer-events-none">
@@ -205,14 +236,15 @@
 
         const listEl = document.getElementById("field-list");
         if (listHtml.length > 0) listEl.innerHTML = listHtml.join("");
-        else listEl.innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden met deze filters.</li>';
+        else listEl.innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden in deze periode.</li>';
     }
 
     document.getElementById("field-list").addEventListener("click", (e) => {
         const li = e.target.closest("li[data-point-id]");
         if (!li) return;
-        document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-brand/10", "dark:bg-brand/20"));
-        li.classList.add("bg-brand/10", "dark:bg-brand/20");
+
+        document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
+        li.classList.add("bg-black/5", "dark:bg-white/10");
 
         const id = Number(li.dataset.pointId);
         const pt = allPoints.find(p => p.properties.id === id);

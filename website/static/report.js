@@ -13,8 +13,15 @@ async function loadReportData(days = "30", fieldId = "") {
     }
 }
 
+document.getElementById("daysFilter").addEventListener("change", (e) => {
+    localStorage.setItem("daysFilter", e.target.value);
+    const fieldId = document.getElementById("reportFieldSelect").value;
+    loadReportData(e.target.value, fieldId);
+});
+
 document.getElementById("reportFieldSelect").addEventListener("change", (e) => {
-    loadReportData("30", e.target.value);
+    const days = document.getElementById("daysFilter").value;
+    loadReportData(days, e.target.value);
 });
 
 function gradeStyle(level) {
@@ -38,7 +45,7 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Metingen & Maaibeurten";
         document.getElementById("chartSubLeft").textContent = "Tijdlijn van de meest recente sensordata";
 
-        let html = `<table class="w-full text-sm text-left"><thead class="border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+        let html = `<table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
 
         if(reportData.fields[0]) {
             html += reportData.fields[0].history.map(h => {
@@ -59,13 +66,13 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Grashoogte";
         document.getElementById("chartSubLeft").textContent = "Gemiddelde hoogte per veld";
 
-        let html = `<table class="w-full text-sm text-left"><thead class="border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+        let html = `<table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
         html += reportData.fields.map(f => {
             const style = gradeStyle(f.level);
             return `<tr>
                 <td class="px-4 py-2.5 font-semibold">${f.name}</td>
                 <td class="px-4 py-2.5 text-[11px] text-zinc-500 tabular-nums">${f.latest ? f.latest.slice(0, 16) : "—"}</td>
-                <td class="px-4 py-2.5 font-medium ${f.level >= 3 ? 'text-brand dark:text-[#7bc53b]' : 'text-zinc-500'}">${f.action}</td>
+                <td class="px-4 py-2.5 font-medium ${f.level >= 3 ? '' : 'text-zinc-500'}" style="${f.level >= 3 ? `color:${style.color}` : ''}">${f.action}</td>
                 <td class="px-4 py-2.5 text-center"><span class="badge rounded-pill" style="background-color:${style.color}; color:#fff; border:none; width:40px;">${f.label}</span></td>
             </tr>`;
         }).join("");
@@ -145,9 +152,12 @@ function renderCharts() {
 
 async function initReportFields(initialFieldId) {
     try {
-        const res = await fetch("/api/summary?days=30");
+        const days = document.getElementById("daysFilter").value || "30";
+        const res = await fetch(`/api/summary?days=${days}`);
         const json = await res.json();
         const sel = document.getElementById("reportFieldSelect");
+
+        sel.innerHTML = '<option value="">Alle velden</option>';
 
         json.fields.forEach(f => {
             const opt = document.createElement("option");
@@ -168,7 +178,8 @@ const downloadBtn = document.getElementById("downloadBtn");
 if(downloadBtn) {
     downloadBtn.onclick = () => {
         const sel = document.getElementById("reportFieldSelect").value;
-        let url = "/download-pdf?days=30";
+        const days = document.getElementById("daysFilter").value;
+        let url = `/download-pdf?days=${days}`;
         if (sel) url += `&field=${sel}`;
         window.open(url, "_blank");
     };
@@ -179,8 +190,23 @@ window.addEventListener("themechange", () => { if (reportData) { renderCharts();
 (async function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const initialField = urlParams.get('field') || "";
+    const urlDays = urlParams.get('days');
+
+    const df = document.getElementById("daysFilter");
+
+    if (urlDays !== null) {
+        if (df) df.value = urlDays;
+        localStorage.setItem("daysFilter", urlDays);
+    } else {
+        const savedDays = localStorage.getItem("daysFilter");
+        if (savedDays !== null && df) {
+            df.value = savedDays;
+        }
+    }
+
+    const days = df ? df.value : "30";
 
     await initReportFields(initialField);
 
-    loadReportData("30", initialField);
+    loadReportData(days, initialField);
 })();

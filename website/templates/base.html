@@ -40,13 +40,17 @@
             }
             @layer components {
                 .btn {
-                    @apply !inline-flex !items-center !justify-center gap-2 !px-4 !py-2 !text-sm !font-semibold !transition-all !rounded-xl !border-transparent !shadow-sm cursor-pointer;
+                    @apply !inline-flex !items-center !justify-center gap-2 !px-4 !py-2 !text-sm !font-semibold !transition-all !rounded-xl border !shadow-sm cursor-pointer;
                 }
                 .btn-success {
-                    @apply !bg-brand !text-white hover:!bg-[#4d8b19] hover:!shadow-md;
+                    @apply !bg-brand !border-transparent !text-white hover:!bg-[#4d8b19] hover:!shadow-md;
                 }
                 .btn-outline-secondary {
-                    @apply !bg-transparent !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 hover:!bg-black/5 dark:hover:!bg-white/10;
+                    @apply !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 hover:!bg-zinc-50 dark:hover:!bg-zinc-700;
+                }
+                /* globally enforces exact same border radius on all inputs across the platform */
+                .form-control, .form-select {
+                    @apply !rounded-xl;
                 }
             }
             ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -159,7 +163,7 @@
                         <button type="button" class="btn-close btn-close-white shadow-none border-0" data-bs-dismiss="modal" aria-label="Sluiten"></button>
                     </div>
 
-                    <div class="md:hidden px-4 pt-4 pb-1 border-b border-black/5 dark:border-white/10">
+                    <div class="md:hidden px-4 pt-4 pb-5 border-b border-black/5 dark:border-white/10">
                         <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Thema Weergave</label>
                         <div class="flex bg-black/5 dark:bg-white/5 rounded-xl p-1 gap-1">
                             <label class="flex-1 text-center cursor-pointer relative m-0">
@@ -176,19 +180,19 @@
                     <form action="{{ url_for('settings') }}" method="POST" class="p-4 space-y-4">
                         <div>
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
-                            <input type="text" value="{{ session.get('username') }}" disabled class="form-control text-sm px-3 py-2 !bg-black/5 dark:!bg-white/5 !border-black/10 dark:!border-white/10 !text-zinc-500 dark:!text-zinc-400 rounded-xl shadow-none">
+                            <input type="text" value="{{ session.get('username') }}" disabled class="form-control text-sm px-3 py-2 !bg-black/5 dark:!bg-white/5 !border-black/10 dark:!border-white/10 !text-zinc-500 dark:!text-zinc-400 shadow-none">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Volledige Naam</label>
-                            <input type="text" name="name" value="{{ session.get('name') }}" required class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                            <input type="text" name="name" value="{{ session.get('name') }}" required class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Nieuw Wachtwoord</label>
-                            <input type="password" name="password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                            <input type="password" name="password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Bevestig Wachtwoord</label>
-                            <input type="password" name="confirm_password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white rounded-xl focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                            <input type="password" name="confirm_password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
                         </div>
                         <div class="pt-2 flex justify-end gap-2">
                             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuleren</button>

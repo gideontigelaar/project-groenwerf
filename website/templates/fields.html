@@ -14,22 +14,28 @@
 {% block content %}
     <div class="h-full grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden h-full">
-            <div class="px-5 py-4 border-b border-black/5 dark:border-white/10 shrink-0">
-                <div class="font-semibold">Velden</div>
-                <div class="text-xs text-zinc-500 dark:text-zinc-400" id="fields-count">Laden…</div>
+            <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-10">
+                <div class="font-semibold text-sm">Velden</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5" id="fields-count">Laden…</div>
             </div>
             <div class="p-4 border-b border-black/5 dark:border-white/10 space-y-3 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-10">
-                <select id="fieldSelect" class="form-select form-select-sm">
+                <select id="fieldSelect" class="form-select form-select-sm !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
                     <option value="">Kies een veld…</option>
                 </select>
                 <div id="filterControls" class="grid grid-cols-2 gap-3 pt-2 opacity-50 pointer-events-none transition-opacity">
                     <div class="space-y-1">
-                        <label for="dateFilter" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Datum</label>
-                        <input type="date" id="dateFilter" class="form-control form-control-sm text-xs" />
+                        <label for="daysFilter" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Periode</label>
+                        <select id="daysFilter" class="form-select form-select-sm text-xs !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                            <option value="7">7 dagen</option>
+                            <option value="30" selected>30 dagen</option>
+                            <option value="90">90 dagen</option>
+                            <option value="365">1 jaar</option>
+                            <option value="">Alle</option>
+                        </select>
                     </div>
                     <div class="space-y-1">
                         <label for="sortSelect" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Sorteren op</label>
-                        <select id="sortSelect" class="form-select form-select-sm text-xs">
+                        <select id="sortSelect" class="form-select form-select-sm text-xs !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
                             <option value="date_desc">Nieuwste eerst</option>
                             <option value="date_asc">Oudste eerst</option>
                             <option value="height_desc">Hoogste eerst</option>

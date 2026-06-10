@@ -20,11 +20,21 @@ async function loadData(days = "30") {
     }
 }
 
-document.getElementById("daysFilter").addEventListener("change", (e) => {
-    selectedFieldId = null;
-    document.getElementById("chart-reset-wrapper").classList.add("hidden");
-    loadData(e.target.value);
-});
+const daysFilterEl = document.getElementById("daysFilter");
+if (daysFilterEl) {
+    const savedDays = localStorage.getItem("daysFilter");
+    if (savedDays !== null) {
+        daysFilterEl.value = savedDays;
+    }
+    daysFilterEl.addEventListener("change", (e) => {
+        localStorage.setItem("daysFilter", e.target.value);
+        selectedFieldId = null;
+        const fw = document.getElementById("floating-reset-wrapper");
+        fw.classList.add("hidden");
+        fw.classList.remove("flex");
+        loadData(e.target.value);
+    });
+}
 
 function gradeStyle(level) {
     const th = window.chartTheme();
@@ -87,7 +97,7 @@ function renderTable() {
                     <span class="badge rounded-pill w-10" style="background-color:${style.color}; color:#fff; border:none;">${f.label}</span>
                 </td>
                 <td class="px-4 py-2.5 text-right">
-                    <a href="/fields?field=${f.id}" class="map-link inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
+                    <a href="/fields?field=${f.id}" class="map-link inline-flex p-1.5 rounded-lg !bg-zinc-100 dark:!bg-zinc-800 border border-black/10 dark:border-white/10 shadow-sm hover:!border-brand hover:!bg-brand hover:!text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
                         <i class="ph-fill ph-map-pin text-[16px]"></i>
                     </a>
                 </td>
@@ -110,13 +120,57 @@ function renderTable() {
                         <span class="text-[11px] text-zinc-500 tabular-nums shrink-0">${f.avg} mm</span>
                     </div>
                 </div>
-                <a href="/fields?field=${f.id}" class="map-link shrink-0 inline-flex p-1.5 rounded-lg bg-black/5 dark:bg-white/10 hover:bg-brand hover:text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
+                <a href="/fields?field=${f.id}" class="map-link shrink-0 inline-flex p-1.5 rounded-lg !bg-zinc-100 dark:!bg-zinc-800 border border-black/10 dark:border-white/10 shadow-sm hover:!border-brand hover:!bg-brand hover:!text-white transition-colors !no-underline !text-zinc-600 dark:!text-zinc-400 hover:!text-white" title="Bekijk op kaart">
                     <i class="ph-fill ph-map-pin text-[16px]"></i>
                 </a>
             </li>`;
         }).join("");
     }
 }
+
+function clearSelection() {
+    selectedFieldId = null;
+    const fw = document.getElementById("floating-reset-wrapper");
+    fw.classList.add("hidden");
+    fw.classList.remove("flex");
+
+    const ccb = document.getElementById("chart-clear-btn");
+    if(ccb) {
+        ccb.classList.add("hidden");
+        ccb.classList.remove("flex");
+    }
+
+    renderTable();
+    renderCharts();
+    renderActivity();
+    highlightMiniMap(false);
+}
+
+function selectField(id) {
+    selectedFieldId = String(id);
+    const f = reportData.fields.find(x => String(x.id) === selectedFieldId);
+    if (f) {
+        document.getElementById("floating-selected-text").textContent = f.name;
+        const fw = document.getElementById("floating-reset-wrapper");
+        fw.classList.remove("hidden");
+        fw.classList.add("flex");
+
+        const ccb = document.getElementById("chart-clear-btn");
+        if(ccb) {
+            document.getElementById("chart-selected-text").textContent = f.name;
+            ccb.classList.remove("hidden");
+            ccb.classList.add("flex");
+        }
+
+        renderTable();
+        renderCharts();
+        renderActivity();
+        highlightMiniMap(true);
+    }
+}
+
+const clearBtn = document.getElementById("chart-clear-btn");
+if(clearBtn) clearBtn.addEventListener("click", clearSelection);
 
 // handle dynamic element clicks
 function _handleFieldClick(e) {
@@ -125,29 +179,20 @@ function _handleFieldClick(e) {
     const el = e.target.closest("[data-field-id]");
     if (!el) return;
 
-    selectedFieldId = el.dataset.fieldId;
-    const f = reportData.fields.find(x => String(x.id) === String(selectedFieldId));
-    document.getElementById("chart-selected-text").textContent = `Historie: ${f.name}`;
-    document.getElementById("chart-reset-wrapper").classList.remove("hidden");
+    const clickedId = String(el.dataset.fieldId);
 
-    renderTable();
-    renderCharts();
-    renderActivity();
-    highlightMiniMap(true);
+    if (selectedFieldId === clickedId) {
+        clearSelection();
+    } else {
+        selectField(clickedId);
+    }
 }
 
 document.getElementById("fields-body").addEventListener("click", _handleFieldClick);
 document.getElementById("fields-body-mobile").addEventListener("click", _handleFieldClick);
 document.getElementById("activity-list").addEventListener("click", _handleFieldClick);
 
-document.getElementById("chart-reset").addEventListener("click", () => {
-    selectedFieldId = null;
-    renderTable();
-    renderCharts();
-    renderActivity();
-    document.getElementById("chart-reset-wrapper").classList.add("hidden");
-    highlightMiniMap(false);
-});
+document.getElementById("floating-reset").addEventListener("click", clearSelection);
 
 function renderCharts() {
     if (!reportData) return;
@@ -160,7 +205,7 @@ function renderCharts() {
 
     if (selectedFieldId !== null) {
         const f = reportData.fields.find(x => String(x.id) === String(selectedFieldId));
-        document.getElementById("chart-title").textContent = `Maaibeurten: ${f.name}`;
+        document.getElementById("chart-title").textContent = `Maaibeurten`;
         document.getElementById("chart-sub").innerHTML = "Verloop van de metingen / maaibeurten";
 
         mainChart = new Chart(ctx, {
@@ -198,13 +243,12 @@ function renderCharts() {
                         const idx = elements[0].index;
                         const f = reportData.fields[idx];
                         if (f) {
-                            selectedFieldId = String(f.id);
-                            document.getElementById("chart-selected-text").textContent = `Historie: ${f.name}`;
-                            document.getElementById("chart-reset-wrapper").classList.remove("hidden");
-                            renderTable();
-                            renderCharts();
-                            renderActivity();
-                            highlightMiniMap(true);
+                            const clickedId = String(f.id);
+                            if (selectedFieldId === clickedId) {
+                                clearSelection();
+                            } else {
+                                selectField(clickedId);
+                            }
                         }
                     }
                 },
@@ -265,7 +309,7 @@ function renderActivity() {
         <li data-field-id="${f.id}" class="flex items-start gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors ${isActive}">
             <span class="w-2 h-2 rounded-full mt-1.5 shrink-0" style="background-color:${colors[f.level]}"></span>
             <div><div class="text-xs font-semibold">${f.name} — <span class="tabular-nums">${f.avg} mm</span> (${f.label})</div>
-            <div class="text-[11px] text-zinc-500 mt-0.5">Actie: ${f.action}</div></div>
+            <div class="text-[11px] text-zinc-500 mt-0.5">Actie: <span style="color:${colors[f.level]}">${f.action}</span></div></div>
         </li>`;
     }).join("");
 }
@@ -298,14 +342,14 @@ async function initMiniMap() {
             _miniMapLayers[String(i)] = layer;
 
             layer.on("click", () => {
-                selectedFieldId = String(i);
-                document.getElementById("chart-reset-wrapper").classList.remove("hidden");
-                renderTable();
-                renderCharts();
-                renderActivity();
-                highlightMiniMap(true);
-                const target = document.querySelector(`[data-field-id="${i}"]`);
-                target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const clickedId = String(i);
+                if (selectedFieldId === clickedId) {
+                    clearSelection();
+                } else {
+                    selectField(clickedId);
+                    const target = document.querySelector(`[data-field-id="${i}"]`);
+                    target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
             });
         });
         if (fieldLayerGroup.getLayers().length > 0) miniMap.fitBounds(fieldLayerGroup.getBounds(), { padding: [10, 10] });
@@ -351,7 +395,8 @@ if (syncBtn) {
         syncMobileText.textContent = "Bezig...";
         try {
             await fetch("/api/sync", { method: "POST" });
-            await loadData(document.getElementById("daysFilter").value);
+            const df = document.getElementById("daysFilter");
+            await loadData(df ? df.value : "30");
         } catch (e) {}
         syncDesktopText.textContent = "Synchroniseren";
         syncMobileText.textContent = "Sync";
@@ -360,6 +405,11 @@ if (syncBtn) {
 }
 
 window.addEventListener("themechange", () => { if (reportData) { renderCharts(); } });
-loadData();
-// polling loop for real-time background sync
-setInterval(() => loadData(document.getElementById("daysFilter").value), 30000);
+
+const initialDays = daysFilterEl ? daysFilterEl.value : "30";
+loadData(initialDays);
+
+setInterval(() => {
+    const d = document.getElementById("daysFilter");
+    loadData(d ? d.value : "30");
+}, 30000);
