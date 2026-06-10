@@ -39,9 +39,9 @@
 
         fieldsGeoJSON = {
             type: "FeatureCollection",
-            features: (esriData.features || []).map(f => ({
+            features: (esriData.features || []).map((f, originalIndex) => ({
                 type: "Feature",
-                properties: f.attributes || {},
+                properties: { ...(f.attributes || {}), _id: originalIndex },
                 geometry: (f.geometry && f.geometry.rings) ? { type: "Polygon", coordinates: f.geometry.rings } : null
             })).filter(f => f.geometry != null)
         };
@@ -61,13 +61,12 @@
         sel.innerHTML = '<option value="">Kies een veld…</option>';
         let validFieldsCount = 0;
 
-        fieldsGeoJSON.features.forEach((f, i) => {
-            if (!f.geometry) return;
+        fieldsGeoJSON.features.forEach((f) => {
             validFieldsCount++;
+            const i = f.properties._id;
 
             // map attribute lookups to handle inconsistent arcgis field names
             const name = f.properties.Name || f.properties.Naam || f.properties.Field_Name || `Veld ${i + 1}`;
-            f.properties._id = i;
 
             const opt = document.createElement("option");
             opt.value = i;
@@ -90,7 +89,11 @@
 
         if (initialField !== null) {
             sel.value = initialField;
-            renderFieldMeasurements(Number(initialField), true);
+            if (sel.value === initialField) {
+                renderFieldMeasurements(Number(initialField), true);
+            } else {
+                resetSelection();
+            }
         } else {
             resetSelection();
         }
@@ -111,7 +114,10 @@
     function resetSelection() {
         pointLayerGroup.clearLayers();
         document.getElementById("filterControls").classList.add("opacity-50", "pointer-events-none");
-        document.getElementById("reportLink").classList.add("hidden");
+
+        const reportLink = document.getElementById("reportLink");
+        reportLink.classList.add("opacity-50", "pointer-events-none");
+        reportLink.removeAttribute("href");
 
         fieldsGeoJSON.features.forEach(f => {
             if (f.properties._layer) {
@@ -130,8 +136,10 @@
         if (!field) return;
 
         document.getElementById("filterControls").classList.remove("opacity-50", "pointer-events-none");
-        document.getElementById("reportLink").href = `/report?field=${id}`;
-        document.getElementById("reportLink").classList.remove("hidden");
+
+        const reportLink = document.getElementById("reportLink");
+        reportLink.classList.remove("opacity-50", "pointer-events-none");
+        reportLink.href = `/report?field=${id}`;
 
         if (centerMap) {
             fieldsGeoJSON.features.forEach(f => {

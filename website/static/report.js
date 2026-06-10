@@ -15,13 +15,6 @@ async function loadReportData(days = "30", fieldId = "") {
 
 document.getElementById("reportFieldSelect").addEventListener("change", (e) => {
     loadReportData("30", e.target.value);
-
-    const downloadBtn = document.getElementById("downloadBtn");
-    if(downloadBtn) {
-        let url = "/download-pdf?days=30";
-        if(e.target.value) url += `&field=${e.target.value}`;
-        downloadBtn.onclick = () => window.open(url, "_blank");
-    }
 });
 
 function gradeStyle(level) {
@@ -150,26 +143,44 @@ function renderCharts() {
     if (pctEl) pctEl.textContent = pct + "%";
 }
 
-async function initReportFields() {
+async function initReportFields(initialFieldId) {
     try {
-        const res = await fetch("/api/fields");
+        const res = await fetch("/api/summary?days=30");
         const json = await res.json();
         const sel = document.getElementById("reportFieldSelect");
 
-        json.features.forEach((f, i) => {
-            const name = f.properties.Name || f.properties.Naam || f.properties.Field_Name || `Veld ${i + 1}`;
+        json.fields.forEach(f => {
             const opt = document.createElement("option");
-            opt.value = i; opt.textContent = name;
+            opt.value = f.id;
+            opt.textContent = f.name;
             sel.appendChild(opt);
         });
-    } catch (e) {}
+
+        if (initialFieldId) {
+            sel.value = initialFieldId;
+        }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 const downloadBtn = document.getElementById("downloadBtn");
 if(downloadBtn) {
-    downloadBtn.onclick = () => window.open("/download-pdf?days=30", "_blank");
+    downloadBtn.onclick = () => {
+        const sel = document.getElementById("reportFieldSelect").value;
+        let url = "/download-pdf?days=30";
+        if (sel) url += `&field=${sel}`;
+        window.open(url, "_blank");
+    };
 }
 
 window.addEventListener("themechange", () => { if (reportData) { renderCharts(); } });
-initReportFields();
-loadReportData();
+
+(async function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialField = urlParams.get('field') || "";
+
+    await initReportFields(initialField);
+
+    loadReportData("30", initialField);
+})();
