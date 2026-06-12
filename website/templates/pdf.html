@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="nl">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Groenwerf - Veldbeheer Rapport</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ['Manrope', 'sans-serif'],
+                            display: ['Fraunces', 'serif'],
+                        },
+                        colors: {
+                            brand: '#60a526',
+                            'brand-soft': '#7bc53b',
+                        }
+                    }
+                }
+            }
+        </script>
+
+        <style>
+            @page { size: A4; margin: 0; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white; }
+
+            .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+        </style>
+    </head>
+    <body class="font-sans text-zinc-800 antialiased p-8 bg-white">
+
+        <div class="flex items-center gap-6 bg-brand text-white rounded-3xl p-6 px-8 mb-8 shadow-sm">
+            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 shadow-sm shrink-0">
+                <i class="ph-fill ph-leaf text-[32px]"></i>
+            </div>
+            <div class="flex flex-col justify-center">
+                <div class="text-[11px] font-bold uppercase tracking-widest opacity-90 leading-none mb-1.5">Groenwerf</div>
+                <h1 class="font-display text-3xl font-bold leading-tight m-0">
+                    {% if r.target_field %}Rapport: {{ r.fields[0].name }}{% else %}Veldbeheer Rapport (Totaal){% endif %}
+                </h1>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-4 mb-8 avoid-break">
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-hash"></i> Metingen</div>
+                <div class="font-display text-2xl font-semibold text-zinc-800">{{ r.total }}</div>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-ruler"></i> Gem. Hoogte</div>
+                <div class="font-display text-2xl font-semibold text-zinc-800">{{ r.avg }} <span class="text-xs font-sans font-medium text-zinc-500">mm</span></div>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-medal"></i> A/A+ (Top)</div>
+                <div class="font-display text-2xl font-semibold text-brand">{{ r.counts[0] + r.counts[1] }}</div>
+            </div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-warning"></i> D (Actie)</div>
+                <div class="font-display text-2xl font-semibold text-red-500">{{ r.counts[4] }}</div>
+            </div>
+        </div>
+
+        {% if not r.target_field %}
+        <div class="mb-8 avoid-break">
+            <h2 class="text-lg font-bold text-brand mb-1">Kwaliteitsverdeling</h2>
+            <div class="text-xs text-zinc-500 font-medium mb-4">Aandeel metingen per normeringscategorie</div>
+
+            <div class="flex gap-6">
+                <div class="w-[200px] shrink-0 rounded-2xl border border-zinc-200 p-5 flex flex-col items-center justify-center bg-zinc-50/50">
+                    <div class="relative w-[130px] h-[130px]">
+                        <canvas id="pdfDonutChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="font-display text-3xl font-semibold leading-none text-zinc-800">{{ r.pcts[0] + r.pcts[1] }}%</div>
+                            <div class="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mt-1">A/A+</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 rounded-2xl border border-zinc-200 p-6 flex flex-col justify-center gap-4 bg-zinc-50/50">
+                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#60a526]"></span>A+ (Uitstekend)</span>
+                        <span class="text-zinc-500 tabular-nums">{{ r.counts[0] }} ({{ r.pcts[0] }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#84cc16]"></span>A (Goed)</span>
+                        <span class="text-zinc-500 tabular-nums">{{ r.counts[1] }} ({{ r.pcts[1] }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#eab308]"></span>B (Acceptabel)</span>
+                        <span class="text-zinc-500 tabular-nums">{{ r.counts[2] }} ({{ r.pcts[2] }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#f97316]"></span>C (Matig)</span>
+                        <span class="text-zinc-500 tabular-nums">{{ r.counts[3] }} ({{ r.pcts[3] }}%)</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#ef4444]"></span>D (Slecht)</span>
+                        <span class="text-zinc-500 tabular-nums">{{ r.counts[4] }} ({{ r.pcts[4] }}%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8 avoid-break">
+            <h2 class="text-lg font-bold text-brand mb-1">Veld Details & Advies</h2>
+            <div class="text-xs text-zinc-500 font-medium mb-4">Samenvatting per afgebakend veld op basis van ruimtelijke intersectie</div>
+
+            <div class="rounded-2xl border border-zinc-200 overflow-hidden">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-zinc-50 border-b border-zinc-200">
+                        <tr class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                            <th class="px-5 py-3">Veldnaam</th>
+                            <th class="px-5 py-3">Laatste Meting</th>
+                            <th class="px-5 py-3">Maaiadvies</th>
+                            <th class="px-5 py-3">Gem. Hoogte</th>
+                            <th class="px-5 py-3 text-center">Kwaliteit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100">
+                        {% set bar_colors = ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"] %}
+                        {% for m in r.fields %}
+                        <tr>
+                            <td class="px-5 py-3 font-semibold text-zinc-800">{{ m.name }}</td>
+                            <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
+                            <td class="px-5 py-3 font-bold text-brand">{{ m.action }}</td>
+                            <td class="px-5 py-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-16 h-1.5 rounded-full bg-zinc-200 overflow-hidden">
+                                        <div class="h-full rounded-full" style="width:{{ m.bar_pct }}%; background-color:{{ bar_colors[m.level] }}"></div>
+                                    </div>
+                                    <span class="text-xs font-semibold text-zinc-600 tabular-nums">{{ m.avg }} mm</span>
+                                </div>
+                            </td>
+                            <td class="px-5 py-3 text-center">
+                                <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold text-white w-10 text-center" style="background-color:{{ bar_colors[m.level] }}">{{ m.label }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="mb-8 avoid-break">
+            <h2 class="text-lg font-bold text-brand mb-1">Metingen & Maaibeurten</h2>
+            <div class="text-xs text-zinc-500 font-medium mb-4">Tijdlijn van de meest recente sensordata voor {{ r.fields[0].name }}</div>
+
+            <div class="rounded-2xl border border-zinc-200 overflow-hidden">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-zinc-50 border-b border-zinc-200">
+                        <tr class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                            <th class="px-5 py-3">Type</th>
+                            <th class="px-5 py-3">Datum & Tijd</th>
+                            <th class="px-5 py-3">Grashoogte</th>
+                            <th class="px-5 py-3">Metingen</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100">
+                        {% for i in range(r.fields[0].history|length) %}
+                            {% set h = r.fields[0].history[i] %}
+                            {% set title = "Meting" %}
+                            {% set is_mow = false %}
+                            {% if i < r.fields[0].history|length - 1 %}
+                                {% set older_h = r.fields[0].history[i+1].h %}
+                                {% if (older_h - h.h) > 30 %}
+                                    {% set title = "Maaibeurt gedetecteerd" %}
+                                    {% set is_mow = true %}
+                                {% endif %}
+                            {% endif %}
+                            <tr>
+                                <td class="px-5 py-3 font-semibold {{ 'text-brand' if is_mow else 'text-zinc-800' }}">
+                                    <div class="flex items-center gap-1.5">
+                                        {% if is_mow %}<i class="ph-bold ph-scissors"></i>{% else %}<i class="ph-bold ph-ruler"></i>{% endif %}
+                                        {{ title }}
+                                    </div>
+                                </td>
+                                <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ h.time }}</td>
+                                <td class="px-5 py-3 font-semibold tabular-nums text-zinc-800">{{ h.h }} mm</td>
+                                <td class="px-5 py-3 text-xs text-zinc-500 font-medium">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mb-8 avoid-break">
+            <h2 class="text-lg font-bold text-brand mb-1">Aanbevelingen & Normering</h2>
+            <div class="rounded-2xl border border-zinc-200 p-5 bg-zinc-50/50 text-xs text-zinc-700 leading-relaxed space-y-2">
+                {% if r.counts[4] %}
+                <div class="flex items-start gap-2">
+                    <i class="ph-fill ph-warning-circle text-red-500 text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-zinc-900">{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (>100 mm) — directe maaiactie noodzakelijk.</div>
+                </div>
+                {% endif %}
+                {% if r.counts[3] %}
+                <div class="flex items-start gap-2">
+                    <i class="ph-fill ph-info text-[#f97316] text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-zinc-900">{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm) — maaien inplannen.</div>
+                </div>
+                {% endif %}
+                {% if r.counts[2] %}
+                <div class="flex items-start gap-2">
+                    <i class="ph-fill ph-info text-[#eab308] text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-zinc-900">{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm) — visueel controleren.</div>
+                </div>
+                {% endif %}
+                {% if r.counts[0] + r.counts[1] %}
+                <div class="flex items-start gap-2">
+                    <i class="ph-fill ph-check-circle text-brand text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-zinc-900">{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in A/A+ (≤80 mm) — gras is in topconditie.</div>
+                </div>
+                {% endif %}
+
+                <div class="pt-3 mt-3 border-t border-zinc-200 text-[10px] text-zinc-500 font-medium flex items-center gap-1.5">
+                    <i class="ph-bold ph-info"></i> Kwaliteitseisen conform normering: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-zinc-200 text-[10px] text-zinc-500 font-semibold avoid-break">
+            <div class="flex items-center gap-1.5">
+                <i class="ph-fill ph-leaf text-brand"></i>
+                <span class="font-display text-brand font-bold text-xs tracking-wide">Groenwerf</span>
+                <span class="mx-1 font-normal opacity-50">|</span>
+                Veldbeheer &amp; grashoogte monitoring
+            </div>
+            <div>Gegenereerd op {{ r.generated }} <span class="mx-1">•</span> Laatste meting: {{ r.latest }}</div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const ctx = document.getElementById("pdfDonutChart");
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: "doughnut",
+                        data: {
+                            labels: ["A+", "A", "B", "C", "D"],
+                            datasets: [{
+                                data: [{{ r.counts[0] }}, {{ r.counts[1] }}, {{ r.counts[2] }}, {{ r.counts[3] }}, {{ r.counts[4] }}],
+                                backgroundColor: ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: "75%",
+                            animation: false,
+                            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                        }
+                    });
+                }
+            });
+        </script>
+    </body>
+</html>

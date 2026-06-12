@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Rapport - Groenwerf{% endblock %}
+{% block page_title %}Veldbeheer rapport{% endblock %}
+{% block page_sub %}Uitgebreide kwaliteitsrapportage voor management{% endblock %}
+
+{% block head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+    <select id="daysFilter" class="form-select text-xs h-[34px] py-0 pl-3 pr-8 rounded-xl !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 !bg-white dark:!bg-zinc-800 shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand font-semibold cursor-pointer w-auto">
+        <option value="7">7 dagen</option>
+        <option value="30" selected>30 dagen</option>
+        <option value="90">90 dagen</option>
+        <option value="365">1 jaar</option>
+        <option value="">Alle</option>
+    </select>
+    <select id="reportFieldSelect" class="form-select text-xs h-[34px] py-0 pl-3 pr-8 rounded-xl !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 !bg-white dark:!bg-zinc-800 shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand font-semibold cursor-pointer max-w-[140px] sm:max-w-[200px] truncate w-auto">
+        <option value="">Alle velden</option>
+    </select>
+    <button id="downloadBtn" class="btn btn-outline-secondary hidden sm:inline-flex !h-[34px] !px-3 !py-0">PDF downloaden</button>
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col h-full max-w-7xl mx-auto w-full gap-4 min-h-0">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 px-2">
+            <div>
+                <div class="font-display text-2xl font-semibold" id="r-title">Veldbeheer Rapport</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-1" id="report-date">Laden…</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 shrink-0">
+            {% set kpi = "rounded-2xl p-4 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col justify-center" %}
+            <div class="{{ kpi }}">
+                <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Metingen</div>
+                <div class="font-display text-2xl font-semibold leading-none text-zinc-800 dark:text-zinc-100" id="r-total">—</div>
+            </div>
+            <div class="{{ kpi }}">
+                <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Kwaliteit A/A+</div>
+                <div class="font-display text-2xl font-semibold leading-none text-[#60a526]" id="r-ok">—</div>
+            </div>
+            <div class="{{ kpi }}">
+                <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Actie vereist (D)</div>
+                <div class="font-display text-2xl font-semibold leading-none text-[#ef4444]" id="r-mow">—</div>
+            </div>
+        </div>
+
+        <div id="dynamicChartsRow" class="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+            <div class="md:col-span-2 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden min-w-0">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 z-10 shrink-0 flex flex-col">
+                    <div class="font-semibold text-sm" id="chartLabelLeft">Grashoogte</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5" id="chartSubLeft">Gemiddelde per veld</div>
+                </div>
+                <div class="p-4 relative h-[180px] w-full min-w-0 flex-1"><canvas id="barChart"></canvas></div>
+            </div>
+            <div class="md:col-span-1 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden min-w-0">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 z-10 shrink-0 flex flex-col">
+                    <div class="font-semibold text-sm" id="chartLabelRight">Kwaliteitsverdeling</div>
+                </div>
+                <div class="p-4 flex flex-col items-center justify-center text-center flex-1">
+                    <div class="relative w-[130px] h-[130px] mb-3 shrink-0">
+                        <canvas id="donutChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="font-display text-2xl font-semibold" id="donut-pct">—</div>
+                            <div class="text-[9px] uppercase tracking-[0.1em] text-zinc-500 font-bold" id="donut-label">A/A+</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-x-3 gap-y-1.5 text-[10px] font-bold text-zinc-500 uppercase">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#60a526]"></span>A+</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#84cc16]"></span>A</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#eab308]"></span>B</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#f97316]"></span>C</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#ef4444]"></span>D</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0">
+            <div class="md:col-span-2 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden h-full">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 text-sm z-10 shrink-0" id="table-title">Veld details</div>
+                <div id="report-rows" class="p-0 text-sm flex-1 overflow-y-auto w-full">
+                    <div class="px-4 py-6 text-center text-zinc-500">Laden…</div>
+                </div>
+            </div>
+
+            <div class="md:col-span-1 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden h-full">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 text-sm z-10 shrink-0">Aanbevelingen & Kwaliteitseisen</div>
+                <div class="p-4 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 flex-1 overflow-y-auto" id="report-recs">Laden…</div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='report.js') }}"></script>
+{% endblock %}

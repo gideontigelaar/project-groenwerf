@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Groenwerf{% endblock %}
+{% block page_title %}Veldbeheer overzicht{% endblock %}
+{% block page_sub %}Grashoogte en maaiadvies per veld op basis van kwaliteitsnormen{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+{% endblock %}
+
+{% block topbar_actions %}
+    <select id="daysFilter" class="form-select text-xs h-[34px] py-0 pl-3 pr-8 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 !bg-white dark:!bg-zinc-800 shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand font-semibold cursor-pointer w-auto">
+        <option value="7">7 dagen</option>
+        <option value="30" selected>30 dagen</option>
+        <option value="90">90 dagen</option>
+        <option value="365">1 jaar</option>
+        <option value="">Alle</option>
+    </select>
+    <button id="syncBtn" class="btn btn-outline-secondary !h-[34px] !px-3 !py-0 flex items-center justify-center gap-2">
+        <i class="ph ph-arrows-clockwise text-[16px] sm:hidden"></i>
+        <span class="hidden sm:inline" id="syncDesktopText">Synchroniseren</span>
+        <span class="sm:hidden" id="syncMobileText">Sync</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+<div id="floating-reset-wrapper" class="fixed top-[80px] right-4 md:right-8 z-[60] hidden items-center gap-3 px-4 py-2.5 rounded-xl border !bg-brand/10 dark:!bg-brand/20 !border-brand/20 dark:!border-brand/30 backdrop-blur-md shadow-lg transform transition-all translate-y-0">
+    <div class="flex items-center">
+        <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Geselecteerd: <span id="floating-selected-text" class="font-bold text-brand dark:text-[#7bc53b]"></span></span>
+    </div>
+    <div class="w-px h-4 bg-brand/20 dark:bg-brand/30"></div>
+    <button id="floating-reset" class="p-1 -mr-1 rounded-lg hover:bg-brand/20 dark:hover:bg-brand/30 text-brand dark:text-[#7bc53b] transition-colors cursor-pointer" title="Selectie wissen & terug naar overzicht">
+        <i class="ph-bold ph-x text-[14px]"></i>
+    </button>
+</div>
+
+<div class="max-w-7xl mx-auto w-full flex flex-col gap-4 h-full min-w-0">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+        {% set card = "rounded-2xl p-4 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm" %}
+
+        <div class="{{ card }}">
+            <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Totaal Metingen</div>
+            <div class="font-display text-2xl font-semibold leading-none mb-2" id="kpi-count">—</div>
+            <span class="badge rounded-pill !bg-zinc-100 dark:!bg-zinc-800 border border-black/10 dark:border-white/10 !text-zinc-800 dark:!text-zinc-200 shadow-sm" id="kpi-source">—</span>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Gem. Grashoogte</div>
+            <div class="font-display text-2xl font-semibold leading-none mb-2" id="kpi-avg">— <span class="text-xs font-normal text-zinc-500">mm</span></div>
+            <span class="badge rounded-pill" id="kpi-avg-badge">—</span>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Actie vereist (D)</div>
+            <div class="font-display text-2xl font-semibold leading-none text-[#ef4444] mb-2" id="kpi-mow">—</div>
+            <span class="badge rounded-pill text-bg-danger" id="kpi-mow-badge">—</span>
+        </div>
+
+        <div class="{{ card }}">
+            <div class="text-[9px] font-bold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400 mb-1.5">Laatste Meting</div>
+            <div class="font-display text-2xl font-semibold leading-none mb-2" id="kpi-time">—</div>
+            <span class="badge rounded-pill text-bg-success" style="--bs-success-bg-subtle:#dcfce7; color:#60a526">Actief</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-w-0">
+        <div class="lg:col-span-2 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden min-w-0">
+            <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 z-10 shrink-0 flex justify-between items-center gap-3">
+                <div class="min-w-0">
+                    <div class="font-semibold text-sm truncate" id="chart-title">Grashoogte per Veld</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5 truncate" id="chart-sub">Gemiddelde hoogte per veld <i>(Klik op een veld voor historie)</i></div>
+                </div>
+                <button id="chart-clear-btn" class="hidden items-center gap-1.5 px-2.5 py-0.5 !rounded-lg bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 text-brand dark:text-[#7bc53b] hover:bg-brand/20 dark:hover:bg-brand/30 transition-colors cursor-pointer shrink-0 flex">
+                    <span id="chart-selected-text" class="text-[13px] font-semibold max-w-[100px] sm:max-w-[200px] truncate">Grasveld 4 - Test</span>
+                    <i class="ph-bold ph-x text-[11px] mt-[1px]"></i>
+                </button>
+            </div>
+            <div class="p-4 relative h-[180px] w-full min-w-0 flex-1"><canvas id="mainChart"></canvas></div>
+        </div>
+
+        <div class="lg:col-span-1 rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden min-h-[220px]">
+            <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-white/80 dark:bg-zinc-900/80 z-10">
+                <div class="text-sm font-semibold">Overzichtskaart</div>
+            </div>
+            <div id="miniMapView" class="flex-1 bg-zinc-100 dark:bg-zinc-900 z-0"></div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 min-w-0">
+        <div class="lg:col-span-2 flex flex-col rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden h-full min-h-[300px] min-w-0">
+            <div class="p-3 px-4 flex items-start sm:items-center justify-between border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-zinc-900/80">
+                <div>
+                    <div class="font-semibold text-sm">Veldoverzicht</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">Samenvatting per veld (Klik voor historie)</div>
+                </div>
+                <span id="table-active-fields" class="badge rounded-pill !bg-zinc-100 dark:!bg-zinc-800 border border-black/10 dark:border-white/10 !text-zinc-800 dark:!text-zinc-200 shadow-sm font-medium shrink-0 ml-3 hidden sm:inline-block">—</span>
+            </div>
+            <div class="flex-1 overflow-y-auto w-full min-w-0">
+                <ul class="md:hidden m-0 p-0 list-none flex flex-col w-full min-w-0" id="fields-body-mobile"></ul>
+                <div class="hidden md:block w-full overflow-x-auto min-w-0">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10">
+                            <tr class="text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400">
+                                <th class="px-4 py-2.5 font-bold">Veldnaam</th>
+                                <th class="px-4 py-2.5 font-bold">Laatst</th>
+                                <th class="px-4 py-2.5 font-bold">Gem. Hoogte</th>
+                                <th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th>
+                                <th class="px-4 py-2.5 font-bold w-12"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="fields-body">
+                            <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500 text-sm">Laden…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 flex flex-col gap-4 h-full min-h-0 min-w-0">
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex flex-col shrink-0 min-w-0">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 text-sm shrink-0">Kwaliteitsverdeling</div>
+                <div class="p-4 flex items-center gap-4 min-w-0">
+                    <div class="relative w-[90px] h-[90px] shrink-0">
+                        <canvas id="dashDonutChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div class="font-display text-base font-semibold leading-none" id="dash-donut-pct">—</div>
+                            <div class="text-[8px] uppercase tracking-[0.08em] text-zinc-500 font-bold mt-0.5">A/A+</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1 text-[11px] font-medium flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm inline-block shrink-0" style="background:#60a526"></span>A+</span><span class="tabular-nums text-zinc-500" id="dash-count-0">—</span></div>
+                        <div class="flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm inline-block shrink-0" style="background:#84cc16"></span>A</span><span class="tabular-nums text-zinc-500" id="dash-count-1">—</span></div>
+                        <div class="flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm inline-block shrink-0" style="background:#eab308"></span>B</span><span class="tabular-nums text-zinc-500" id="dash-count-2">—</span></div>
+                        <div class="flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm inline-block shrink-0" style="background:#f97316"></span>C</span><span class="tabular-nums text-zinc-500" id="dash-count-3">—</span></div>
+                        <div class="flex items-center justify-between gap-2"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-sm inline-block shrink-0" style="background:#ef4444"></span>D</span><span class="tabular-nums text-zinc-500" id="dash-count-4">—</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 min-w-0">
+                <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 text-sm shrink-0">Actie vereist (Kwaliteit D/C)</div>
+                <ul class="m-0 p-0 list-none flex-1 overflow-y-auto w-full min-w-0" id="activity-list">
+                    <li class="px-4 py-3 text-xs text-zinc-500">Laden…</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}

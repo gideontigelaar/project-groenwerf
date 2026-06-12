@@ -3,6 +3,20 @@
 ## Prerequisites
 - Python 3.x and `pip`
 - MySQL Server
+- ArcGIS Online Account
+
+## ArcGIS Online Setup
+Before syncing data via `arcgis_sync.py`, you need to create a Hosted Feature Layer in ArcGIS Online to accept the data.
+
+1. Go to your ArcGIS Online account and create a new **Hosted Feature Layer** (Point layer).
+2. Add the following fields to your Feature Layer (names must match exactly):
+   - `ToF_Height_mm` (Type: Integer)
+   - `ToF_Quality_Grade` (Type: String)
+   - `Sonic_Height_mm` (Type: Integer)
+   - `Sonic_Quality_Grade` (Type: String)
+   - `Measured_At` (Type: String)
+3. Save the layer and copy the Feature Layer URL.
+4. Add the URL to your `credentials.py` file as `ARCGIS_LAYER_URL`.
 
 ## Setup
 1. In the `api/` directory, create and activate a virtual environment:
@@ -31,6 +45,7 @@
 2. Initialize the table structure:
    ```sql
    USE groenwerf;
+
    CREATE TABLE sensor_readings (
        id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
        latitude     DECIMAL(10, 7)  DEFAULT NULL,
@@ -44,8 +59,48 @@
        accel_raw_y  FLOAT           DEFAULT NULL,
        accel_raw_z  FLOAT           DEFAULT NULL,
        measured_at  DATETIME        DEFAULT NULL,
+       synced       TINYINT(1)      DEFAULT 0,
        PRIMARY KEY (id)
    );
+
+   CREATE TABLE invite_codes (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       code VARCHAR(50) UNIQUE NOT NULL,
+       is_used TINYINT(1) DEFAULT 0
+   );
+
+   CREATE TABLE users (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       username VARCHAR(100) UNIQUE NOT NULL,
+       password_hash VARCHAR(255) NOT NULL,
+       name VARCHAR(100) NOT NULL,
+       role ENUM('admin', 'user') DEFAULT 'user',
+       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE user_fields (
+       user_id INT NOT NULL,
+       field_id INT NOT NULL,
+       PRIMARY KEY (user_id, field_id),
+       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+   );
+
+   -- Insert invite codes for creating accounts
+   INSERT INTO invite_codes (code) VALUES
+       ('INVITE-CODE-1'),
+       ('INVITE-CODE-2'),
+       ('INVITE-CODE-3');
+   ```
+
+3. **Bootstrap First Admin Account:**
+   Since admins manage all accounts, you need to create your first admin directly in the database. Run the following python command inside `api/` to generate a secure hash, then insert it:
+   ```bash
+   python3 -c "from werkzeug.security import generate_password_hash; print(generate_password_hash('wachtwoord123'))"
+   ```
+   Take that generated string and run this query inside MySQL:
+   ```sql
+   INSERT INTO users (username, password_hash, name, role)
+   VALUES ('admin', 'PLACED_GENERATED_HASH_HERE', 'Hoofd Beheerder', 'admin');
    ```
 
 ## Production Deployment (Systemd)
@@ -69,14 +124,3 @@ To run the API as a service on Ubuntu:
    WantedBy=multi-user.target
    ```
 3. Enable and start: `sudo systemctl daemon-reload && sudo systemctl enable api-groenwerf && sudo systemctl start api-groenwerf`
-
-## API Usage & Authentication
-All requests to the `/sensor-data` endpoints (both `GET` and `POST`) must include your secure API key in the headers.
-
-**Header Format:**
-`X-API-Key: YOUR_SECRET_API_KEY`
-
-**Example GET Request:**
-```bash
-curl -H "X-API-Key: YOUR_SECRET_API_KEY" "[http://127.0.0.1:5002/sensor-data?limit=10](http://127.0.0.1:5002/sensor-data?limit=10)"
-```

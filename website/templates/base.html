@@ -1,0 +1,280 @@
+{% macro nav_link(key, href, label, active_page) -%}
+    <a href="{{ href }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors {% if active_page == key %}bg-brand text-white shadow-sm shadow-brand/30{% else %}!text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
+        {% if key == 'dashboard' %}
+            <i class="ph-fill ph-squares-four text-[18px] shrink-0 opacity-90"></i>
+        {% elif key == 'fields' %}
+            <i class="ph-fill ph-map-pin text-[18px] shrink-0 opacity-90"></i>
+        {% else %}
+            <i class="ph-fill ph-chart-bar text-[18px] shrink-0 opacity-90"></i>
+        {% endif %}
+        {{ label }}
+    </a>
+{%- endmacro %}
+<!doctype html>
+<html lang="nl" class="h-full">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <title>{% block title %}Groenwerf{% endblock %}</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
+
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+        <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+        <style type="text/tailwindcss">
+            @custom-variant dark (&:where(.dark, .dark *));
+            @theme {
+                --font-sans: "Manrope", sans-serif;
+                --font-display: "Fraunces", serif;
+                --color-brand: #60a526;
+                --color-brand-soft: #7bc53b;
+            }
+            @layer base {
+                a { color: inherit; text-decoration: none; }
+                a:hover { color: inherit; text-decoration: none; }
+            }
+            @layer components {
+                .btn {
+                    @apply !inline-flex !items-center !justify-center gap-2 !px-4 !py-2 !text-sm !font-semibold !transition-all !rounded-xl border !shadow-sm cursor-pointer;
+                }
+                .btn-success {
+                    @apply !bg-brand !border-transparent !text-white hover:!bg-[#4d8b19] hover:!shadow-md;
+                }
+                .btn-outline-secondary {
+                    @apply !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 hover:!bg-zinc-50 dark:hover:!bg-zinc-700;
+                }
+                /* globally enforces exact same border radius on all inputs across the platform */
+                .form-control, .form-select {
+                    @apply !rounded-xl;
+                }
+            }
+            ::-webkit-scrollbar { width: 6px; height: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+            .dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+            input[type=checkbox] { appearance: auto; }
+        </style>
+
+        <script>
+            (function () {
+                var t = localStorage.getItem("theme");
+                if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                document.documentElement.classList.toggle("dark", t === "dark");
+                document.documentElement.setAttribute("data-bs-theme", t);
+            })();
+        </script>
+
+        {% block head %}{% endblock %}
+    </head>
+
+    <body class="h-full font-sans text-zinc-800 dark:text-zinc-100 antialiased overflow-hidden">
+        <div class="fixed inset-0 -z-30 bg-[#f1f3ec] dark:bg-zinc-950"></div>
+        <div class="fixed inset-0 -z-20 bg-[size:42px_42px] bg-[linear-gradient(rgba(96,165,38,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(96,165,38,0.055)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(123,197,59,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(123,197,59,0.05)_1px,transparent_1px)]"></div>
+        <div class="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_70%_55%_at_70%_-5%,rgba(96,165,38,0.18),transparent_60%)] dark:bg-[radial-gradient(ellipse_70%_55%_at_70%_-5%,rgba(96,165,38,0.10),transparent_60%)]"></div>
+
+        {% block layout %}
+        <div class="flex h-full w-full relative">
+            <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity opacity-0"></div>
+
+            <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-50 w-64 shrink-0 flex-col h-full border-r border-black/5 dark:border-white/10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex">
+                <div class="px-5 py-5 flex items-center gap-3 border-b border-black/5 dark:border-white/10">
+                    <a href="/" class="flex items-center gap-3 !no-underline hover:opacity-80 transition-opacity">
+                        <div class="w-9 h-9 rounded-xl bg-brand flex items-center justify-center shadow-sm shadow-brand/30 shrink-0">
+                            <i class="ph-fill ph-leaf text-white text-[20px]"></i>
+                        </div>
+                        <div class="leading-tight">
+                            <div class="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100">Groenwerf</div>
+                            <div class="text-[10px] uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400">Dashboard</div>
+                        </div>
+                    </a>
+                </div>
+
+                <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                    <div class="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Overzicht</div>
+                    {{ nav_link('dashboard', url_for('dashboard'), 'Dashboard', active_page) }}
+                    {{ nav_link('fields', url_for('fields'), 'Velden', active_page) }}
+                    <div class="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Rapportage</div>
+                    {{ nav_link('report', url_for('report'), 'Rapport', active_page) }}
+
+                    {% if session.get('role') == 'admin' %}
+                    <div class="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Beheer</div>
+                    <a href="{{ url_for('admin_panel') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors {% if active_page == 'admin' %}bg-brand text-white shadow-sm shadow-brand/30{% else %}!text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
+                        <i class="ph-fill ph-users text-[18px] shrink-0 opacity-90"></i>
+                        Gebruikers
+                    </a>
+                    {% endif %}
+                </nav>
+
+                <div class="mt-auto p-4 border-t border-black/5 dark:border-white/10 flex flex-col gap-2 shrink-0">
+                    <button data-bs-toggle="modal" data-bs-target="#settingsModal" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium border-0 bg-transparent text-left transition-colors !text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer w-full">
+                        <i class="ph-fill ph-gear-six text-[18px] shrink-0 opacity-90"></i>
+                        Instellingen
+                    </button>
+                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors !text-zinc-600 dark:!text-zinc-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:!text-red-600 dark:hover:!text-red-400">
+                        <i class="ph-fill ph-sign-out text-[18px] shrink-0 opacity-90"></i>
+                        Uitloggen
+                    </a>
+                </div>
+            </aside>
+
+            <div class="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+                <header class="shrink-0 h-16 px-4 md:px-8 flex items-center justify-between gap-3 border-b border-black/5 dark:border-white/10 bg-white/55 dark:bg-white/[0.03] backdrop-blur-xl z-10">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <button id="menuToggle" class="md:hidden p-2 -ml-2 text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg cursor-pointer">
+                            <i class="ph ph-list text-[24px]"></i>
+                        </button>
+                        <div class="min-w-0">
+                            <div class="font-display text-lg md:text-xl font-semibold truncate">{% block page_title %}Groenwerf{% endblock %}</div>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400 truncate hidden sm:block">{% block page_sub %}{% endblock %}</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 md:gap-3 shrink-0">
+                        {% block topbar_actions %}{% endblock %}
+
+                        <div class="hidden md:block">
+                            <button class="themeToggleBtn btn btn-outline-secondary !h-[34px] !w-[34px] !p-0 flex items-center justify-center" title="Wissel thema">
+                                <i class="ph-fill ph-moon text-[16px] hidden dark:block"></i>
+                                <i class="ph-fill ph-sun text-[16px] block dark:hidden"></i>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="flex-1 flex flex-col h-full min-h-0 overflow-y-auto p-4 md:p-8 w-full min-w-0">
+                    {% block content %}{% endblock %}
+                </main>
+            </div>
+        </div>
+
+        <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content !border-0 !rounded-2xl !bg-white dark:!bg-zinc-900 !text-zinc-800 dark:!text-zinc-100 shadow-xl overflow-hidden">
+                    <div class="!bg-brand !text-white px-4 py-4 flex items-center justify-between">
+                        <h5 class="modal-title font-display text-lg font-semibold flex items-center gap-2" id="settingsModalLabel">
+                            <i class="ph-fill ph-gear-six text-[20px]"></i> Profielinstellingen
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white shadow-none border-0" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+                    </div>
+
+                    <div class="md:hidden px-4 pt-4 pb-5 border-b border-black/5 dark:border-white/10">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">Thema Weergave</label>
+                        <div class="flex bg-black/5 dark:bg-white/5 rounded-xl p-1 gap-1">
+                            <label class="flex-1 text-center cursor-pointer relative m-0">
+                                <input type="radio" name="theme_mobile" value="light" class="peer sr-only themeRadio">
+                                <div class="py-1.5 text-xs font-semibold rounded-lg text-zinc-500 peer-checked:bg-white peer-checked:text-zinc-800 peer-checked:shadow-sm dark:peer-checked:bg-transparent dark:peer-checked:text-zinc-400 transition-all">Licht</div>
+                            </label>
+                            <label class="flex-1 text-center cursor-pointer relative m-0">
+                                <input type="radio" name="theme_mobile" value="dark" class="peer sr-only themeRadio">
+                                <div class="py-1.5 text-xs font-semibold rounded-lg text-zinc-500 peer-checked:bg-zinc-800 peer-checked:text-white peer-checked:shadow-sm dark:peer-checked:bg-white/10 dark:peer-checked:text-white transition-all">Donker</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <form action="{{ url_for('settings') }}" method="POST" class="p-4 space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
+                            <input type="text" value="{{ session.get('username') }}" disabled class="form-control text-sm px-3 py-2 !bg-black/5 dark:!bg-white/5 !border-black/10 dark:!border-white/10 !text-zinc-500 dark:!text-zinc-400 shadow-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Volledige Naam</label>
+                            <input type="text" name="name" value="{{ session.get('name') }}" required class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Nieuw Wachtwoord</label>
+                            <input type="password" name="password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Bevestig Wachtwoord</label>
+                            <input type="password" name="confirm_password" minlength="6" class="form-control text-sm px-3 py-2 !bg-white dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white focus:!border-brand focus:!ring-1 focus:!ring-brand shadow-sm">
+                        </div>
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuleren</button>
+                            <button type="submit" class="btn btn-success">Opslaan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            const menuToggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            function toggleMenu() {
+                const isOpen = !sidebar.classList.contains('-translate-x-full');
+                if (isOpen) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebarOverlay.classList.remove('opacity-100');
+                    setTimeout(() => sidebarOverlay.classList.add('hidden'), 300);
+                } else {
+                    sidebarOverlay.classList.remove('hidden');
+                    setTimeout(() => {
+                        sidebar.classList.remove('-translate-x-full');
+                        sidebarOverlay.classList.add('opacity-100');
+                    }, 10);
+                }
+            }
+
+            if (menuToggle && sidebarOverlay) {
+                menuToggle.addEventListener('click', toggleMenu);
+                sidebarOverlay.addEventListener('click', toggleMenu);
+            }
+
+            const root = document.documentElement;
+            const themeBtns = document.querySelectorAll(".themeToggleBtn");
+            const themeRadios = document.querySelectorAll(".themeRadio");
+
+            function applyTheme(theme) {
+                root.classList.toggle("dark", theme === "dark");
+                root.setAttribute("data-bs-theme", theme);
+                localStorage.setItem("theme", theme);
+
+                themeRadios.forEach(r => { r.checked = (r.value === theme); });
+                window.dispatchEvent(new CustomEvent("themechange", { detail: { theme } }));
+            }
+
+            const currentTheme = root.classList.contains("dark") ? "dark" : "light";
+            themeRadios.forEach(r => { r.checked = (r.value === currentTheme); });
+
+            themeBtns.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    applyTheme(root.classList.contains("dark") ? "light" : "dark");
+                });
+            });
+
+            themeRadios.forEach(r => {
+                r.addEventListener('change', (e) => {
+                    if (e.target.checked) applyTheme(e.target.value);
+                });
+            });
+
+            // auto dismiss success alerts after 5 seconds
+            document.querySelectorAll(".success-alert").forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = "opacity 0.5s ease";
+                    alert.style.opacity = "0";
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+
+            window.chartTheme = function () {
+                const dark = document.documentElement.classList.contains("dark");
+                return {
+                    dark, text: dark ? "#a1a1aa" : "#5a6e60", grid: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                    aplus: "#60a526", a: "#84cc16", b: "#eab308", c: "#f97316", d: "#ef4444", brand: "#60a526",
+                };
+            };
+        </script>
+        {% block scripts %}{% endblock %}
+    </body>
+</html>
