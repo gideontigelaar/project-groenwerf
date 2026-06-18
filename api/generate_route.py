@@ -45,10 +45,10 @@ def _rest_add_item(gis, title, item_type, tags, filepath, filename):
     return data["id"]
 
 def main():
-    logging.info("connecting to arcgis online...")
+    logging.info("Connecting to ArcGIS Online...")
     gis = GIS("https://www.arcgis.com", credentials.ARCGIS_USERNAME, credentials.ARCGIS_PASSWORD)
 
-    logging.info("fetching grass fields...")
+    logging.info("Fetching grass fields...")
     layer = FeatureLayer(url=credentials.ARCGIS_FIELDS_URL, gis=gis)
     features = layer.query(where="1=1", out_sr="4326", return_geometry=True).features
 
@@ -71,12 +71,12 @@ def main():
         })
 
     if not fields:
-        logging.warning("no fields found.")
+        logging.warning("No fields found.")
         return
 
     # sort by priority sequence
     fields.sort(key=lambda x: (x["prio"], x["target_height"], -x["area"]))
-    logging.info(f"found {len(fields)} fields, sorted by priority.")
+    logging.info(f"Found {len(fields)} fields, sorted by priority.")
 
     # consistent capitalisation for arcgis naming conventions
     route_name = f"Maairoute_{datetime.now().strftime('%Y_%m_%d_%H%M')}"
@@ -91,7 +91,7 @@ def main():
 
     fset = FeatureSet(features=stops, geometry_type="esriGeometryPoint", spatial_reference={"wkid": 4326})
 
-    logging.info("solving route...")
+    logging.info("Solving route...")
     res = find_routes(
         stops=fset,
         reorder_stops_to_find_optimal_routes=False,
@@ -108,10 +108,10 @@ def main():
 
     # download zip if returned as unhosted datafile
     if type(data_item).__name__ == 'DataFile':
-        logging.info("downloading temporary route data...")
+        logging.info("Downloading temporary route data...")
         data_item = data_item.download(tempfile.gettempdir())
 
-    logging.info("publishing native route layer...")
+    logging.info("Publishing native route layer...")
 
     # upload raw zip via rest
     if isinstance(data_item, str) and os.path.exists(data_item):
@@ -124,16 +124,16 @@ def main():
         # publish native arcgis route layer
         layers = create_route_layers(data_item, gis=gis)
         if isinstance(layers, list) and layers:
-            logging.info(f"route published successfully: https://www.arcgis.com/home/item.html?id={layers[0].id}")
+            logging.info(f"Route published successfully: https://www.arcgis.com/home/item.html?id={layers[0].id}")
     except Exception as e:
         logging.error(f"failed to create route layers: {e}")
     finally:
         if temp_item:
             temp_item.delete()
-            logging.info("cleaned up temporary agol item.")
+            logging.info("Cleaned up temporary AGOL item.")
         if local_zip and os.path.exists(local_zip):
             os.remove(local_zip)
-            logging.info("cleaned up local temporary zip.")
+            logging.info("Cleaned up local temporary ZIP.")
 
 if __name__ == "__main__":
     main()
