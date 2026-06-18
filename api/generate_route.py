@@ -82,8 +82,15 @@ def main():
     route_name = f"Maairoute_{datetime.now().strftime('%Y_%m_%d_%H%M')}"
     stops = []
 
-    # generate stops (navigator auto-routes from current physical location to sequence 1)
-    for i, f in enumerate(fields, start=1):
+    # insert dummy location 1 so navigator overrides it with current gps
+    if fields:
+        stops.append(Feature(
+            geometry={"x": fields[0]["lon"], "y": fields[0]["lat"], "spatialReference": {"wkid": 4326}},
+            attributes={"Name": "Location 1", "RouteName": route_name, "Sequence": 1}
+        ))
+
+    # generate stops for actual fields starting at sequence 2
+    for i, f in enumerate(fields, start=2):
         stops.append(Feature(
             geometry={"x": f["lon"], "y": f["lat"], "spatialReference": {"wkid": 4326}},
             attributes={"Name": str(f["name"])[:128], "RouteName": route_name, "Sequence": i}
