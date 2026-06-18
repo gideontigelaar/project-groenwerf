@@ -1,3 +1,4 @@
+# website/app.py
 import math
 import os
 import threading
@@ -5,13 +6,15 @@ import time
 import datetime
 import requests
 import urllib.parse
+import sys
+import logging
 
 from flask import Flask, jsonify, render_template, request, make_response, redirect, url_for, session
 
 try:
     import credentials
-except ImportError:
-    credentials = None
+except ModuleNotFoundError:
+    sys.exit("ERROR: credentials.py not found.")
 
 try:
     from arcgis.gis import GIS
@@ -20,8 +23,13 @@ except ImportError:
     GIS = None
     FeatureLayer = None
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+
 app = Flask(__name__)
-app.secret_key = getattr(credentials, 'FLASK_SECRET_KEY', 'default-dev-key-change-me')
+app.secret_key = credentials.FLASK_SECRET_KEY
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 API_BASE_URL = getattr(credentials, 'API_BASE_URL', 'http://127.0.0.1:5002')
@@ -54,8 +62,8 @@ def _get_user_fields(user_id):
         )
         if resp.status_code == 200:
             return resp.json().get("fields", [])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Could not fetch user fields: {e}")
     return []
 
 @app.route("/login", methods=["GET", "POST"])
@@ -84,6 +92,7 @@ def login():
             else:
                 error = data.get("error", "Ongeldige inloggegevens.")
         except Exception as e:
+            logging.error(f"Login API connection failed: {e}")
             error = "Kon niet verbinden met de server."
 
     return render_template("login.html", error=error)
@@ -118,6 +127,7 @@ def register():
                 else:
                     error = data.get("error", "Registratie mislukt.")
             except Exception as e:
+                logging.error(f"Register API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
     return render_template("register.html", error=error, success=success)
@@ -140,8 +150,8 @@ def settings():
         )
         if resp.status_code == 200:
             session['name'] = name
-    except Exception:
-        pass
+    except Exception as e:
+        logging.error(f"Update profile API connection failed: {e}")
 
     return redirect(request.referrer or url_for('dashboard'))
 
@@ -172,7 +182,8 @@ def admin_panel():
                     success = "Gebruiker succesvol aangemaakt."
                 else:
                     error = resp.json().get("error", "Fout bij aanmaken gebruiker.")
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin create API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
         elif action == "delete":
@@ -187,7 +198,8 @@ def admin_panel():
                     success = "Gebruiker succesvol verwijderd."
                 else:
                     error = "Fout bij verwijderen gebruiker."
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin delete API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
         elif action == "set_fields":
@@ -204,7 +216,8 @@ def admin_panel():
                     success = "Veldtoegankelijkheid succesvol bijgewerkt."
                 else:
                     error = "Fout bij bijwerken veldtoegang."
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin field update API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
     users_list = []
@@ -216,7 +229,8 @@ def admin_panel():
         )
         if resp.status_code == 200:
             users_list = resp.json().get("users", [])
-    except Exception:
+    except Exception as e:
+        logging.error(f"Admin list API connection failed: {e}")
         error = "Kon gebruikerslijst niet ophalen."
 
     _, _, fields = get_rows()
@@ -323,7 +337,8 @@ def _fetch_rows():
         try:
             rows = _fetch_from_arcgis()
             if rows: return rows, "arcgis"
-        except Exception as exc: app.logger.error("arcgis fetch failed: %s", exc)
+        except Exception as exc:
+            logging.error(f"ArcGIS point fetch failed: {exc}")
     return [], "none"
 
 def _do_refresh():
@@ -334,7 +349,8 @@ def _do_refresh():
         if flayer:
             fset = flayer.query(where="1=1", out_fields="*", return_geometry=True, out_sr=4326)
             fields = [{"attributes": f.attributes, "geometry": f.geometry} for f in fset.features]
-    except Exception: pass
+    except Exception as exc:
+        logging.error(f"ArcGIS fields fetch failed: {exc}")
 
     with _cache_lock:
         if rows:
@@ -726,4 +742,6 @@ def download_pdf():
     return resp
 
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    host = getattr(credentials, 'FLASK_HOST', '127.0.0.1')
+    port = getattr(credentials, 'FLASK_PORT', 3000)
+    app.run(host=host, port=port)
