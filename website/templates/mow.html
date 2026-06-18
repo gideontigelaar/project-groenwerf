@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Maaien - Groenwerf{% endblock %}
+{% block page_title %}Maairoute Genereren{% endblock %}
+{% block page_sub %}Genereer een dynamische maairoute voor velden die actie vereisen{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto w-full flex flex-col gap-4 mt-8">
+    <div class="rounded-2xl p-6 md:p-8 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm text-center">
+
+        <div class="w-16 h-16 mx-auto bg-brand/10 dark:bg-brand/20 rounded-full flex items-center justify-center mb-4">
+            <i class="ph ph-navigation-arrow text-3xl text-brand dark:text-[#7bc53b]"></i>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-2">Start Dynamische Route</h2>
+        <p class="text-zinc-500 dark:text-zinc-400 text-sm mb-6 max-w-md mx-auto">
+            Hiermee open je direct de ArcGIS Navigator app. De route wordt berekend vanaf je huidige locatie en navigeert automatisch langs alle velden met kwaliteit C en D, gesorteerd op prioriteit.
+        </p>
+
+        <button id="startRouteBtn" class="btn btn-primary h-12 px-8 inline-flex items-center justify-center gap-2 !bg-brand !border-brand text-white shadow-sm hover:!bg-brand/90 hover:!border-brand/90 transition-colors text-base font-medium rounded-xl">
+            <i class="ph ph-play text-lg"></i>
+            <span>Start Maairoute (ArcGIS)</span>
+        </button>
+
+        <div id="routeStatus" class="mt-4 text-sm font-medium hidden"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='mow.js') }}"></script>
+{% endblock %}

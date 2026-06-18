@@ -4,6 +4,7 @@ import threading
 import time
 import datetime
 import requests
+import urllib.parse
 
 from flask import Flask, jsonify, render_template, request, make_response, redirect, url_for, session
 
@@ -35,7 +36,7 @@ _arc_layer = None
 _arc_fields_layer = None
 _arc_lock = threading.Lock()
 
-# Authentication Hooks
+# authentication hooks
 
 @app.before_request
 def require_login():
@@ -233,7 +234,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-# ArcGIS Integration
+# arcgis integration
 
 def _arcgis_configured():
     return bool(credentials and GIS and getattr(credentials, "ARCGIS_LAYER_URL", None) and getattr(credentials, "ARCGIS_USERNAME", None))
@@ -392,6 +393,11 @@ def _in_poly(x, y, rings):
                 inside = not inside
     return inside
 
+def polygon_centroid(rings):
+    if not rings or not rings[0]: return (0.0, 0.0)
+    pts = rings[0]
+    return (sum(p[0] for p in pts)/len(pts), sum(p[1] for p in pts)/len(pts))
+
 def build_report(rows, fields, days=None, target_field_id=None, user_id=None, user_role=None):
     now = datetime.datetime.now()
 
@@ -415,6 +421,10 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
 
         name = _attr(f.get("attributes", {}), "Name", "Naam", "Field_Name") or f"Veld {i+1}"
         rings = f.get("geometry", {}).get("rings", [])
+
+        # calculate center point for routing
+        lon, lat = polygon_centroid(rings)
+
         f_rows = [r for r in rows if _in_poly(r.get("longitude"), r.get("latitude"), rings)]
 
         if not f_rows: continue
@@ -464,7 +474,9 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
             "level": lvl,
             "action": action,
             "bar_pct": min(100, round((f_avg / 150.0) * 100)),
-            "history": history
+            "history": history,
+            "lat": lat,
+            "lon": lon
         })
 
     field_summaries.sort(key=lambda s: s["level"], reverse=True)
@@ -536,6 +548,30 @@ def api_summary():
     rep["source"] = source
     return jsonify(rep)
 
+@app.route("/api/route-link")
+def api_route_link():
+    rows, source, fields = get_rows()
+    rep = build_report(rows, fields, days="30", user_id=session.get('user_id'), user_role=session.get('role'))
+
+    # filter fields requiring action (level 3 and 4)
+    fields_to_mow = [f for f in rep["fields"] if f.get("level", 0) >= 3]
+
+    # sort by priority: highest level (d before c), then highest avg grass height
+    fields_to_mow.sort(key=lambda x: (x["level"], x["avg"]), reverse=True)
+
+    if not fields_to_mow:
+        return jsonify({"status": "empty", "message": "Geen velden vereisen momenteel een maaibeurt."})
+
+    url_parts = []
+    for f in fields_to_mow:
+        safe_name = urllib.parse.quote(str(f["name"])[:128])
+        url_parts.append(f"stop={f['lat']},{f['lon']}&stopname={safe_name}")
+
+    # optimize=false ensures strict priority sorting
+    navigator_link = "arcgis-navigator://?" + "&".join(url_parts) + "&optimize=false"
+
+    return jsonify({"status": "success", "link": navigator_link})
+
 @app.route("/api/sync", methods=["POST"])
 def api_sync():
     _do_refresh()
@@ -549,6 +585,9 @@ def fields(): return render_template("fields.html", active_page="fields")
 
 @app.route("/report")
 def report(): return render_template("report.html", active_page="report")
+
+@app.route("/mow")
+def mow(): return render_template("mow.html", active_page="mow")
 
 @app.route("/download-pdf")
 def download_pdf():

@@ -99,6 +99,13 @@
                     <div class="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Overzicht</div>
                     {{ nav_link('dashboard', url_for('dashboard'), 'Dashboard', active_page) }}
                     {{ nav_link('fields', url_for('fields'), 'Velden', active_page) }}
+
+                    <div class="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Acties</div>
+                    <a href="{{ url_for('mow') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors {% if active_page == 'mow' %}bg-brand text-white shadow-sm shadow-brand/30{% else %}!text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
+                        <i class="ph-fill ph-steering-wheel text-[18px] shrink-0 opacity-90"></i>
+                        Maaien
+                    </a>
+
                     <div class="px-3 mt-5 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Rapportage</div>
                     {{ nav_link('report', url_for('report'), 'Rapport', active_page) }}
 

@@ -136,4 +136,4 @@ To run the API as a self-contained production service:
 Gunicorn binds to local port `5002`. You must configure your web server (Nginx or Apache) to act as a reverse proxy, accepting external HTTPS traffic on port `443` and forwarding it locally to `127.0.0.1:5002`.
 
 ## Automation
-For a fully autonomous system, you might want to add cronjobs to run the `arcgis_sync.py` and `generate_route.py` scripts periodically to fetch and sync data in the background.
+For a fully autonomous system, you might want to add a cronjob to run the `arcgis_sync.py` script periodically to sync data in the background.
