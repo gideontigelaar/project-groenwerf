@@ -10,6 +10,9 @@ import sys
 import logging
 
 from flask import Flask, jsonify, render_template, request, make_response, redirect, url_for, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 
 try:
     import credentials
@@ -31,6 +34,13 @@ logging.basicConfig(
 app = Flask(__name__)
 app.secret_key = credentials.FLASK_SECRET_KEY
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    storage_uri="memory://",
+    default_limits=["200 per minute"],
+)
 
 API_BASE_URL = getattr(credentials, 'API_BASE_URL', 'http://127.0.0.1:5002')
 API_KEY = getattr(credentials, 'API_KEY', '')
@@ -67,6 +77,7 @@ def _get_user_fields(user_id):
     return []
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute; 30 per hour")
 def login():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
@@ -98,6 +109,7 @@ def login():
     return render_template("login.html", error=error)
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 10 per hour")
 def register():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
@@ -740,6 +752,14 @@ def download_pdf():
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = "attachment; filename=veldbeheer-rapport.pdf"
     return resp
+
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit(e):
+    if request.path == "/login":
+        return render_template("login.html", error="Te veel inlogpogingen. Probeer het over een minuut opnieuw."), 429
+    if request.path == "/register":
+        return render_template("register.html", error="Te veel registratiepogingen. Probeer het later opnieuw.", success=False), 429
+    return jsonify({"error": "Te veel verzoeken, probeer later opnieuw."}), 429
 
 if __name__ == "__main__":
     host = getattr(credentials, 'FLASK_HOST', '127.0.0.1')

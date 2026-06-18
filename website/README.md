@@ -53,7 +53,7 @@ To run the Website as a self-contained production service:
    WorkingDirectory=/path/to/project/website
    Environment="PATH=/path/to/project/website/.venv/bin"
 
-   ExecStart=/path/to/project/website/.venv/bin/gunicorn --workers 2 --threads 4 --bind 127.0.0.1:5003 app:app
+   ExecStart=/path/to/project/website/.venv/bin/gunicorn --workers 1 --threads 4 --bind 127.0.0.1:5003 app:app
    Restart=always
 
    [Install]
