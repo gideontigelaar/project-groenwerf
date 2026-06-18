@@ -45,7 +45,7 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Metingen & Maaibeurten";
         document.getElementById("chartSubLeft").textContent = "Tijdlijn van de meest recente sensordata";
 
-        let html = `<table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+        let html = `<div class="hidden md:block w-full overflow-x-auto min-w-0"><table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
 
         if(reportData.fields[0]) {
             html += reportData.fields[0].history.map(h => {
@@ -58,7 +58,21 @@ function renderReport() {
                 </tr>`;
             }).join("");
         }
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
+
+        // Mobile card layout (avoids forcing a wide 4-column table into a narrow card)
+        html += `<ul class="md:hidden m-0 p-0 list-none flex flex-col w-full min-w-0">`;
+            html += reportData.fields[0].history.map(h => {
+                const isMow = h.is_mow;
+                return `<li class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-sm truncate ${isMow ? 'text-brand dark:text-[#7bc53b]' : ''}">${h.title}</div>
+                        <div class="text-[11px] text-zinc-500 mt-0.5 truncate">${h.time} · gem. van ${h.count} meting${h.count === 1 ? '' : 'en'}</div>
+                    </div>
+                    <div class="text-sm font-semibold tabular-nums shrink-0">${h.h} mm</div>
+                </li>`;
+            }).join("");
+        html += `</ul>`;
         rowsEl.innerHTML = html;
 
     } else {
@@ -66,7 +80,10 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Grashoogte";
         document.getElementById("chartSubLeft").textContent = "Gemiddelde hoogte per veld";
 
-        let html = `<table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
+        // Desktop table
+        let html = `
+        <div class="hidden md:block w-full overflow-x-auto min-w-0">
+        <table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
         html += reportData.fields.map(f => {
             const style = gradeStyle(f.level);
             return `<tr>
@@ -76,7 +93,22 @@ function renderReport() {
                 <td class="px-4 py-2.5 text-center"><span class="badge rounded-pill" style="background-color:${style.color}; color:#fff; border:none; width:40px;">${f.label}</span></td>
             </tr>`;
         }).join("");
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
+
+        // Mobile card layout matching dashboard style
+        html += `<ul class="md:hidden m-0 p-0 list-none flex flex-col w-full min-w-0">`;
+        html += reportData.fields.map(f => {
+            const style = gradeStyle(f.level);
+            return `<li class="flex items-center gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0">
+                <span class="badge rounded-pill shrink-0 w-9 text-center" style="background-color:${style.color}; color:#fff; border:none;">${f.label}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-sm truncate">${f.name}</div>
+                    <div class="text-[11px] text-zinc-500 mt-0.5 truncate">${f.latest ? f.latest.slice(0, 16) : "—"} · ${f.action}</div>
+                </div>
+            </li>`;
+        }).join("");
+        html += `</ul>`;
+
         rowsEl.innerHTML = html;
     }
 

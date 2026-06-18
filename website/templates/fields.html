@@ -8,47 +8,97 @@
     <style>
         .leaflet-pane { z-index: 10 !important; }
         .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+
+        :root {
+            --fp-bg: #ffffff;
+            --fp-border: rgba(0,0,0,0.10);
+            --fp-text: #3f3f46;
+            --fp-muted: #71717a;
+            --fp-input-bg: #ffffff;
+        }
+        html.dark {
+            --fp-bg: #18181b;
+            --fp-border: rgba(255,255,255,0.10);
+            --fp-text: #e4e4e7;
+            --fp-muted: #a1a1aa;
+            --fp-input-bg: #27272a;
+        }
+        #filterPopup {
+            background-color: var(--fp-bg) !important;
+            color: var(--fp-text) !important;
+            border-color: var(--fp-border) !important;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div class="h-full grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col overflow-hidden h-full">
-            <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-10">
+    <div class="min-h-full flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-6">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm flex flex-col shrink-0 lg:h-full lg:overflow-hidden relative z-30">
+            <div class="rounded-t-2xl p-2.5 px-4 border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-20 flex items-center justify-between gap-3">
                 <div class="font-semibold text-sm">Velden</div>
-                <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5" id="fields-count">Laden…</div>
+                <div class="text-xs text-zinc-500 dark:text-zinc-400" id="fields-count">Laden…</div>
             </div>
-            <div class="p-4 border-b border-black/5 dark:border-white/10 space-y-3 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-10">
-                <select id="fieldSelect" class="form-select form-select-sm !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    <option value="">Kies een veld…</option>
-                </select>
-                <div id="filterControls" class="grid grid-cols-2 gap-3 pt-2 opacity-50 pointer-events-none transition-opacity">
-                    <div class="space-y-1">
-                        <label for="daysFilter" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Periode</label>
-                        <select id="daysFilter" class="form-select form-select-sm text-xs !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                            <option value="7">7 dagen</option>
-                            <option value="30" selected>30 dagen</option>
-                            <option value="90">90 dagen</option>
-                            <option value="365">1 jaar</option>
-                            <option value="">Alle</option>
-                        </select>
-                    </div>
-                    <div class="space-y-1">
-                        <label for="sortSelect" class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Sorteren op</label>
-                        <select id="sortSelect" class="form-select form-select-sm text-xs !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                            <option value="date_desc">Nieuwste eerst</option>
-                            <option value="date_asc">Oudste eerst</option>
-                            <option value="height_desc">Hoogste eerst</option>
-                            <option value="height_asc">Laagste eerst</option>
-                        </select>
+
+            <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 space-y-2.5 shrink-0 bg-white/80 dark:bg-zinc-900/80 z-20">
+                <div class="flex items-center gap-2">
+                    <select id="fieldSelect" class="form-select form-select-sm flex-1 min-w-0 !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        <option value="">Kies een veld…</option>
+                    </select>
+                    <div class="relative shrink-0 lg:hidden" id="filterPopupWrapper">
+                        <button id="filterToggleBtn" class="btn btn-outline-secondary !h-[31px] !w-[31px] !p-0 flex items-center justify-center opacity-50 pointer-events-none" title="Filters" disabled>
+                            <i class="ph ph-funnel text-[15px]"></i>
+                        </button>
+                        <div id="filterPopup" class="hidden absolute right-0 top-[calc(100%+8px)] z-50 w-60 rounded-2xl border shadow-xl p-4 space-y-3" style="border-color: rgba(0,0,0,0.1);">
+                            <div>
+                                <label for="daysFilterMobile" class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color: var(--fp-muted);">Periode</label>
+                                <select id="daysFilterMobile" class="form-select text-xs shadow-sm font-semibold cursor-pointer w-full" style="background-color: var(--fp-input-bg); border-color: var(--fp-border); color: var(--fp-text);">
+                                    <option value="7">7 dagen</option>
+                                    <option value="30" selected>30 dagen</option>
+                                    <option value="90">90 dagen</option>
+                                    <option value="365">1 jaar</option>
+                                    <option value="">Alle</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="sortSelectMobile" class="block text-[10px] font-bold uppercase tracking-wider mb-1.5" style="color: var(--fp-muted);">Sorteren op</label>
+                                <select id="sortSelectMobile" class="form-select text-xs shadow-sm font-semibold cursor-pointer w-full" style="background-color: var(--fp-input-bg); border-color: var(--fp-border); color: var(--fp-text);">
+                                    <option value="date_desc">Nieuwste eerst</option>
+                                    <option value="date_asc">Oudste eerst</option>
+                                    <option value="height_desc">Hoogste eerst</option>
+                                    <option value="height_asc">Laagste eerst</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <a id="reportLink" class="btn btn-outline-secondary w-full mt-2 text-xs opacity-50 pointer-events-none transition-opacity">Rapport Genereren</a>
+                <div class="hidden lg:flex items-center gap-2">
+                    <select id="daysFilter" class="form-select form-select-sm flex-1 min-w-0 !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand font-semibold cursor-pointer">
+                        <option value="7">7 dagen</option>
+                        <option value="30" selected>30 dagen</option>
+                        <option value="90">90 dagen</option>
+                        <option value="365">1 jaar</option>
+                        <option value="">Alle</option>
+                    </select>
+                    <select id="sortSelect" class="form-select form-select-sm flex-1 min-w-0 !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 focus:!border-brand focus:!ring-1 focus:!ring-brand font-semibold cursor-pointer">
+                        <option value="date_desc">Nieuwste eerst</option>
+                        <option value="date_asc">Oudste eerst</option>
+                        <option value="height_desc">Hoogste eerst</option>
+                        <option value="height_asc">Laagste eerst</option>
+                    </select>
+                </div>
+                <a id="reportLink" class="btn btn-outline-secondary w-full text-xs opacity-50 pointer-events-none transition-opacity">Rapport Genereren</a>
             </div>
-            <ul id="field-list" class="m-0 p-0 list-none overflow-y-auto flex-1 relative"></ul>
+
+            <div id="mobile-list-collapse" class="flex flex-col min-h-0 overflow-hidden max-h-0 lg:max-h-none lg:flex-1 transition-all duration-300">
+                <ul id="field-list" class="m-0 p-0 list-none flex-1 overflow-y-auto relative"></ul>
+            </div>
+
+            <button id="listToggleBtn" class="rounded-b-2xl lg:hidden w-full flex items-center justify-center py-2 bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors border-t border-black/5 dark:border-white/10 z-10 shrink-0 cursor-pointer">
+                <i id="listToggleIcon" class="ph-bold ph-caret-down text-zinc-500 transition-transform duration-300"></i>
+            </button>
         </div>
 
-        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm relative overflow-hidden min-h-[400px] h-full">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm relative overflow-hidden min-h-[400px] flex-1 lg:h-full z-10">
             <div id="mapView" class="absolute inset-0"></div>
             <div id="mapEmpty" class="hidden absolute inset-0 flex items-center justify-center p-8 text-center bg-white/80 dark:bg-black/80 z-20 backdrop-blur-sm">
                 <div class="max-w-sm">
@@ -64,4 +114,75 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="{{ url_for('static', filename='fields.js') }}"></script>
+    <script>
+    (function() {
+        // Mobile popup toggle
+        const toggleBtn = document.getElementById('filterToggleBtn');
+        const popup = document.getElementById('filterPopup');
+        if (toggleBtn && popup) {
+            function closePopup() { popup.classList.add('hidden'); }
+
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (toggleBtn.disabled) return;
+                popup.classList.toggle('hidden', !popup.classList.contains('hidden'));
+            });
+
+            document.addEventListener('click', (e) => {
+                const wrapper = document.getElementById('filterPopupWrapper');
+                if (wrapper && !wrapper.contains(e.target)) closePopup();
+            });
+
+            popup.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => closePopup());
+            });
+        }
+
+        // Sync mobile selects → desktop selects
+        const mobileDays = document.getElementById('daysFilterMobile');
+        const desktopDays = document.getElementById('daysFilter');
+        const mobileSort = document.getElementById('sortSelectMobile');
+        const desktopSort = document.getElementById('sortSelect');
+
+        if (mobileDays && desktopDays) {
+            mobileDays.addEventListener('change', () => {
+                desktopDays.value = mobileDays.value;
+                desktopDays.dispatchEvent(new Event('change'));
+            });
+        }
+        if (mobileSort && desktopSort) {
+            mobileSort.addEventListener('change', () => {
+                desktopSort.value = mobileSort.value;
+                desktopSort.dispatchEvent(new Event('change'));
+            });
+        }
+
+        // Mobile list collapse toggle
+        const collapseEl = document.getElementById('mobile-list-collapse');
+        const listToggleBtn = document.getElementById('listToggleBtn');
+        const listToggleIcon = document.getElementById('listToggleIcon');
+
+        if (listToggleBtn && collapseEl) {
+            listToggleBtn.addEventListener('click', () => {
+                if (collapseEl.classList.contains('max-h-[50vh]')) {
+                    collapseEl.classList.remove('max-h-[50vh]');
+                    collapseEl.classList.add('max-h-0');
+                    listToggleIcon.classList.remove('rotate-180');
+                } else {
+                    collapseEl.classList.remove('max-h-0');
+                    collapseEl.classList.add('max-h-[50vh]');
+                    listToggleIcon.classList.add('rotate-180');
+                }
+            });
+        }
+
+        window.expandMobileList = function() {
+            if (collapseEl && collapseEl.classList.contains('max-h-0')) {
+                collapseEl.classList.remove('max-h-0');
+                collapseEl.classList.add('max-h-[50vh]');
+                listToggleIcon.classList.add('rotate-180');
+            }
+        };
+    })();
+    </script>
 {% endblock %}

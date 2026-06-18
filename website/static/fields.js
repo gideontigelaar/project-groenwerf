@@ -127,7 +127,11 @@
 
     function resetSelection() {
         pointLayerGroup.clearLayers();
-        document.getElementById("filterControls").classList.add("opacity-50", "pointer-events-none");
+        const filterBtn = document.getElementById("filterToggleBtn");
+        filterBtn.disabled = true;
+        filterBtn.classList.add("opacity-50", "pointer-events-none");
+        const filterPopup = document.getElementById("filterPopup");
+        if (filterPopup) filterPopup.classList.add("hidden");
 
         const reportLink = document.getElementById("reportLink");
         reportLink.classList.add("opacity-50", "pointer-events-none");
@@ -149,9 +153,12 @@
         const field = fieldsGeoJSON.features.find(f => f.properties._id === id);
         if (!field) return;
 
-        document.getElementById("filterControls").classList.remove("opacity-50", "pointer-events-none");
+        const filterBtn = document.getElementById("filterToggleBtn");
+        filterBtn.disabled = false;
+        filterBtn.classList.remove("opacity-50", "pointer-events-none");
 
         const filterDays = document.getElementById("daysFilter").value;
+        const sortMode = document.getElementById("sortSelect").value;
         const reportLink = document.getElementById("reportLink");
         reportLink.classList.remove("opacity-50", "pointer-events-none");
         reportLink.href = `/report?field=${id}&days=${filterDays || '30'}`;
@@ -172,7 +179,6 @@
         // clear existing markers before applying new filters
         pointLayerGroup.clearLayers();
         const listHtml = [];
-        const sortMode = document.getElementById("sortSelect").value;
 
         // client-side spatial join to assign scattered sensor points to field polygons
         let fieldPoints = allPoints.filter(pt => turf.booleanPointInPolygon(pt, field));
@@ -197,6 +203,22 @@
             return 0;
         });
 
+        const sortLabels = {
+            "date_desc": "Nieuwste",
+            "date_asc": "Oudste",
+            "height_desc": "Hoogste",
+            "height_asc": "Laagste"
+        };
+        const daysLabel = filterDays ? `${filterDays} dagen` : "Alle";
+        const sortLabel = sortLabels[sortMode] || "Nieuwste";
+
+        listHtml.push(
+            `<li class="px-4 py-2 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/10 text-[9px] font-bold uppercase tracking-wider text-zinc-500 sticky top-0 z-10 backdrop-blur-md flex items-center justify-between">
+                <span>${daysLabel} &middot; ${sortLabel}</span>
+                <span class="text-zinc-400">${fieldPoints.length} resultaten</span>
+            </li>`
+        );
+
         fieldPoints.forEach(pt => {
             const r = pt.properties;
             const h = r.h;
@@ -210,7 +232,7 @@
             r._marker = marker;
 
             marker.on('click', () => {
-                document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
+                document.querySelectorAll("#field-list li[data-point-id]").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
                 const li = document.querySelector(`#field-list li[data-point-id="${r.id}"]`);
                 if (li) {
                     li.classList.add("bg-black/5", "dark:bg-white/10");
@@ -223,27 +245,34 @@
             });
 
             listHtml.push(
-                `<li data-point-id="${r.id}" class="px-5 py-3 border-t border-black/5 dark:border-white/10 first:border-t-0 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/5 transition-colors">
-                    <div class="flex items-center justify-between pointer-events-none">
-                        <span class="font-semibold text-sm">Meting</span>
-                        <span class="w-2.5 h-2.5 rounded-full" style="background:${colorFor(h)}"></span>
+                `<li data-point-id="${r.id}" class="px-4 py-2.5 border-b border-black/5 dark:border-white/10 last:border-b-0 cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/5 transition-colors flex items-center justify-between gap-3">
+                    <div class="flex flex-col min-w-0 pointer-events-none">
+                        <div class="font-semibold text-sm truncate">Meting &middot; <span class="font-normal text-zinc-500">${h} mm</span></div>
+                        <div class="text-[11px] text-zinc-400 tabular-nums">${when}</div>
                     </div>
-                    <div class="text-[11px] text-zinc-500 mt-0.5 tabular-nums pointer-events-none">Hoogte: ${h} mm</div>
-                    <div class="text-[11px] text-zinc-400 pointer-events-none">${when}</div>
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0 pointer-events-none" style="background:${colorFor(h)}"></span>
                 </li>`
             );
         });
 
         const listEl = document.getElementById("field-list");
-        if (listHtml.length > 0) listEl.innerHTML = listHtml.join("");
-        else listEl.innerHTML = '<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden in deze periode.</li>';
+        if (fieldPoints.length > 0) {
+            listEl.innerHTML = listHtml.join("");
+        } else {
+            listHtml.push('<li class="px-5 py-6 text-center text-xs text-zinc-500">Geen metingen gevonden in deze periode.</li>');
+            listEl.innerHTML = listHtml.join("");
+        }
+
+        if (window.expandMobileList) {
+            window.expandMobileList();
+        }
     }
 
     document.getElementById("field-list").addEventListener("click", (e) => {
         const li = e.target.closest("li[data-point-id]");
         if (!li) return;
 
-        document.querySelectorAll("#field-list li").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
+        document.querySelectorAll("#field-list li[data-point-id]").forEach(el => el.classList.remove("bg-black/5", "dark:bg-white/10"));
         li.classList.add("bg-black/5", "dark:bg-white/10");
 
         const id = Number(li.dataset.pointId);
