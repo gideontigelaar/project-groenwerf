@@ -34,7 +34,6 @@
         <button id="filterToggleBtn" class="btn btn-outline-secondary !h-[34px] !px-3 !py-0 flex items-center justify-center gap-2 whitespace-nowrap">
             <i class="ph ph-funnel text-[16px]"></i>
             <span class="hidden sm:inline">Filters</span>
-            <i class="ph ph-caret-down text-[12px]" id="filterCaretIcon"></i>
         </button>
         <div id="filterPopup" class="hidden absolute right-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border shadow-xl p-4 space-y-3" style="border-color: rgba(0,0,0,0.1);">
             <div>
@@ -150,21 +149,17 @@
     <script src="{{ url_for('static', filename='report.js') }}"></script>
     <script>
     (function() {
-        // Mobile popup toggle
+        // mobile popup toggle
         const toggleBtn = document.getElementById('filterToggleBtn');
         const popup = document.getElementById('filterPopup');
-        const caret = document.getElementById('filterCaretIcon');
 
         if (toggleBtn && popup) {
             function closePopup() {
                 popup.classList.add('hidden');
-                if (caret) caret.classList.remove('rotate-180');
             }
             toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isHidden = popup.classList.contains('hidden');
-                popup.classList.toggle('hidden', !isHidden);
-                if (caret) caret.classList.toggle('rotate-180', isHidden);
+                popup.classList.toggle('hidden');
             });
             document.addEventListener('click', (e) => {
                 const wrapper = document.getElementById('filterPopupWrapper');
@@ -175,7 +170,7 @@
             });
         }
 
-        // Sync mobile popup selects → desktop selects so report.js always reads the desktop IDs
+        // sync mobile popup selects > desktop selects so report.js always reads the desktop IDs
         const mobileDays = document.getElementById('daysFilterMobile');
         const desktopDays = document.getElementById('daysFilter');
         const mobileField = document.getElementById('reportFieldSelectMobile');
@@ -192,7 +187,7 @@
                 desktopField.value = mobileField.value;
                 desktopField.dispatchEvent(new Event('change'));
             });
-            // Keep mobile field select in sync when report.js populates the desktop one
+            // keep mobile field select in sync when report.js populates the desktop one
             const observer = new MutationObserver(() => {
                 const currentVal = mobileField.value;
                 mobileField.innerHTML = desktopField.innerHTML;

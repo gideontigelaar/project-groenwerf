@@ -45,14 +45,19 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Metingen & Maaibeurten";
         document.getElementById("chartSubLeft").textContent = "Tijdlijn van de meest recente sensordata";
 
+        document.getElementById("chartLabelRight").textContent = "Kwaliteitsverdeling (Veld)";
+        document.getElementById("table-title").textContent = "Recente meetbeurten";
+
         let html = `<div class="hidden md:block w-full overflow-x-auto min-w-0"><table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Type</th><th class="px-4 py-2.5 font-bold">Datum & Tijd</th><th class="px-4 py-2.5 font-bold">Hoogte</th><th class="px-4 py-2.5 font-bold">Metingen</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
 
         if(reportData.fields[0]) {
             html += reportData.fields[0].history.map(h => {
                 const isMow = h.is_mow;
+                const dateParts = h.date.split('-');
+                const fmtDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : h.date;
                 return `<tr>
                     <td class="px-4 py-2.5 font-semibold ${isMow ? 'text-brand dark:text-[#7bc53b]' : ''}">${h.title}</td>
-                    <td class="px-4 py-2.5 text-zinc-500 tabular-nums">${h.time}</td>
+                    <td class="px-4 py-2.5 text-zinc-500 tabular-nums">${fmtDate} ${h.time}</td>
                     <td class="px-4 py-2.5 tabular-nums">${h.h} mm</td>
                     <td class="px-4 py-2.5 text-zinc-500 text-xs">gem. van ${h.count} meting${h.count === 1 ? '' : 'en'}</td>
                 </tr>`;
@@ -60,18 +65,21 @@ function renderReport() {
         }
         html += `</tbody></table></div>`;
 
-        // Mobile card layout (avoids forcing a wide 4-column table into a narrow card)
         html += `<ul class="md:hidden m-0 p-0 list-none flex flex-col w-full min-w-0">`;
+        if (reportData.fields[0]) {
             html += reportData.fields[0].history.map(h => {
                 const isMow = h.is_mow;
+                const dateParts = h.date.split('-');
+                const fmtDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : h.date;
                 return `<li class="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-black/5 dark:border-white/10 first:border-t-0">
                     <div class="min-w-0 flex-1">
                         <div class="font-semibold text-sm truncate ${isMow ? 'text-brand dark:text-[#7bc53b]' : ''}">${h.title}</div>
-                        <div class="text-[11px] text-zinc-500 mt-0.5 truncate">${h.time} · gem. van ${h.count} meting${h.count === 1 ? '' : 'en'}</div>
+                        <div class="text-[11px] text-zinc-500 mt-0.5 truncate">${fmtDate} ${h.time} · gem. van ${h.count} meting${h.count === 1 ? '' : 'en'}</div>
                     </div>
                     <div class="text-sm font-semibold tabular-nums shrink-0">${h.h} mm</div>
                 </li>`;
             }).join("");
+        }
         html += `</ul>`;
         rowsEl.innerHTML = html;
 
@@ -80,7 +88,9 @@ function renderReport() {
         document.getElementById("chartLabelLeft").textContent = "Grashoogte";
         document.getElementById("chartSubLeft").textContent = "Gemiddelde hoogte per veld";
 
-        // Desktop table
+        document.getElementById("chartLabelRight").textContent = "Kwaliteitsverdeling";
+        document.getElementById("table-title").textContent = "Veld details";
+
         let html = `
         <div class="hidden md:block w-full overflow-x-auto min-w-0">
         <table class="w-full text-sm text-left"><thead class="sticky top-0 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10 text-[10px] uppercase tracking-[0.08em] text-zinc-500 dark:text-zinc-400"><th class="px-4 py-2.5 font-bold">Veldnaam</th><th class="px-4 py-2.5 font-bold">Laatst</th><th class="px-4 py-2.5 font-bold">Actie</th><th class="px-4 py-2.5 font-bold text-center">Kwaliteit</th></thead><tbody class="divide-y divide-black/5 dark:divide-white/5">`;
@@ -95,7 +105,6 @@ function renderReport() {
         }).join("");
         html += `</tbody></table></div>`;
 
-        // Mobile card layout matching dashboard style
         html += `<ul class="md:hidden m-0 p-0 list-none flex flex-col w-full min-w-0">`;
         html += reportData.fields.map(f => {
             const style = gradeStyle(f.level);
@@ -114,12 +123,41 @@ function renderReport() {
 
     const recsEl = document.getElementById("report-recs");
     let recsHtml = `<div class="space-y-3">`;
-    if (reportData.counts[4]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[4]} meting(en)</strong> met kwaliteit D (>100 mm). Direct maaien vereist!</div>`;
-    if (reportData.counts[3]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[3]} meting(en)</strong> met kwaliteit C (90-100 mm). Plan op korte termijn een maaibeurt.</div>`;
-    if (reportData.counts[2]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[2]} meting(en)</strong> met kwaliteit B (80-90 mm). Acceptabel, hou de groei in de gaten.</div>`;
-    if (reportData.counts[0] + reportData.counts[1]) recsHtml += `<div><strong class="text-zinc-800 dark:text-zinc-200">${reportData.counts[0] + reportData.counts[1]} meting(en)</strong> in topconditie A/A+ (≤80 mm). Geen actie nodig.</div>`;
 
-    recsHtml += `<div class="text-[10px] text-zinc-400 mt-4 pt-4 border-t border-black/5 dark:border-white/10">Kwaliteitseisen conform normering: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.</div></div>`;
+    if (reportData.counts[4]) {
+        recsHtml += `<div class="flex items-start gap-2">
+            <i class="ph-fill ph-warning-circle text-red-500 text-[16px] mt-0.5 shrink-0"></i>
+            <div class="text-zinc-700 dark:text-zinc-300"><strong class="text-red-600 dark:text-red-400">${reportData.counts[4]} meting(en)</strong> met kwaliteit D (>100 mm). Directe maaiactie noodzakelijk.</div>
+        </div>`;
+    }
+    if (reportData.counts[3]) {
+        recsHtml += `<div class="flex items-start gap-2">
+            <i class="ph-fill ph-warning-circle text-orange-500 text-[16px] mt-0.5 shrink-0"></i>
+            <div class="text-zinc-700 dark:text-zinc-300"><strong class="text-orange-600 dark:text-orange-400">${reportData.counts[3]} meting(en)</strong> met kwaliteit C (90-100 mm). Maaien inplannen.</div>
+        </div>`;
+    }
+    if (reportData.counts[2]) {
+        recsHtml += `<div class="flex items-start gap-2">
+            <i class="ph-fill ph-info text-yellow-500 text-[16px] mt-0.5 shrink-0"></i>
+            <div class="text-zinc-700 dark:text-zinc-300"><strong class="text-yellow-600 dark:text-yellow-500">${reportData.counts[2]} meting(en)</strong> met kwaliteit B (80-90 mm). Acceptabel, visueel controleren.</div>
+        </div>`;
+    }
+    if (reportData.counts[0] + reportData.counts[1]) {
+        recsHtml += `<div class="flex items-start gap-2">
+            <i class="ph-fill ph-check-circle text-brand dark:text-[#7bc53b] text-[16px] mt-0.5 shrink-0"></i>
+            <div class="text-zinc-700 dark:text-zinc-300"><strong class="text-brand dark:text-[#7bc53b]">${reportData.counts[0] + reportData.counts[1]} meting(en)</strong> in topconditie A/A+ (≤80 mm). Geen actie nodig.</div>
+        </div>`;
+    }
+
+    recsHtml += `<div class="flex items-center flex-wrap gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 mt-4 pt-4 border-t border-black/5 dark:border-white/10">
+        <i class="ph-bold ph-info"></i>
+        <span><strong class="text-brand dark:text-[#7bc53b]">A+</strong> ≤70</span> &bull;
+        <span><strong class="text-[#84cc16]">A</strong> ≤80</span> &bull;
+        <span><strong class="text-[#eab308]">B</strong> ≤90</span> &bull;
+        <span><strong class="text-[#f97316]">C</strong> ≤100</span> &bull;
+        <span><strong class="text-[#ef4444]">D</strong> >100 mm</span>
+    </div></div>`;
+
     recsEl.innerHTML = recsHtml;
 }
 
@@ -136,7 +174,11 @@ function renderCharts() {
         barChart = new Chart(ctx, {
             type: "line",
             data: {
-                labels: f.history.map(r => r.date.slice(5)),
+                labels: f.history.map(r => {
+                    const dateParts = r.date.split('-');
+                    const d = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}` : r.date;
+                    return d + ' ' + r.time;
+                }),
                 datasets: [{
                     label: "Grashoogte", data: f.history.map(r => r.h),
                     borderColor: th.brand, backgroundColor: "rgba(96,165,38,0.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: f.history.map(r => r.is_mow ? th.brand : th.a)

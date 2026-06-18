@@ -132,7 +132,7 @@
                         {% for m in r.fields %}
                         <tr>
                             <td class="px-5 py-3 font-semibold text-zinc-800">{{ m.name }}</td>
-                            <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
+                            <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ m.latest[:16] if m.latest and m.latest != '—' else '—' }}</td>
                             <td class="px-5 py-3 font-bold text-brand">{{ m.action }}</td>
                             <td class="px-5 py-3">
                                 <div class="flex items-center gap-2.5">
@@ -154,7 +154,7 @@
 
         {% else %}
         <div class="mb-8 avoid-break">
-            <h2 class="text-lg font-bold text-brand mb-1">Metingen & Maaibeurten</h2>
+            <h2 class="text-lg font-bold text-brand mb-1">Recente meetbeurten</h2>
             <div class="text-xs text-zinc-500 font-medium mb-4">Tijdlijn van de meest recente sensordata voor {{ r.fields[0].name }}</div>
 
             <div class="rounded-2xl border border-zinc-200 overflow-hidden">
@@ -186,7 +186,13 @@
                                         {{ title }}
                                     </div>
                                 </td>
-                                <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ h.time }}</td>
+                                <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">
+                                    {% if h.date | length >= 10 %}
+                                        {{ h.date[8:10] }}-{{ h.date[5:7] }}-{{ h.date[0:4] }} {{ h.time }}
+                                    {% else %}
+                                        {{ h.date }} {{ h.time }}
+                                    {% endif %}
+                                </td>
                                 <td class="px-5 py-3 font-semibold tabular-nums text-zinc-800">{{ h.h }} mm</td>
                                 <td class="px-5 py-3 text-xs text-zinc-500 font-medium">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
                             </tr>
@@ -199,34 +205,39 @@
 
         <div class="mb-8 avoid-break">
             <h2 class="text-lg font-bold text-brand mb-1">Aanbevelingen & Normering</h2>
-            <div class="rounded-2xl border border-zinc-200 p-5 bg-zinc-50/50 text-xs text-zinc-700 leading-relaxed space-y-2">
+            <div class="space-y-3 mt-4 text-xs text-zinc-700">
                 {% if r.counts[4] %}
                 <div class="flex items-start gap-2">
                     <i class="ph-fill ph-warning-circle text-red-500 text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (>100 mm) — directe maaiactie noodzakelijk.</div>
+                    <div><strong class="text-red-600">{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (>100 mm). Directe maaiactie noodzakelijk.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[3] %}
                 <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-info text-[#f97316] text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm) — maaien inplannen.</div>
+                    <i class="ph-fill ph-warning-circle text-orange-500 text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-orange-600">{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm). Maaien inplannen.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[2] %}
                 <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-info text-[#eab308] text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm) — visueel controleren.</div>
+                    <i class="ph-fill ph-info text-yellow-500 text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-yellow-600">{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm). Acceptabel, visueel controleren.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[0] + r.counts[1] %}
                 <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-check-circle text-brand text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in A/A+ (≤80 mm) — gras is in topconditie.</div>
+                    <i class="ph-fill ph-check-circle text-[#60a526] text-[16px] mt-0.5 shrink-0"></i>
+                    <div><strong class="text-[#60a526]">{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in topconditie A/A+ (≤80 mm). Geen actie nodig.</div>
                 </div>
                 {% endif %}
 
-                <div class="pt-3 mt-3 border-t border-zinc-200 text-[10px] text-zinc-500 font-medium flex items-center gap-1.5">
-                    <i class="ph-bold ph-info"></i> Kwaliteitseisen conform normering: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.
+                <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-zinc-500 mt-4 pt-4 border-t border-zinc-200">
+                    <i class="ph-bold ph-info"></i>
+                    <span><strong class="text-[#60a526]">A+</strong> ≤70</span> &bull;
+                    <span><strong class="text-[#84cc16]">A</strong> ≤80</span> &bull;
+                    <span><strong class="text-[#eab308]">B</strong> ≤90</span> &bull;
+                    <span><strong class="text-[#f97316]">C</strong> ≤100</span> &bull;
+                    <span><strong class="text-[#ef4444]">D</strong> >100 mm</span>
                 </div>
             </div>
         </div>

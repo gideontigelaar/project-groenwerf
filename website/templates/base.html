@@ -48,7 +48,6 @@
                 .btn-outline-secondary {
                     @apply !bg-white dark:!bg-zinc-800 !border-black/10 dark:!border-white/10 !text-zinc-700 dark:!text-zinc-200 hover:!bg-zinc-50 dark:hover:!bg-zinc-700;
                 }
-                /* globally enforces exact same border radius on all inputs across the platform */
                 .form-control, .form-select {
                     @apply !rounded-xl;
                 }
@@ -102,10 +101,15 @@
 
                     <div class="px-3 mt-4 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Veldbeheer</div>
                     {{ nav_link('fields', url_for('fields'), 'Velden', active_page) }}
+
+                    {% set ua = request.headers.get('User-Agent', '') | lower %}
+                    {% set is_mobile_os = ('android' in ua) or ('iphone' in ua) or ('ipad' in ua) or ('ipod' in ua) %}
+                    {% if is_mobile_os %}
                     <a href="{{ url_for('mow') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl !text-sm !font-medium !leading-normal font-sans !no-underline transition-colors {% if active_page == 'mow' %}bg-brand text-white shadow-sm shadow-brand/30{% else %}!text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10{% endif %}">
                         <i class="ph-fill ph-steering-wheel text-[18px] shrink-0 opacity-90"></i>
                         Maaien
                     </a>
+                    {% endif %}
 
                     {% if session.get('role') == 'admin' %}
                     <div class="px-3 mt-4 mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">Beheer</div>
@@ -116,12 +120,12 @@
                     {% endif %}
                 </nav>
 
-                <div class="mt-auto p-4 border-t border-black/5 dark:border-white/10 flex flex-col gap-2 shrink-0">
+                <div class="mt-auto px-3 py-4 border-t border-black/5 dark:border-white/10 flex flex-col gap-1 shrink-0">
                     <button data-bs-toggle="modal" data-bs-target="#settingsModal" class="flex items-center gap-3 px-3 py-2.5 rounded-xl !text-sm !font-medium !leading-normal font-sans border-0 bg-transparent text-left transition-colors !text-zinc-600 dark:!text-zinc-300 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer w-full">
                         <i class="ph-fill ph-gear-six text-[18px] shrink-0 opacity-90"></i>
                         Instellingen
                     </button>
-                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium !no-underline transition-colors !text-zinc-600 dark:!text-zinc-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:!text-red-600 dark:hover:!text-red-400">
+                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl !text-sm !font-medium !leading-normal font-sans !no-underline transition-colors !text-zinc-600 dark:!text-zinc-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:!text-red-600 dark:hover:!text-red-400">
                         <i class="ph-fill ph-sign-out text-[18px] shrink-0 opacity-90"></i>
                         Uitloggen
                     </a>
@@ -152,7 +156,7 @@
                     </div>
                 </header>
 
-                <main class="flex-1 flex flex-col h-full min-h-0 overflow-y-auto p-4 md:p-8 w-full min-w-0">
+                <main class="flex-1 flex flex-col h-full min-h-0 overflow-y-auto p-4 md:p-8 w-full min-w-0 after:content-[''] after:block after:shrink-0 after:min-h-4 md:after:min-h-8">
                     {% block content %}{% endblock %}
                 </main>
             </div>
@@ -263,7 +267,7 @@
                 });
             });
 
-            // auto dismiss all alerts after 5 seconds
+            // auto dismiss alerts after 5 seconds
             document.querySelectorAll(".alert-dismissible").forEach(alert => {
                 setTimeout(() => {
                     alert.style.transition = "opacity 0.5s ease";
