@@ -756,10 +756,10 @@ def download_pdf():
 @app.errorhandler(RateLimitExceeded)
 def handle_rate_limit(e):
     if request.path == "/login":
-        return render_template("login.html", error="Te veel inlogpogingen. Probeer het over een minuut opnieuw."), 429
+        return render_template("login.html", error="Teveel inlogpogingen. Probeer het over een minuut opnieuw."), 429
     if request.path == "/register":
-        return render_template("register.html", error="Te veel registratiepogingen. Probeer het later opnieuw.", success=False), 429
-    return jsonify({"error": "Te veel verzoeken, probeer later opnieuw."}), 429
+        return render_template("register.html", error="Teveel registratiepogingen. Probeer het later opnieuw.", success=False), 429
+    return jsonify({"error": "Teveel verzoeken, probeer later opnieuw."}), 429
 
 if __name__ == "__main__":
     host = getattr(credentials, 'FLASK_HOST', '127.0.0.1')
