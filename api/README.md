@@ -124,3 +124,9 @@ To run the API as a service on Ubuntu:
    WantedBy=multi-user.target
    ```
 3. Enable and start: `sudo systemctl daemon-reload && sudo systemctl enable api-groenwerf && sudo systemctl start api-groenwerf`
+
+## Routing
+To generate a daily route layer based on field priorities, ensure `ARCGIS_FIELDS_URL` is set in your credentials and run:
+```bash
+python generate_route.py
+```
