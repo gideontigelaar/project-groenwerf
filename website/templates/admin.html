@@ -6,17 +6,19 @@
 {% block content %}
 <div class="max-w-7xl mx-auto w-full space-y-6 min-w-0">
     {% if error %}
-    <div class="relative px-4 py-3 pe-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl">
-        {{ error }}
-        <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+    <div class="alert-dismissible relative flex items-start gap-3 px-4 py-3 pr-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl">
+        <i class="ph ph-warning-circle text-[18px] shrink-0 mt-0.5"></i>
+        <span>{{ error }}</span>
+        <button type="button" class="absolute top-0 bottom-0 right-0 flex items-center px-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
             <i class="ph ph-x text-[16px]"></i>
         </button>
     </div>
     {% endif %}
     {% if success %}
-    <div class="relative success-alert px-4 py-3 pe-10 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 text-brand dark:text-[#7bc53b] text-sm font-medium rounded-xl">
-        {{ success }}
-        <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+    <div class="alert-dismissible relative flex items-start gap-3 px-4 py-3 pr-10 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 text-brand dark:text-[#7bc53b] text-sm font-medium rounded-xl">
+        <i class="ph ph-check-circle text-[18px] shrink-0 mt-0.5"></i>
+        <span>{{ success }}</span>
+        <button type="button" class="absolute top-0 bottom-0 right-0 flex items-center px-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
             <i class="ph ph-x text-[16px]"></i>
         </button>
     </div>

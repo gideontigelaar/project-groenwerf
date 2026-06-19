@@ -3,6 +3,7 @@
 {% block page_title %}Veldbeheer overzicht{% endblock %}
 {% block page_sub %}Grashoogte en maaiadvies per veld op basis van kwaliteitsnormen{% endblock %}
 
+{% block hide_title_mobile %}hidden md:block{% endblock %}
 {% block head %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -35,7 +36,7 @@
     </button>
 </div>
 
-<div class="max-w-7xl mx-auto w-full flex flex-col gap-4 h-full min-w-0">
+<div class="max-w-7xl mx-auto w-full flex flex-col gap-4 min-h-full min-w-0">
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
         {% set card = "rounded-2xl p-4 border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm" %}
@@ -124,7 +125,7 @@
                 <div class="p-4 flex items-center gap-4 min-w-0">
                     <div class="relative w-[90px] h-[90px] shrink-0">
                         <canvas id="dashDonutChart"></canvas>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style="z-index: -1;">
                             <div class="font-display text-base font-semibold leading-none" id="dash-donut-pct">—</div>
                             <div class="text-[8px] uppercase tracking-[0.08em] text-zinc-500 font-bold mt-0.5">A/A+</div>
                         </div>
@@ -139,7 +140,7 @@
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 min-w-0">
+            <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-sm overflow-hidden flex flex-col flex-1 min-h-[220px] min-w-0">
                 <div class="p-3 px-4 border-b border-black/5 dark:border-white/10 font-semibold bg-white/80 dark:bg-zinc-900/80 text-sm shrink-0">Actie vereist (Kwaliteit D/C)</div>
                 <ul class="m-0 p-0 list-none flex-1 overflow-y-auto w-full min-w-0" id="activity-list">
                     <li class="px-4 py-3 text-xs text-zinc-500">Laden…</li>

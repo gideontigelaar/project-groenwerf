@@ -2,69 +2,73 @@
 {% block title %}Registreren - Groenwerf{% endblock %}
 
 {% block layout %}
-<div class="min-h-full w-full flex items-center justify-center p-4 relative">
+<div class="h-full w-full flex overflow-y-auto relative">
 
-    <div class="absolute top-6 right-6">
-        <button class="themeToggleBtn btn btn-outline-secondary !h-[34px] !w-[34px] !p-0 flex items-center justify-center cursor-pointer" title="Wissel thema">
+    <div class="fixed top-6 right-6 z-50">
+        <button class="themeToggleBtn btn btn-outline-secondary !h-[34px] !w-[34px] !p-0 flex items-center justify-center !rounded-xl cursor-pointer shadow-sm" title="Wissel thema">
             <i class="ph-fill ph-moon text-[16px] hidden dark:block"></i>
             <i class="ph-fill ph-sun text-[16px] block dark:hidden"></i>
         </button>
     </div>
 
-    <div class="w-full max-w-[380px] rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-xl overflow-hidden">
-        <div class="bg-brand text-white px-6 py-6 text-center">
-            <div class="w-12 h-12 mx-auto rounded-xl bg-white/20 flex items-center justify-center shadow-sm mb-3">
-                <i class="ph-fill ph-leaf text-[24px]"></i>
+    <div class="m-auto w-full max-w-[380px] p-4 py-20 shrink-0">
+        <div class="rounded-2xl border border-black/5 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl shadow-xl overflow-hidden">
+            <div class="bg-brand text-white px-6 py-6 text-center">
+                <div class="w-12 h-12 mx-auto rounded-xl bg-white/20 flex items-center justify-center shadow-sm mb-3">
+                    <i class="ph-fill ph-leaf text-[24px]"></i>
+                </div>
+                <div class="font-display text-2xl font-semibold">Groenwerf</div>
+                <div class="text-xs text-white/70 mt-1 uppercase tracking-wider font-semibold">Account aanmaken</div>
             </div>
-            <div class="font-display text-2xl font-semibold">Groenwerf</div>
-            <div class="text-xs text-white/70 mt-1 uppercase tracking-wider font-semibold">Account aanmaken</div>
-        </div>
 
-        <div class="p-6">
-            {% if success %}
-            <div class="relative success-alert mb-5 px-4 py-4 pe-10 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 text-brand dark:text-[#7bc53b] text-sm font-medium rounded-xl text-center">
-                Account succesvol aangemaakt!<br><a href="{{ url_for('login') }}" class="underline font-bold mt-1 inline-block">Klik hier om in te loggen</a>
-                <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
-                    <i class="ph ph-x text-[16px]"></i>
-                </button>
-            </div>
-            {% else %}
-                {% if error %}
-                <div class="relative mb-5 px-4 py-3 pe-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl text-center">
-                    {{ error }}
-                    <button type="button" class="absolute top-0 bottom-0 right-0 p-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+            <div class="p-6">
+                {% if success %}
+                <div class="alert-dismissible relative flex items-start gap-3 px-4 py-3 pr-10 bg-brand/10 dark:bg-brand/20 border border-brand/20 dark:border-brand/30 text-brand dark:text-[#7bc53b] text-sm font-medium rounded-xl mb-5">
+                    <i class="ph ph-check-circle text-[18px] shrink-0 mt-0.5"></i>
+                    <span class="flex-1">Account succesvol aangemaakt!<br><a href="{{ url_for('login') }}" class="underline font-bold mt-1 inline-block">Klik hier om in te loggen</a></span>
+                    <button type="button" class="absolute top-0 bottom-0 right-0 flex items-center px-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
                         <i class="ph ph-x text-[16px]"></i>
                     </button>
                 </div>
+                {% else %}
+                    {% if error %}
+                    <div class="alert-dismissible relative flex items-start gap-3 px-4 py-3 pr-10 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium rounded-xl mb-5">
+                        <i class="ph ph-warning-circle text-[18px] shrink-0 mt-0.5"></i>
+                        <span class="flex-1">{{ error }}</span>
+                        <button type="button" class="absolute top-0 bottom-0 right-0 flex items-center px-3 opacity-50 hover:opacity-100 transition-opacity cursor-pointer" onclick="this.parentElement.remove();">
+                            <i class="ph ph-x text-[16px]"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Volledige Naam</label>
+                            <input type="text" name="name" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
+                            <input type="text" name="username" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Wachtwoord</label>
+                            <input type="password" name="password" required minlength="6" class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Bevestig Wachtwoord</label>
+                            <input type="password" name="confirm_password" required minlength="6" class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Uitnodigingscode</label>
+                            <input type="text" name="invite_code" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
+                        </div>
+                        <button type="submit" class="btn btn-success w-full mt-2 !py-2.5 shadow-md !bg-zinc-800 dark:!bg-zinc-700 hover:!bg-black dark:hover:!bg-zinc-600">Registreren</button>
+                    </form>
                 {% endif %}
 
-                <form method="POST" class="space-y-4">
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Volledige Naam</label>
-                        <input type="text" name="name" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Gebruikersnaam</label>
-                        <input type="text" name="username" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Wachtwoord</label>
-                        <input type="password" name="password" required minlength="6" class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Bevestig Wachtwoord</label>
-                        <input type="password" name="confirm_password" required minlength="6" class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">Uitnodigingscode</label>
-                        <input type="text" name="invite_code" required class="form-control text-sm px-3 py-2 !bg-white/80 dark:!bg-black/20 !border-black/10 dark:!border-white/10 dark:!text-white shadow-sm focus:!border-brand focus:!ring-1 focus:!ring-brand">
-                    </div>
-                    <button type="submit" class="btn btn-success w-full mt-2 !py-2.5 shadow-md !bg-zinc-800 dark:!bg-zinc-700 hover:!bg-black dark:hover:!bg-zinc-600">Registreren</button>
-                </form>
-            {% endif %}
-
-            <div class="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                Al een account? <a href="{{ url_for('login') }}" class="text-zinc-700 dark:text-white font-semibold hover:underline !no-underline">Log hier in</a>
+                <div class="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                    Al een account? <a href="{{ url_for('login') }}" class="text-zinc-700 dark:text-white font-semibold hover:underline !no-underline">Log hier in</a>
+                </div>
             </div>
         </div>
     </div>

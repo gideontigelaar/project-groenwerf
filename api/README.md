@@ -3,6 +3,7 @@
 ## Prerequisites
 - Python 3.x and `pip`
 - MySQL Server
+- Nginx or Apache
 - ArcGIS Online Account
 
 ## ArcGIS Online Setup
@@ -104,7 +105,7 @@ Before syncing data via `arcgis_sync.py`, you need to create a Hosted Feature La
    ```
 
 ## Production Deployment (Systemd)
-To run the API as a service on Ubuntu:
+To run the API as a self-contained production service:
 1. Create the service file: `sudo nano /etc/systemd/system/api-groenwerf.service`
 2. Configure the service:
    ```ini
@@ -117,10 +118,22 @@ To run the API as a service on Ubuntu:
    Group=www-data
    WorkingDirectory=/path/to/project/api
    Environment="PATH=/path/to/project/api/.venv/bin"
-   ExecStart=/path/to/project/api/.venv/bin/gunicorn --bind 127.0.0.1:5002 api:app
+
+   ExecStart=/path/to/project/api/.venv/bin/gunicorn --workers 1 --threads 4 --bind 127.0.0.1:5002 api:app
    Restart=always
 
    [Install]
    WantedBy=multi-user.target
    ```
-3. Enable and start: `sudo systemctl daemon-reload && sudo systemctl enable api-groenwerf && sudo systemctl start api-groenwerf`
+3. Enable and start:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable api-groenwerf
+   sudo systemctl start api-groenwerf
+   ```
+
+## Reverse Proxy Setup (Nginx / Apache)
+Gunicorn binds to local port `5002`. You must configure your web server (Nginx or Apache) to act as a reverse proxy, accepting external HTTPS traffic on port `443` and forwarding it locally to `127.0.0.1:5002`.
+
+## Automation
+For a fully autonomous system, you might want to add a cronjob to run the `arcgis_sync.py` script periodically to sync data in the background.

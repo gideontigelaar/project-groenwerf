@@ -9,9 +9,6 @@
         <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
         <script src="https://cdn.tailwindcss.com"></script>
-
-        <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 
         <script>
@@ -34,116 +31,109 @@
         <style>
             @page { size: A4; margin: 0; }
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white; }
-
             .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+            .page-section { padding-top: 32px; }
+            .page-section:first-child { padding-top: 0; }
         </style>
     </head>
-    <body class="font-sans text-zinc-800 antialiased p-8 bg-white">
 
-        <div class="flex items-center gap-6 bg-brand text-white rounded-3xl p-6 px-8 mb-8 shadow-sm">
-            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 shadow-sm shrink-0">
-                <i class="ph-fill ph-leaf text-[32px]"></i>
+    <body class="font-sans text-zinc-800 antialiased bg-white" style="padding: 32px;">
+        <div class="flex items-center gap-6 bg-[#60a526] text-white rounded-3xl p-6 px-8 mb-8 shadow-sm avoid-break" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div class="flex items-center justify-center shrink-0" style="width:64px; height:64px; background:rgba(255,255,255,0.2); border-radius:16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 256 256" fill="white">
+                    <path d="M222.1,35.9a8,8,0,0,0-7.2-5.8C211.3,29.8,140.6,24,88,76.6c-22.3,22.3-34.6,52-34,83.4L33.4,180.7A8,8,0,1,0,44.7,192l21.6-21.6A103.3,103.3,0,0,0,128,188c30,0,59.2-12.6,80-35.1C246.8,110.5,223.4,38.8,222.1,35.9ZM197.4,141.3C180,160.2,155.7,171,128,171a87.5,87.5,0,0,1-51.9-17L183.7,47.3C198.3,77.6,207.4,130.1,197.4,141.3Z"/>
+                </svg>
             </div>
             <div class="flex flex-col justify-center">
-                <div class="text-[11px] font-bold uppercase tracking-widest opacity-90 leading-none mb-1.5">Groenwerf</div>
-                <h1 class="font-display text-3xl font-bold leading-tight m-0">
+                <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; opacity:0.9; line-height:1; margin-bottom:6px;">Groenwerf</div>
+                <h1 style="font-family:'Fraunces',serif; font-size:28px; font-weight:700; line-height:1.2; margin:0;">
                     {% if r.target_field %}Rapport: {{ r.fields[0].name }}{% else %}Veldbeheer Rapport (Totaal){% endif %}
                 </h1>
             </div>
         </div>
 
         <div class="grid grid-cols-4 gap-4 mb-8 avoid-break">
-            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-hash"></i> Metingen</div>
-                <div class="font-display text-2xl font-semibold text-zinc-800">{{ r.total }}</div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50 text-center">
+                <div class="text-zinc-500 mb-1.5" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">Metingen</div>
+                <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:#27272a;">{{ r.total }}</div>
             </div>
-            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-ruler"></i> Gem. Hoogte</div>
-                <div class="font-display text-2xl font-semibold text-zinc-800">{{ r.avg }} <span class="text-xs font-sans font-medium text-zinc-500">mm</span></div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50 text-center">
+                <div class="text-zinc-500 mb-1.5" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">Gem. Hoogte</div>
+                <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:#27272a;">{{ r.avg }} <span style="font-family:'Manrope',sans-serif; font-size:12px; font-weight:500; color:#71717a;">mm</span></div>
             </div>
-            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-medal"></i> A/A+ (Top)</div>
-                <div class="font-display text-2xl font-semibold text-brand">{{ r.counts[0] + r.counts[1] }}</div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50 text-center">
+                <div class="text-zinc-500 mb-1.5" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">A/A+ (Top)</div>
+                <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:#60a526;">{{ r.counts[0] + r.counts[1] }}</div>
             </div>
-            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50/50 text-center">
-                <div class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center justify-center gap-1.5"><i class="ph-bold ph-warning"></i> D (Actie)</div>
-                <div class="font-display text-2xl font-semibold text-red-500">{{ r.counts[4] }}</div>
+            <div class="rounded-2xl border border-zinc-200 p-4 bg-zinc-50 text-center">
+                <div class="text-zinc-500 mb-1.5" style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;">D (Actie)</div>
+                <div style="font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:#ef4444;">{{ r.counts[4] }}</div>
             </div>
         </div>
 
         {% if not r.target_field %}
-        <div class="mb-8 avoid-break">
-            <h2 class="text-lg font-bold text-brand mb-1">Kwaliteitsverdeling</h2>
-            <div class="text-xs text-zinc-500 font-medium mb-4">Aandeel metingen per normeringscategorie</div>
+        <div class="mb-8 avoid-break page-section">
+            <h2 style="font-size:18px; font-weight:700; color:#60a526; margin-bottom:4px;">Kwaliteitsverdeling</h2>
+            <div style="font-size:12px; color:#71717a; font-weight:500; margin-bottom:16px;">Aandeel metingen per normeringscategorie</div>
 
             <div class="flex gap-6">
-                <div class="w-[200px] shrink-0 rounded-2xl border border-zinc-200 p-5 flex flex-col items-center justify-center bg-zinc-50/50">
-                    <div class="relative w-[130px] h-[130px]">
+                <div class="shrink-0 rounded-2xl border border-zinc-200 p-5 flex flex-col items-center justify-center bg-zinc-50" style="width:200px;">
+                    <div class="relative" style="width:130px; height:130px;">
                         <canvas id="pdfDonutChart"></canvas>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <div class="font-display text-3xl font-semibold leading-none text-zinc-800">{{ r.pcts[0] + r.pcts[1] }}%</div>
-                            <div class="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mt-1">A/A+</div>
+                        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;">
+                            <div style="font-family:'Fraunces',serif; font-size:28px; font-weight:600; color:#27272a; line-height:1;">{{ r.pcts[0] + r.pcts[1] }}%</div>
+                            <div style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:#71717a; margin-top:4px;">A/A+</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex-1 rounded-2xl border border-zinc-200 p-6 flex flex-col justify-center gap-4 bg-zinc-50/50">
-                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
-                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#60a526]"></span>A+ (Uitstekend)</span>
-                        <span class="text-zinc-500 tabular-nums">{{ r.counts[0] }} ({{ r.pcts[0] }}%)</span>
+                <div class="flex-1 rounded-2xl border border-zinc-200 p-6 flex flex-col justify-center gap-4 bg-zinc-50">
+                    {% set qlabels = [("A+ (Uitstekend)", "#60a526"), ("A (Goed)", "#84cc16"), ("B (Acceptabel)", "#eab308"), ("C (Matig)", "#f97316"), ("D (Slecht)", "#ef4444")] %}
+                    {% for i in range(5) %}
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:600; color:#3f3f46;">
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <span style="width:12px; height:12px; border-radius:3px; background:{{ qlabels[i][1] }}; display:inline-block;"></span>
+                            {{ qlabels[i][0] }}
+                        </span>
+                        <span style="color:#71717a; font-variant-numeric:tabular-nums;">{{ r.counts[i] }} ({{ r.pcts[i] }}%)</span>
                     </div>
-                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
-                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#84cc16]"></span>A (Goed)</span>
-                        <span class="text-zinc-500 tabular-nums">{{ r.counts[1] }} ({{ r.pcts[1] }}%)</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
-                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#eab308]"></span>B (Acceptabel)</span>
-                        <span class="text-zinc-500 tabular-nums">{{ r.counts[2] }} ({{ r.pcts[2] }}%)</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
-                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#f97316]"></span>C (Matig)</span>
-                        <span class="text-zinc-500 tabular-nums">{{ r.counts[3] }} ({{ r.pcts[3] }}%)</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs font-semibold text-zinc-700">
-                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-[#ef4444]"></span>D (Slecht)</span>
-                        <span class="text-zinc-500 tabular-nums">{{ r.counts[4] }} ({{ r.pcts[4] }}%)</span>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div class="mb-8 avoid-break">
-            <h2 class="text-lg font-bold text-brand mb-1">Veld Details & Advies</h2>
-            <div class="text-xs text-zinc-500 font-medium mb-4">Samenvatting per afgebakend veld op basis van ruimtelijke intersectie</div>
+        <div class="mb-8 avoid-break page-section">
+            <h2 style="font-size:18px; font-weight:700; color:#60a526; margin-bottom:4px;">Veld Details &amp; Advies</h2>
+            <div style="font-size:12px; color:#71717a; font-weight:500; margin-bottom:16px;">Samenvatting per afgebakend veld op basis van ruimtelijke intersectie</div>
 
             <div class="rounded-2xl border border-zinc-200 overflow-hidden">
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                    <thead class="bg-zinc-50 border-b border-zinc-200">
-                        <tr class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                            <th class="px-5 py-3">Veldnaam</th>
-                            <th class="px-5 py-3">Laatste Meting</th>
-                            <th class="px-5 py-3">Maaiadvies</th>
-                            <th class="px-5 py-3">Gem. Hoogte</th>
-                            <th class="px-5 py-3 text-center">Kwaliteit</th>
+                <table class="w-full text-left" style="font-size:13px; white-space:nowrap;">
+                    <thead style="background:#f4f4f5; border-bottom:1px solid #e4e4e7;">
+                        <tr style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#71717a;">
+                            <th style="padding:10px 20px;">Veldnaam</th>
+                            <th style="padding:10px 20px;">Laatste Meting</th>
+                            <th style="padding:10px 20px;">Maaiadvies</th>
+                            <th style="padding:10px 20px;">Gem. Hoogte</th>
+                            <th style="padding:10px 20px; text-align:center;">Kwaliteit</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-100">
+                    <tbody>
                         {% set bar_colors = ["#60a526", "#84cc16", "#eab308", "#f97316", "#ef4444"] %}
                         {% for m in r.fields %}
-                        <tr>
-                            <td class="px-5 py-3 font-semibold text-zinc-800">{{ m.name }}</td>
-                            <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ m.latest[:16] if m.latest != '—' else '—' }}</td>
-                            <td class="px-5 py-3 font-bold text-brand">{{ m.action }}</td>
-                            <td class="px-5 py-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-16 h-1.5 rounded-full bg-zinc-200 overflow-hidden">
-                                        <div class="h-full rounded-full" style="width:{{ m.bar_pct }}%; background-color:{{ bar_colors[m.level] }}"></div>
+                        <tr style="border-top:1px solid #f4f4f5;">
+                            <td style="padding:10px 20px; font-weight:600; color:#27272a;">{{ m.name }}</td>
+                            <td style="padding:10px 20px; font-size:12px; color:#71717a; font-variant-numeric:tabular-nums; font-weight:500;">{{ m.latest[:16] if m.latest and m.latest != '—' else '—' }}</td>
+                            <td style="padding:10px 20px; font-weight:700; color:#60a526;">{{ m.action }}</td>
+                            <td style="padding:10px 20px;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="width:64px; height:6px; border-radius:9999px; background:#e4e4e7; overflow:hidden;">
+                                        <div style="height:100%; border-radius:9999px; width:{{ m.bar_pct }}%; background:{{ bar_colors[m.level] }};"></div>
                                     </div>
-                                    <span class="text-xs font-semibold text-zinc-600 tabular-nums">{{ m.avg }} mm</span>
+                                    <span style="font-size:12px; font-weight:600; color:#52525b; font-variant-numeric:tabular-nums;">{{ m.avg }} mm</span>
                                 </div>
                             </td>
-                            <td class="px-5 py-3 text-center">
-                                <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold text-white w-10 text-center" style="background-color:{{ bar_colors[m.level] }}">{{ m.label }}</span>
+                            <td style="padding:10px 20px; text-align:center;">
+                                <span style="display:inline-block; padding:3px 12px; border-radius:9999px; font-size:10px; font-weight:700; color:white; background:{{ bar_colors[m.level] }}; min-width:40px; text-align:center;">{{ m.label }}</span>
                             </td>
                         </tr>
                         {% endfor %}
@@ -153,21 +143,21 @@
         </div>
 
         {% else %}
-        <div class="mb-8 avoid-break">
-            <h2 class="text-lg font-bold text-brand mb-1">Metingen & Maaibeurten</h2>
-            <div class="text-xs text-zinc-500 font-medium mb-4">Tijdlijn van de meest recente sensordata voor {{ r.fields[0].name }}</div>
+        <div class="mb-8 avoid-break page-section">
+            <h2 style="font-size:18px; font-weight:700; color:#60a526; margin-bottom:4px;">Recente meetbeurten</h2>
+            <div style="font-size:12px; color:#71717a; font-weight:500; margin-bottom:16px;">Tijdlijn van de meest recente sensordata voor {{ r.fields[0].name }}</div>
 
             <div class="rounded-2xl border border-zinc-200 overflow-hidden">
-                <table class="w-full text-left text-sm whitespace-nowrap">
-                    <thead class="bg-zinc-50 border-b border-zinc-200">
-                        <tr class="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                            <th class="px-5 py-3">Type</th>
-                            <th class="px-5 py-3">Datum & Tijd</th>
-                            <th class="px-5 py-3">Grashoogte</th>
-                            <th class="px-5 py-3">Metingen</th>
+                <table class="w-full text-left" style="font-size:13px; white-space:nowrap;">
+                    <thead style="background:#f4f4f5; border-bottom:1px solid #e4e4e7;">
+                        <tr style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#71717a;">
+                            <th style="padding:10px 20px;">Type</th>
+                            <th style="padding:10px 20px;">Datum &amp; Tijd</th>
+                            <th style="padding:10px 20px;">Grashoogte</th>
+                            <th style="padding:10px 20px;">Metingen</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-100">
+                    <tbody>
                         {% for i in range(r.fields[0].history|length) %}
                             {% set h = r.fields[0].history[i] %}
                             {% set title = "Meting" %}
@@ -179,16 +169,29 @@
                                     {% set is_mow = true %}
                                 {% endif %}
                             {% endif %}
-                            <tr>
-                                <td class="px-5 py-3 font-semibold {{ 'text-brand' if is_mow else 'text-zinc-800' }}">
-                                    <div class="flex items-center gap-1.5">
-                                        {% if is_mow %}<i class="ph-bold ph-scissors"></i>{% else %}<i class="ph-bold ph-ruler"></i>{% endif %}
+                            <tr style="border-top:1px solid #f4f4f5;">
+                                <td style="padding:10px 20px; font-weight:600; color:{{ '#60a526' if is_mow else '#27272a' }};">
+                                    {% if is_mow %}
+                                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="#60a526"><path d="M175.5,165.7,149.1,128l26.4-37.7a48,48,0,1,0-13.1,9.2L188,128l-25.6,28.5A48,48,0,1,0,175.5,165.7ZM64,80A32,32,0,1,1,96,112,32,32,0,0,1,64,80Zm32,96A32,32,0,1,1,96,144,32,32,0,0,1,96,176Z"/></svg>
                                         {{ title }}
-                                    </div>
+                                    </span>
+                                    {% else %}
+                                    <span style="display:inline-flex; align-items:center; gap:6px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="#27272a"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>
+                                        {{ title }}
+                                    </span>
+                                    {% endif %}
                                 </td>
-                                <td class="px-5 py-3 text-xs text-zinc-500 tabular-nums font-medium">{{ h.time }}</td>
-                                <td class="px-5 py-3 font-semibold tabular-nums text-zinc-800">{{ h.h }} mm</td>
-                                <td class="px-5 py-3 text-xs text-zinc-500 font-medium">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
+                                <td style="padding:10px 20px; font-size:12px; color:#71717a; font-variant-numeric:tabular-nums; font-weight:500;">
+                                    {% if h.date | length >= 10 %}
+                                        {{ h.date[8:10] }}-{{ h.date[5:7] }}-{{ h.date[0:4] }} {{ h.time }}
+                                    {% else %}
+                                        {{ h.date }} {{ h.time }}
+                                    {% endif %}
+                                </td>
+                                <td style="padding:10px 20px; font-weight:600; font-variant-numeric:tabular-nums; color:#27272a;">{{ h.h }} mm</td>
+                                <td style="padding:10px 20px; font-size:12px; color:#71717a; font-weight:500;">gem. van {{ h.count }} meting{{ "" if h.count == 1 else "en" }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -197,48 +200,52 @@
         </div>
         {% endif %}
 
-        <div class="mb-8 avoid-break">
-            <h2 class="text-lg font-bold text-brand mb-1">Aanbevelingen & Normering</h2>
-            <div class="rounded-2xl border border-zinc-200 p-5 bg-zinc-50/50 text-xs text-zinc-700 leading-relaxed space-y-2">
+        <div class="mb-8 avoid-break page-section">
+            <h2 style="font-size:18px; font-weight:700; color:#60a526; margin-bottom:16px;">Aanbevelingen &amp; Normering</h2>
+            <div style="display:flex; flex-direction:column; gap:12px; font-size:12px; color:#3f3f46;">
                 {% if r.counts[4] %}
-                <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-warning-circle text-red-500 text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (>100 mm) — directe maaiactie noodzakelijk.</div>
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" fill="#ef4444" style="margin-top:1px; flex-shrink:0;"><path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg>
+                    <div><strong style="color:#dc2626;">{{ r.counts[4] }} meting(en)</strong> met kwaliteit D (&gt;100 mm). Directe maaiactie noodzakelijk.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[3] %}
-                <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-info text-[#f97316] text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm) — maaien inplannen.</div>
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" fill="#f97316" style="margin-top:1px; flex-shrink:0;"><path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></svg>
+                    <div><strong style="color:#ea580c;">{{ r.counts[3] }} meting(en)</strong> met kwaliteit C (90-100 mm). Maaien inplannen.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[2] %}
-                <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-info text-[#eab308] text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm) — visueel controleren.</div>
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" fill="#eab308" style="margin-top:1px; flex-shrink:0;"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V104a8,8,0,0,1,16,0v32a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></svg>
+                    <div><strong style="color:#ca8a04;">{{ r.counts[2] }} meting(en)</strong> met kwaliteit B (80-90 mm). Acceptabel, visueel controleren.</div>
                 </div>
                 {% endif %}
                 {% if r.counts[0] + r.counts[1] %}
-                <div class="flex items-start gap-2">
-                    <i class="ph-fill ph-check-circle text-brand text-[16px] mt-0.5 shrink-0"></i>
-                    <div><strong class="text-zinc-900">{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in A/A+ (≤80 mm) — gras is in topconditie.</div>
+                <div style="display:flex; align-items:flex-start; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" fill="#60a526" style="margin-top:1px; flex-shrink:0;"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></svg>
+                    <div><strong style="color:#60a526;">{{ r.counts[0] + r.counts[1] }} meting(en)</strong> in topconditie A/A+ (≤80 mm). Geen actie nodig.</div>
                 </div>
                 {% endif %}
 
-                <div class="pt-3 mt-3 border-t border-zinc-200 text-[10px] text-zinc-500 font-medium flex items-center gap-1.5">
-                    <i class="ph-bold ph-info"></i> Kwaliteitseisen conform normering: A+ (≤70), A (≤80), B (≤90), C (≤100), D (>100) mm.
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:10px; color:#71717a; margin-top:16px; padding-top:16px; border-top:1px solid #e4e4e7; font-weight:600;">
+                    <span><strong style="color:#60a526;">A+</strong> ≤70</span> &bull;
+                    <span><strong style="color:#84cc16;">A</strong> ≤80</span> &bull;
+                    <span><strong style="color:#eab308;">B</strong> ≤90</span> &bull;
+                    <span><strong style="color:#f97316;">C</strong> ≤100</span> &bull;
+                    <span><strong style="color:#ef4444;">D</strong> &gt;100 mm</span>
                 </div>
             </div>
         </div>
 
-        <div class="flex items-center justify-between pt-4 border-t border-zinc-200 text-[10px] text-zinc-500 font-semibold avoid-break">
-            <div class="flex items-center gap-1.5">
-                <i class="ph-fill ph-leaf text-brand"></i>
-                <span class="font-display text-brand font-bold text-xs tracking-wide">Groenwerf</span>
-                <span class="mx-1 font-normal opacity-50">|</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid #e4e4e7; font-size:10px; color:#71717a; font-weight:600;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" fill="#60a526"><path d="M222.1,35.9a8,8,0,0,0-7.2-5.8C211.3,29.8,140.6,24,88,76.6c-22.3,22.3-34.6,52-34,83.4L33.4,180.7A8,8,0,1,0,44.7,192l21.6-21.6A103.3,103.3,0,0,0,128,188c30,0,59.2-12.6,80-35.1C246.8,110.5,223.4,38.8,222.1,35.9ZM197.4,141.3C180,160.2,155.7,171,128,171a87.5,87.5,0,0,1-51.9-17L183.7,47.3C198.3,77.6,207.4,130.1,197.4,141.3Z"/></svg>
+                <span style="font-family:'Fraunces',serif; color:#60a526; font-weight:700; font-size:12px; letter-spacing:0.03em;">Groenwerf</span>
+                <span style="margin:0 4px; opacity:0.5; font-weight:400;">|</span>
                 Veldbeheer &amp; grashoogte monitoring
             </div>
-            <div>Gegenereerd op {{ r.generated }} <span class="mx-1">•</span> Laatste meting: {{ r.latest }}</div>
+            <div>Gegenereerd op {{ r.generated }} &nbsp;&bull;&nbsp; Laatste meting: {{ r.latest }}</div>
         </div>
 
         <script>

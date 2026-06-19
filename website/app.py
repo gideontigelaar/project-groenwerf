@@ -1,16 +1,23 @@
+# website/app.py
 import math
 import os
 import threading
 import time
 import datetime
 import requests
+import urllib.parse
+import sys
+import logging
 
 from flask import Flask, jsonify, render_template, request, make_response, redirect, url_for, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 
 try:
     import credentials
-except ImportError:
-    credentials = None
+except ModuleNotFoundError:
+    sys.exit("ERROR: credentials.py not found.")
 
 try:
     from arcgis.gis import GIS
@@ -19,9 +26,21 @@ except ImportError:
     GIS = None
     FeatureLayer = None
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+
 app = Flask(__name__)
-app.secret_key = getattr(credentials, 'FLASK_SECRET_KEY', 'default-dev-key-change-me')
+app.secret_key = credentials.FLASK_SECRET_KEY
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    storage_uri="memory://",
+    default_limits=["200 per minute"],
+)
 
 API_BASE_URL = getattr(credentials, 'API_BASE_URL', 'http://127.0.0.1:5002')
 API_KEY = getattr(credentials, 'API_KEY', '')
@@ -35,8 +54,7 @@ _arc_layer = None
 _arc_fields_layer = None
 _arc_lock = threading.Lock()
 
-# Authentication Hooks
-
+# authentication hooks
 @app.before_request
 def require_login():
     allowed_routes = ['login', 'register', 'static']
@@ -54,11 +72,12 @@ def _get_user_fields(user_id):
         )
         if resp.status_code == 200:
             return resp.json().get("fields", [])
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(f"Could not fetch user fields: {e}")
     return []
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute; 30 per hour")
 def login():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
@@ -84,11 +103,13 @@ def login():
             else:
                 error = data.get("error", "Ongeldige inloggegevens.")
         except Exception as e:
+            logging.error(f"Login API connection failed: {e}")
             error = "Kon niet verbinden met de server."
 
     return render_template("login.html", error=error)
 
 @app.route("/register", methods=["GET", "POST"])
+@limiter.limit("5 per minute; 10 per hour")
 def register():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
@@ -118,6 +139,7 @@ def register():
                 else:
                     error = data.get("error", "Registratie mislukt.")
             except Exception as e:
+                logging.error(f"Register API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
     return render_template("register.html", error=error, success=success)
@@ -140,8 +162,8 @@ def settings():
         )
         if resp.status_code == 200:
             session['name'] = name
-    except Exception:
-        pass
+    except Exception as e:
+        logging.error(f"Update profile API connection failed: {e}")
 
     return redirect(request.referrer or url_for('dashboard'))
 
@@ -172,7 +194,8 @@ def admin_panel():
                     success = "Gebruiker succesvol aangemaakt."
                 else:
                     error = resp.json().get("error", "Fout bij aanmaken gebruiker.")
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin create API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
         elif action == "delete":
@@ -187,7 +210,8 @@ def admin_panel():
                     success = "Gebruiker succesvol verwijderd."
                 else:
                     error = "Fout bij verwijderen gebruiker."
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin delete API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
         elif action == "set_fields":
@@ -204,7 +228,8 @@ def admin_panel():
                     success = "Veldtoegankelijkheid succesvol bijgewerkt."
                 else:
                     error = "Fout bij bijwerken veldtoegang."
-            except Exception:
+            except Exception as e:
+                logging.error(f"Admin field update API connection failed: {e}")
                 error = "Kon niet verbinden met de server."
 
     users_list = []
@@ -216,7 +241,8 @@ def admin_panel():
         )
         if resp.status_code == 200:
             users_list = resp.json().get("users", [])
-    except Exception:
+    except Exception as e:
+        logging.error(f"Admin list API connection failed: {e}")
         error = "Kon gebruikerslijst niet ophalen."
 
     _, _, fields = get_rows()
@@ -232,9 +258,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-
-# ArcGIS Integration
-
+# arcgis integration
 def _arcgis_configured():
     return bool(credentials and GIS and getattr(credentials, "ARCGIS_LAYER_URL", None) and getattr(credentials, "ARCGIS_USERNAME", None))
 
@@ -325,7 +349,8 @@ def _fetch_rows():
         try:
             rows = _fetch_from_arcgis()
             if rows: return rows, "arcgis"
-        except Exception as exc: app.logger.error("arcgis fetch failed: %s", exc)
+        except Exception as exc:
+            logging.error(f"ArcGIS point fetch failed: {exc}")
     return [], "none"
 
 def _do_refresh():
@@ -336,7 +361,8 @@ def _do_refresh():
         if flayer:
             fset = flayer.query(where="1=1", out_fields="*", return_geometry=True, out_sr=4326)
             fields = [{"attributes": f.attributes, "geometry": f.geometry} for f in fset.features]
-    except Exception: pass
+    except Exception as exc:
+        logging.error(f"ArcGIS fields fetch failed: {exc}")
 
     with _cache_lock:
         if rows:
@@ -392,6 +418,62 @@ def _in_poly(x, y, rings):
                 inside = not inside
     return inside
 
+def polygon_centroid(rings):
+    if not rings or not rings[0]: return (0.0, 0.0)
+    pts = rings[0]
+    return (sum(p[0] for p in pts)/len(pts), sum(p[1] for p in pts)/len(pts))
+
+def calculate_growth(history, target_height):
+    MOW_BASE_MM = 40
+    chron = list(reversed(history))
+
+    if len(chron) < 2:
+        return {
+            "avg_daily_growth": 0,
+            "current_height": chron[0]["h"] if chron else 0,
+            "days_to_target": None,
+            "expected_date": None,
+            "mow_base_mm": MOW_BASE_MM,
+        }
+
+    growth_deltas = []
+    for i in range(1, len(chron)):
+        prev = chron[i - 1]
+        curr = chron[i]
+
+        if curr.get("is_mow"):
+            continue
+        if prev.get("is_mow"):
+            delta = curr["h"] - MOW_BASE_MM
+        else:
+            delta = curr["h"] - prev["h"]
+
+        if delta > 0:
+            growth_deltas.append(delta)
+
+    avg_daily_growth = (sum(growth_deltas) / len(growth_deltas)) if growth_deltas else 0
+    current_height = chron[-1]["h"]
+
+    if avg_daily_growth <= 0 or current_height >= target_height:
+        return {
+            "avg_daily_growth": round(avg_daily_growth, 2),
+            "current_height": current_height,
+            "days_to_target": None,
+            "expected_date": None,
+            "mow_base_mm": MOW_BASE_MM,
+        }
+
+    days_to_target = math.ceil((target_height - current_height) / avg_daily_growth)
+    expected_date = (datetime.datetime.now() + datetime.timedelta(days=days_to_target)).strftime("%Y-%m-%d")
+
+    return {
+        "avg_daily_growth": round(avg_daily_growth, 2),
+        "current_height": current_height,
+        "days_to_target": days_to_target,
+        "expected_date": expected_date,
+        "mow_base_mm": MOW_BASE_MM,
+    }
+
 def build_report(rows, fields, days=None, target_field_id=None, user_id=None, user_role=None):
     now = datetime.datetime.now()
 
@@ -402,9 +484,7 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
             rows = [r for r in rows if str(r.get("measured_at", "")) >= cutoff_str]
         except Exception: pass
 
-    counts = [0, 0, 0, 0, 0]
     field_summaries = []
-
     allowed_fields = None
     if user_role == 'user' and user_id is not None:
         allowed_fields = _get_user_fields(user_id)
@@ -414,32 +494,70 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
             continue
 
         name = _attr(f.get("attributes", {}), "Name", "Naam", "Field_Name") or f"Veld {i+1}"
+        shape_area = _attr(f.get("attributes", {}), "Shape_Area", "shape_area", "SHAPE_AREA") or 0
         rings = f.get("geometry", {}).get("rings", [])
+
+        # calculate center point for routing
+        lon, lat = polygon_centroid(rings)
         f_rows = [r for r in rows if _in_poly(r.get("longitude"), r.get("latitude"), rings)]
 
         if not f_rows: continue
 
-        latest_day = f_rows[0].get("measured_at", "")[:10]
-        day_rows = [r for r in f_rows if str(r.get("measured_at", "")).startswith(latest_day)]
+        # calculate accurate counts of raw measurements for the donut charts
+        f_counts = [0, 0, 0, 0, 0]
+        for r in f_rows:
+            h = r.get("tof_mm") or r.get("sonic_mm") or 0
+            f_counts[quality_grade(h)] += 1
+
+        # safe string conversion to avoid 'NoneType' crashes on missing dates
+        raw_ts = f_rows[0].get("measured_at")
+        measured_at_str = str(raw_ts) if raw_ts else ""
+        latest_day = measured_at_str[:10]
+
+        day_rows = [r for r in f_rows if str(r.get("measured_at") or "").startswith(latest_day)]
         f_heights_day = [r.get("tof_mm") or r.get("sonic_mm") or 0 for r in day_rows]
         f_avg = round(sum(f_heights_day) / len(f_heights_day)) if f_heights_day else 0
         lvl = quality_grade(f_avg)
 
-        history = []
-        days_dict = {}
-        for r in f_rows:
-            d = str(r.get("measured_at", ""))[:10]
-            if d not in days_dict: days_dict[d] = []
-            days_dict[d].append(r)
+        history_clusters = []
+        current_cluster = [f_rows[0]]
+        for r in f_rows[1:]:
+            last_dt_raw = current_cluster[-1].get("measured_at")
+            last_dt_str = str(last_dt_raw) if last_dt_raw else ""
+            curr_dt_raw = r.get("measured_at")
+            curr_dt_str = str(curr_dt_raw) if curr_dt_raw else ""
 
-        for d, d_rows in list(days_dict.items())[:30]:
-            d_avg = round(sum([(r.get("tof_mm") or r.get("sonic_mm") or 0) for r in d_rows]) / len(d_rows))
+            try:
+                last_dt = datetime.datetime.strptime(last_dt_str[:16], "%Y-%m-%d %H:%M")
+                curr_dt = datetime.datetime.strptime(curr_dt_str[:16], "%Y-%m-%d %H:%M")
+                delta = abs((last_dt - curr_dt).total_seconds())
+                if delta <= 7200:
+                    current_cluster.append(r)
+                else:
+                    history_clusters.append(current_cluster)
+                    current_cluster = [r]
+            except Exception:
+                if last_dt_str[:10] == curr_dt_str[:10] and last_dt_str[:10] != "":
+                    current_cluster.append(r)
+                else:
+                    history_clusters.append(current_cluster)
+                    current_cluster = [r]
+        if current_cluster:
+            history_clusters.append(current_cluster)
+
+        history = []
+        for cluster in history_clusters[:40]:
+            c_heights = [(r.get("tof_mm") or r.get("sonic_mm") or 0) for r in cluster]
+            c_avg_clus = round(sum(c_heights) / len(c_heights)) if c_heights else 0
+            fst_raw = cluster[0].get("measured_at")
+            fst = str(fst_raw) if fst_raw else ""
+
             history.append({
-                "date": d,
-                "time": str(d_rows[0].get("measured_at", ""))[11:16],
-                "h": d_avg,
-                "lvl": quality_grade(d_avg),
-                "count": len(d_rows)
+                "date": fst[:10] if len(fst) >= 10 else fst,
+                "time": fst[11:16] if len(fst) >= 16 else "",
+                "h": c_avg_clus,
+                "lvl": quality_grade(c_avg_clus),
+                "count": len(cluster)
             })
 
         # detect big height drops indicating mowing
@@ -452,19 +570,27 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
             history[j]["is_mow"] = is_mow
             history[j]["title"] = "Maaibeurt" if is_mow else "Meting"
 
+        target_height = _attr(f.get("attributes", {}), "target_height", "Target_Height", "TARGET_HEIGHT") or 40
+        growth_info = calculate_growth(history, target_height=target_height)
         action = "Direct" if lvl == 4 else ("Inplannen" if lvl == 3 else "N.v.t.")
 
         field_summaries.append({
             "id": i,
             "name": name,
             "total": len(f_rows),
+            "raw_counts": f_counts,
             "avg": f_avg,
-            "latest": f_rows[0].get("measured_at", "—"),
+            "latest": str(raw_ts) if raw_ts else "—",
             "label": QUALITY_LABELS[lvl],
             "level": lvl,
             "action": action,
             "bar_pct": min(100, round((f_avg / 150.0) * 100)),
-            "history": history
+            "history": history,
+            "lat": lat,
+            "lon": lon,
+            "area_m2": shape_area,
+            "growth": growth_info,
+            "target_height": target_height
         })
 
     field_summaries.sort(key=lambda s: s["level"], reverse=True)
@@ -472,7 +598,11 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
     if target_field_id is not None and target_field_id != "":
         field_summaries = [s for s in field_summaries if str(s["id"]) == str(target_field_id)]
 
-    for s in field_summaries: counts[s["level"]] += s["total"]
+    counts = [0, 0, 0, 0, 0]
+    for s in field_summaries:
+        for level_idx in range(5):
+            counts[level_idx] += s["raw_counts"][level_idx]
+
     total = sum(counts)
 
     # calculate svg values for donut chart
@@ -480,8 +610,8 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
     circ = 2 * math.pi * r_circle
     segments = []
     offset = 0.0
-    for lvl, color in enumerate(QUALITY_COLORS):
-        frac = (counts[lvl] / total) if total else 0
+    for lvl_idx, color in enumerate(QUALITY_COLORS):
+        frac = (counts[lvl_idx] / total) if total else 0
         seg_len = frac * circ
         segments.append({"color": color, "dash": f"{seg_len:.2f} {circ - seg_len:.2f}", "offset": f"{-offset:.2f}"})
         offset += seg_len
@@ -492,7 +622,8 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
     if target_field_id is not None and target_field_id != "" and len(field_summaries) > 0:
         raw_ts = str(field_summaries[0].get("latest", "—"))
     elif rows:
-        raw_ts = str(rows[0].get("measured_at", "—"))
+        raw_ts_rows = rows[0].get("measured_at")
+        raw_ts = str(raw_ts_rows) if raw_ts_rows else "—"
 
     if raw_ts != "—" and len(raw_ts) >= 16:
         try:
@@ -501,9 +632,13 @@ def build_report(rows, fields, days=None, target_field_id=None, user_id=None, us
         except Exception:
             pass
 
+    def safe_avg_sum():
+        total_fields = sum([s["total"] for s in field_summaries])
+        return round(sum([s["avg"] * s["total"] for s in field_summaries]) / total_fields) if total_fields else 0
+
     return {
         "total": total,
-        "avg": round(sum([s["avg"] * s["total"] for s in field_summaries]) / total) if total else 0,
+        "avg": safe_avg_sum(),
         "counts": counts,
         "pcts": [round((c / total) * 100) if total else 0 for c in counts],
         "latest": latest_formatted,
@@ -536,6 +671,45 @@ def api_summary():
     rep["source"] = source
     return jsonify(rep)
 
+@app.route("/api/route-link")
+def api_route_link():
+    rows, source, fields = get_rows()
+    rep = build_report(rows, fields, days="30", user_id=session.get('user_id'), user_role=session.get('role'))
+
+    # filter fields requiring action (level 3 and 4)
+    fields_to_mow = [f for f in rep["fields"] if f.get("level", 0) >= 3]
+
+    if not fields_to_mow:
+        return jsonify({"status": "empty", "message": "Geen velden vereisen momenteel een maaibeurt."})
+
+    def priority_score(f):
+        growth = f.get("growth", {})
+        days_left = growth.get("days_to_target")
+        area_m2 = f.get("area_m2", 0)
+
+        MOWING_RATE_M2_PER_HOUR = 5000
+        mow_hours = area_m2 / MOWING_RATE_M2_PER_HOUR if area_m2 else 0
+
+        if days_left is None and growth.get("current_height", 0) >= f.get("target_height"):
+            return (float("inf"), mow_hours)
+
+        if days_left is None:
+            return (float("-inf"), 0)
+
+        effective_days = days_left - (mow_hours / 24)
+        return (-effective_days, mow_hours)
+
+    fields_to_mow.sort(key=priority_score, reverse=True)
+
+    url_parts = []
+    for f in fields_to_mow:
+        safe_name = urllib.parse.quote(str(f["name"])[:128])
+        url_parts.append(f"stop={f['lat']},{f['lon']}&stopname={safe_name}")
+
+    # optimize=false ensures strict priority sorting
+    navigator_link = "arcgis-navigator://?" + "&".join(url_parts) + "&optimize=false"
+    return jsonify({"status": "success", "link": navigator_link})
+
 @app.route("/api/sync", methods=["POST"])
 def api_sync():
     _do_refresh()
@@ -549,6 +723,9 @@ def fields(): return render_template("fields.html", active_page="fields")
 
 @app.route("/report")
 def report(): return render_template("report.html", active_page="report")
+
+@app.route("/mow")
+def mow(): return render_template("mow.html", active_page="mow")
 
 @app.route("/download-pdf")
 def download_pdf():
@@ -576,5 +753,15 @@ def download_pdf():
     resp.headers["Content-Disposition"] = "attachment; filename=veldbeheer-rapport.pdf"
     return resp
 
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit(e):
+    if request.path == "/login":
+        return render_template("login.html", error="Teveel inlogpogingen. Probeer het over een minuut opnieuw."), 429
+    if request.path == "/register":
+        return render_template("register.html", error="Teveel registratiepogingen. Probeer het later opnieuw.", success=False), 429
+    return jsonify({"error": "Teveel verzoeken, probeer later opnieuw."}), 429
+
 if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+    host = getattr(credentials, 'FLASK_HOST', '127.0.0.1')
+    port = getattr(credentials, 'FLASK_PORT', 3000)
+    app.run(host=host, port=port)
